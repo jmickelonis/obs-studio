@@ -180,6 +180,9 @@ OBSBasicStats::OBSBasicStats(QWidget *parent, bool closeable)
 	setWindowModality(Qt::NonModal);
 	setAttribute(Qt::WA_DeleteOnClose, true);
 
+	// Allow the background to be changed from themes
+	setAttribute(Qt::WA_StyledBackground);
+
 	QObject::connect(&timer, &QTimer::timeout, this,
 			 &OBSBasicStats::Update);
 	timer.setInterval(TIMER_INTERVAL);
