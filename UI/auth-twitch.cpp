@@ -18,6 +18,9 @@
 #include "ui-config.h"
 #include "obf.h"
 
+#include <fstream>
+#include <sstream>
+
 using namespace json11;
 
 /* ------------------------------------------------------------------------- */
@@ -194,6 +197,37 @@ static const char *referrer_script1 = "\
 Object.defineProperty(document, 'referrer', {get : function() { return '";
 static const char *referrer_script2 = "'; }});";
 
+/* Attempts to load Twitch-related CSS from config.
+ * The styles modify the docks to look better within OBS. */
+static inline std::string get_css()
+{
+	char path[512];
+	int res = GetConfigPath(path, sizeof(path), "obs-studio/twitch.css");
+
+	if (res <= 0)
+		return "";
+
+	std::ifstream fs(path);
+	std::stringstream buf;
+	buf << fs.rdbuf();
+	return Json(buf.str()).dump();
+}
+
+/* Returns Javascript that is executed by the Twitch docks. */
+static inline std::string get_style_script()
+{
+	std::string css = get_css();
+
+	if (css.empty())
+		// No CSS, so nothing to do
+		return "";
+
+	std::string s;
+	s += "var style = document.createElement('style');\n";
+	s += "style.innerText = " + css + "\n";
+	return s + "document.head.appendChild(style);\n";
+}
+
 void TwitchAuth::LoadUI()
 {
 	if (!cef)
@@ -209,6 +243,8 @@ void TwitchAuth::LoadUI()
 	QCefWidget *browser;
 	std::string url;
 	std::string script;
+
+	style_script = get_style_script();
 
 	/* Twitch panels require a UUID, it does not actually need to be unique,
 	 * and is generated client-side.
@@ -259,6 +295,7 @@ void TwitchAuth::LoadUI()
 			script += ffz_script;
 	}
 
+	script += style_script;
 	browser->setStartupScript(script);
 
 	main->addDockWidget(Qt::RightDockWidgetArea, chat.data());
@@ -300,6 +337,8 @@ void TwitchAuth::LoadSecondaryUIPanes()
 	} else {
 		script = "localStorage.setItem('twilight.theme', 0);";
 	}
+
+	script += style_script;
 	script += referrer_script1;
 	script += "https://www.twitch.tv/";
 	script += name;
@@ -378,9 +417,53 @@ void TwitchAuth::LoadSecondaryUIPanes()
 
 	/* ----------------------------------- */
 
+	url = "https://dashboard.twitch.tv/popout/u/";
+	url += name;
+	url += "/stream-manager/stream-health";
+	url += "?uuid=" + uuid;
+
+	health.reset(new BrowserDock());
+	health->setObjectName("twitchHealth");
+	health->resize(300, 650);
+	health->setMinimumSize(200, 300);
+	health->setWindowTitle(QTStr("TwitchAuth.Health"));
+	health->setAllowedAreas(Qt::AllDockWidgetAreas);
+
+	browser = cef->create_widget(health.data(), url, panel_cookies);
+	health->SetWidget(browser);
+	browser->setStartupScript(script);
+
+	main->addDockWidget(Qt::RightDockWidgetArea, health.data());
+	healthMenu.reset(main->AddDockWidget(health.data()));
+
+	/* ----------------------------------- */
+
+	url = "https://dashboard.twitch.tv/popout/u/";
+	url += name;
+	url += "/stream-manager/quick-actions";
+	url += "?uuid=" + uuid;
+
+	quickActions.reset(new BrowserDock());
+	quickActions->setObjectName("twitchQuickActions");
+	quickActions->resize(300, 650);
+	quickActions->setMinimumSize(200, 300);
+	quickActions->setWindowTitle(QTStr("TwitchAuth.QuickActions"));
+	quickActions->setAllowedAreas(Qt::AllDockWidgetAreas);
+
+	browser = cef->create_widget(quickActions.data(), url, panel_cookies);
+	quickActions->SetWidget(browser);
+	browser->setStartupScript(script);
+
+	main->addDockWidget(Qt::RightDockWidgetArea, quickActions.data());
+	quickActionsMenu.reset(main->AddDockWidget(quickActions.data()));
+
+	/* ----------------------------------- */
+
 	info->setFloating(true);
 	stat->setFloating(true);
 	feed->setFloating(true);
+	health->setFloating(true);
+	quickActions->setFloating(true);
 
 	QSize statSize = stat->frameSize();
 
@@ -388,11 +471,15 @@ void TwitchAuth::LoadSecondaryUIPanes()
 	stat->move(pos.x() + size.width() / 2 - statSize.width() / 2,
 		   pos.y() + size.height() / 2 - statSize.height() / 2);
 	feed->move(pos.x() + 100, pos.y() + 100);
+	health->move(pos.x() + 150, pos.y() + 150);
+	quickActions->move(pos.x() + 200, pos.y() + 200);
 
 	if (firstLoad) {
 		info->setVisible(true);
 		stat->setVisible(false);
 		feed->setVisible(false);
+		health->setVisible(false);
+		quickActions->setVisible(false);
 	} else {
 		uint32_t lastVersion = config_get_int(App()->GlobalConfig(),
 						      "General", "LastVersion");

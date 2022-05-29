@@ -19,14 +19,19 @@ class TwitchAuth : public OAuthStreamKey {
 	QSharedPointer<BrowserDock> info;
 	QSharedPointer<BrowserDock> stat;
 	QSharedPointer<BrowserDock> feed;
+	QSharedPointer<BrowserDock> health;
+	QSharedPointer<BrowserDock> quickActions;
 	QSharedPointer<QAction> chatMenu;
 	QSharedPointer<QAction> infoMenu;
 	QSharedPointer<QAction> statMenu;
 	QSharedPointer<QAction> feedMenu;
+	QSharedPointer<QAction> healthMenu;
+	QSharedPointer<QAction> quickActionsMenu;
 	bool uiLoaded = false;
 
 	std::string name;
 	std::string uuid;
+	std::string style_script;
 
 	virtual bool RetryLogin() override;
 
