@@ -1,0 +1,65 @@
+// A stylesheet to make Twitch browser docks look more at home in OBS.
+// Run this file through Sass to make twitch.css:
+// https://sass-lang.com
+
+$BACKGROUND_COLOR: #1F1F23
+$BUTTON_HOVER_COLOR: #4C4C4F
+
+%Header
+  // Float the top panel and make it transparent
+  z-index: 100 !important
+  position: fixed !important
+  width: auto !important
+  background: transparent !important
+  border: none !important
+
+  > div:first-child
+    // Hide the header
+    display: none !important
+
+  button
+    // Fill the background behind floating buttons,
+    // so other things don't show through
+    &:hover
+      background-color: $BUTTON_HOVER_COLOR !important
+    &:not(:hover)
+      background-color: $BACKGROUND_COLOR !important
+
+.stream-manager-panel-header
+  @extend %Header
+  // Put the controls for most docks on the bottom right
+  bottom: 6px !important
+  right: 0px !important
+
+.stream-chat-header
+  @extend %Header
+  // Put the chat controls on the top right
+  top: 0px !important
+  right: 0px !important
+
+.channel-leaderboard
+  // Hide the gift & cheer banner
+  display: none !important
+
+.dashboard-live-popout-card
+  > div:first-child
+    // Hide the header for the Stats dock
+    display: none !important
+  > div:nth-child(2)
+    // Expand everything else
+    height: 100% !important
+
+.edit-stream-info-buttons
+  // Hide the box shadow in Stream Info (it clashes in a few spots)
+  box-shadow: none !important
+
+body,
+.activity-feed-popout,
+.chat-room, 
+.chat-room__content,
+.dashboard-live-popout-card,
+.dashboard-live-popout-card__scrollable-area,
+.edit-stream-info-buttons,
+.edit-stream-info-popout,
+.stream-health-popout
+  background-color: $BACKGROUND_COLOR !important
