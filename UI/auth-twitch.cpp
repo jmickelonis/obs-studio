@@ -20,6 +20,7 @@
 
 #include <fstream>
 #include <sstream>
+#include "platform.hpp"
 
 using namespace json11;
 
@@ -197,6 +198,15 @@ static const char *referrer_script1 = "\
 Object.defineProperty(document, 'referrer', {get : function() { return '";
 static const char *referrer_script2 = "'; }});";
 
+/* Returns the contents of the CSS file at the specified path. */
+static inline std::string get_css_file_contents(const char *path)
+{
+	std::ifstream fs(path);
+	std::stringstream buf;
+	buf << fs.rdbuf();
+	return Json(buf.str()).dump();
+}
+
 /* Attempts to load Twitch-related CSS from config.
  * The styles modify the docks to look better within OBS. */
 static inline std::string get_css()
@@ -204,13 +214,20 @@ static inline std::string get_css()
 	char path[512];
 	int res = GetConfigPath(path, sizeof(path), "obs-studio/twitch.css");
 
-	if (res <= 0)
+	if (res > 0 && os_file_exists(path))
+		// Found CSS in user config
+		return get_css_file_contents(path);
+
+	std::string spath;
+	if (!GetDataFilePath("twitch.css", spath))
 		return "";
 
-	std::ifstream fs(path);
-	std::stringstream buf;
-	buf << fs.rdbuf();
-	return Json(buf.str()).dump();
+	const char *cpath = spath.c_str();
+	if (os_file_exists(cpath))
+		// Use CSS from data files
+		return get_css_file_contents(cpath);
+
+	return "";
 }
 
 /* Returns Javascript that is executed by the Twitch docks. */
