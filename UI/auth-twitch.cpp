@@ -18,10 +18,6 @@
 #include "ui-config.h"
 #include "obf.h"
 
-#include <fstream>
-#include <sstream>
-#include "platform.hpp"
-
 using namespace json11;
 
 /* ------------------------------------------------------------------------- */
@@ -198,52 +194,14 @@ static const char *referrer_script1 = "\
 Object.defineProperty(document, 'referrer', {get : function() { return '";
 static const char *referrer_script2 = "'; }});";
 
-/* Returns the contents of the CSS file at the specified path. */
-static inline std::string get_css_file_contents(const char *path)
-{
-	std::ifstream fs(path);
-	std::stringstream buf;
-	buf << fs.rdbuf();
-	return Json(buf.str()).dump();
-}
-
-/* Attempts to load Twitch-related CSS from config.
- * The styles modify the docks to look better within OBS. */
-static inline std::string get_css()
-{
-	char path[512];
-	int res = GetConfigPath(path, sizeof(path), "obs-studio/twitch.css");
-
-	if (res > 0 && os_file_exists(path))
-		// Found CSS in user config
-		return get_css_file_contents(path);
-
-	std::string spath;
-	if (!GetDataFilePath("twitch.css", spath))
-		return "";
-
-	const char *cpath = spath.c_str();
-	if (os_file_exists(cpath))
-		// Use CSS from data files
-		return get_css_file_contents(cpath);
-
-	return "";
-}
-
-/* Returns Javascript that is executed by the Twitch docks. */
-static inline std::string get_style_script()
-{
-	std::string css = get_css();
-
-	if (css.empty())
-		// No CSS, so nothing to do
-		return "";
-
-	std::string s;
-	s += "var style = document.createElement('style');\n";
-	s += "style.innerText = " + css + "\n";
-	return s + "document.head.appendChild(style);\n";
-}
+static const char *style_script = "\
+var _style = document.createElement('style');\
+document.head.appendChild(_style);\
+function _updateCSS(css) {\
+	_style.innerText = css;\
+}\
+_updateCSS(obsstudio.getCSS('twitch'));\
+obsstudio.onCSSChanged('twitch', _updateCSS);";
 
 void TwitchAuth::LoadUI()
 {
@@ -260,8 +218,6 @@ void TwitchAuth::LoadUI()
 	QCefWidget *browser;
 	std::string url;
 	std::string script;
-
-	style_script = get_style_script();
 
 	/* Twitch panels require a UUID, it does not actually need to be unique,
 	 * and is generated client-side.
