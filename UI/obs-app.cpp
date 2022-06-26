@@ -48,6 +48,8 @@
 #include "platform.hpp"
 
 #include <fstream>
+#include <filesystem>
+#include <platform.hpp>
 
 #include <curl/curl.h>
 
@@ -1121,8 +1123,52 @@ bool OBSApp::SetTheme(std::string name, std::string path)
 	QColor color = palette().text().color();
 	themeDarkMode = !(color.redF() < 0.5);
 
+	PrepareThemeCSS("twitch");
+
 	emit StyleChanged();
 	return true;
+}
+
+/* Returns the path to the specified CSS file for the current theme.
+ * If a file does not exist, an empty string is returned.
+ *
+ * As an example, for the Dark theme,
+ * CSS for twitch would be found in "themes/Dark/twitch.css"
+ * in either the user config or data directory (user config takes precedence).
+ */
+std::string OBSApp::GetThemeCSSPath(std::string id)
+{
+	std::string relpath = "themes/" + theme + "/" + id + ".css";
+
+	char cpath[512];
+	int res = GetConfigPath(cpath, sizeof(cpath), ("obs-studio/" + relpath).c_str());
+	if (res > 0 && os_file_exists(cpath))
+		// Found in user config
+		return std::string(cpath, res);
+
+	std::string path;
+	return GetDataFilePath(relpath.c_str(), path)
+		&& os_file_exists(path.c_str()) ? path : "";
+}
+
+/* "Prepares" the specified theme CSS file for use by a service's browser docks.
+ * The file is copied to a central location (currently <CONFIG_DIR>/obs-studio/.<ID>.css).
+ */
+void OBSApp::PrepareThemeCSS(std::string id)
+{
+	char cpath[512];
+	int res = GetConfigPath(cpath, sizeof(cpath), ("obs-studio/." + id + ".css").c_str());
+	if (res <= 0)
+		// Shouldn't happen.
+		return;
+
+	std::string path = GetThemeCSSPath(id);
+	if (path != "")
+		// Copy the existing file
+		std::filesystem::copy_file(path, cpath, std::filesystem::copy_options::overwrite_existing);
+	else
+		// Remove the target (all docks should just use their default styles)
+		std::filesystem::remove(cpath);
 }
 
 bool OBSApp::InitTheme()
