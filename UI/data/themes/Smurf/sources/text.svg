@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="16"
+   height="16"
+   version="1.1"
+   id="svg4"
+   sodipodi:docname="text.svg"
+   inkscape:version="1.1.2 (0a00cf5339, 2022-02-04)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview6"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     showgrid="false"
+     inkscape:zoom="53.9375"
+     inkscape:cx="7.99073"
+     inkscape:cy="8.00927"
+     inkscape:window-width="1920"
+     inkscape:window-height="1020"
+     inkscape:window-x="0"
+     inkscape:window-y="29"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg4" />
+  <path
+     id="path1115"
+     style="display:inline;opacity:0.6;fill:#e8e8e8;stroke-width:0.933348;fill-opacity:1"
+     d="m 10.8,8.4668489 v 0.9333637 h 2.8 c 0.200667,0 0.466667,0.284676 0.466667,0.466682 v 0.4666814 h -2.333334 c -0.429333,0 -0.812,0.176755 -1.05,0.452099 -0.238,0.270674 -0.35,0.611935 -0.35,0.947946 0,0.336011 0.126584,0.677272 0.364584,0.947948 0.238,0.270676 0.61075,0.452098 1.035416,0.452098 H 15 V 9.8668946 C 15,9.1062031 14.384,8.4668489 13.6,8.4668489 Z m 0.933333,2.8000911 h 2.333334 v 0.933364 h -2.333334 c -0.186666,0 -0.265416,-0.05192 -0.335416,-0.131255 -0.07,-0.07933 -0.13125,-0.204757 -0.13125,-0.335428 0,-0.13067 0.04667,-0.256091 0.116666,-0.335427 0.07,-0.07467 0.154,-0.131255 0.35,-0.131254 z"
+     inkscape:label="little" />
+  <path
+     id="path2-3"
+     style="display:inline;fill:#e8e8e8;stroke-width:0.933348;fill-opacity:1"
+     d="M 4.5364581,2.8666669 1,13.133667 h 1.7791671 l 0.634375,-1.866727 h 3.574739 l 0.641667,1.866727 h 1.770052 L 5.8635421,2.8666669 Z m 0.661719,3.2084375 1.10651,3.3251082 h -2.211197 z"
+     inkscape:label="big" />
+</svg>
