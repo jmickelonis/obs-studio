@@ -218,6 +218,8 @@ QDockWidget::close-button, QDockWidget::float-button {
 }
 
 QWidget {
+  color: #e8e8e8;
+  font-size: 12px;
   selection-background-color: #c62828;
 }
 QWidget::disabled {
@@ -244,13 +246,16 @@ QDialog QListWidget {
 
 QDockWidget {
   background: #363636;
+  font-weight: bold;
 }
 QDockWidget::title {
   padding: 5px;
   text-align: left;
 }
-QDockWidget::title:floatable {
+QDockWidget::title:floatable, QDockWidget::title:window {
   background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #363636, stop: 1 #2b2b2b);
+}
+QDockWidget::title:floatable {
   border-bottom: 3px solid #363636;
   margin-bottom: -3px;
 }
@@ -276,15 +281,15 @@ QDockWidget::close-button:pressed, QDockWidget::float-button:pressed {
 QDockWidget::float-button:closable {
   right: 25px;
 }
-QDockWidget::window {
-  border: 1px solid #c62828;
-}
 QDockWidget > QWidget {
   background: #363636;
   border-radius: 3px;
 }
-QDockWidget QAbstractItemView {
-  font-size: 12px;
+QDockWidget::window {
+  border: 1px solid #c62828;
+}
+QDockWidget::active:window {
+  border-color: #d53131;
 }
 QDockWidget QToolBar QAbstractButton {
   margin-top: 3px;
@@ -299,15 +304,19 @@ QDockWidget QAbstractScrollArea {
 
 QGroupBox {
   border: none;
+  font-size: 14px;
   font-weight: bold;
-  padding-top: 25px;
+  margin-top: 28px;
+  padding: 5px;
 }
 QGroupBox::title {
+  margin: 5px;
   subcontrol-origin: margin;
 }
 
 QMainWindow {
   background: #212121;
+  padding: 5px;
 }
 QMainWindow::separator {
   background: transparent;
@@ -319,6 +328,11 @@ QMainWindow::separator:hover {
 QMainWindow QToolBar {
   padding: 0px;
   qproperty-iconSize: 14px 14px;
+}
+
+QMenuBar {
+  background: #212121;
+  font-size: 11px;
 }
 
 QScrollBar {
@@ -495,7 +509,19 @@ QPlainTextEdit, QTextBrowser, QTextEdit {
 QTextBrowser {
   padding: 3px;
 }
+QTextBrowser:!read-only:hover {
+  background: #313131;
+}
+QTextBrowser:!read-only:focus {
+  background: #313131;
+}
 
+.QCheckBox::indicator,
+SilentUpdateCheckBox::indicator {
+  padding: 1px;
+  width: 18px;
+  height: 18px;
+}
 .QCheckBox::indicator:unchecked,
 SilentUpdateCheckBox::indicator:unchecked {
   image: url(./Smurf/ui/checkbox.svg);
@@ -521,6 +547,11 @@ SilentUpdateCheckBox::indicator:disabled:checked {
   image: url(./Smurf/ui/checkbox checked disabled.svg);
 }
 
+.QRadioButton::indicator {
+  padding: 1px;
+  width: 18px;
+  height: 18px;
+}
 .QRadioButton::indicator:unchecked {
   image: url(./Smurf/ui/radiobutton.svg);
 }
@@ -569,6 +600,7 @@ QDialog QAbstractItemView::item:selected:!active:!hover {
 QHeaderView::section {
   background: #2b2b2b;
   border: none;
+  font-size: 10px;
   font-weight: bold;
   padding: 0px 5px;
 }
@@ -781,11 +813,12 @@ QTabWidget::pane {
 }
 
 OBSBasicSettings > QAbstractItemView {
-  qproperty-iconSize: 18px 18px;
+  font-weight: bold;
+  qproperty-iconSize: 16px 16px;
 }
 OBSBasicSettings > QAbstractItemView::item {
   border-radius: 2px;
-  padding: 5px;
+  padding: 5px 3px;
 }
 
 OBSQTDisplay {
