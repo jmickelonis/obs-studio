@@ -1455,6 +1455,62 @@ static void ui_task_handler(obs_task_t task, void *param, bool wait)
 				  Q_ARG(VoidFunc, doTask));
 }
 
+
+#include <QPainter>
+#include <QPainterPath>
+
+class OBSStyle : public QProxyStyle
+{
+public:
+	void drawControl(
+		ControlElement element,
+		const QStyleOption *option,
+		QPainter *painter,
+		const QWidget *widget) const override;
+};
+
+void OBSStyle::drawControl(
+	ControlElement element,
+	const QStyleOption *option,
+	QPainter *painter,
+	const QWidget *widget) const
+{
+	switch (element) {
+    case QStyle::CE_RubberBand:
+		{
+			// Use a simpler and fully opaque style for rubber bands
+			// This covers up graphical corruption in the browser docks
+			QRectF rect(option->rect);
+
+			qreal borderThickness = 1;
+			qreal halfBorderThickness = borderThickness / 2;
+			rect.adjust(halfBorderThickness, halfBorderThickness,
+				-halfBorderThickness, -halfBorderThickness);
+
+			QPainterPath path;
+			path.addRoundedRect(rect, 2, 2);
+
+			const QPalette *palette = &option->palette;
+			QColor highlightColor = palette->color(QPalette::Highlight);
+			QColor windowColor = palette->color(QPalette::Window);
+
+			QColor fillColor = QColor(
+				windowColor.red() * .75 + highlightColor.red() * .25,
+				windowColor.green() * .75 + highlightColor.green() * .25,
+				windowColor.blue() * .75 + highlightColor.blue() * .25
+			);
+			
+			painter->setPen(QPen(highlightColor, borderThickness));
+			painter->fillPath(path, fillColor);
+			painter->drawPath(path);
+			return;
+		}
+	}
+
+	QProxyStyle::drawControl(element, option, painter, widget);
+}
+
+
 bool OBSApp::OBSInit()
 {
 	ProfileScope("OBSApp::OBSInit");
@@ -1485,6 +1541,8 @@ bool OBSApp::OBSInit()
 	obs_set_nix_platform_display(
 		native->nativeResourceForIntegration("display"));
 #endif
+
+	setStyle(new OBSStyle);
 
 	if (!StartupOBS(locale.c_str(), GetProfilerNameStore()))
 		return false;
@@ -2804,6 +2862,10 @@ int main(int argc, char *argv[])
 #endif
 
 #ifdef _WIN32
+	// Uncomment to get a console window for cout and debugging purposes
+	// AllocConsole();
+	// freopen("CONOUT$", "w", stdout);
+
 	obs_init_win32_crash_handler();
 	SetErrorMode(SEM_FAILCRITICALERRORS);
 	load_debug_privilege();
