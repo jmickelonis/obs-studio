@@ -325,9 +325,13 @@ bool TitleBarWidget::event(QEvent *event)
 	case QEvent::ContextMenu:
 		// Our custom title bar covers up the dock widget, which breaks context menus
 		// We'll trigger the docks menu directly
-		if (QMenu *menuDocks = App()->GetMainWindow()->findChild<QMenu*>("menuDocks"))
+		if (QMenu *menuDocks = App()->GetMainWindow()->findChild<QMenu*>("menuDocks")) {
 			menuDocks->exec(QCursor::pos());
 			return true;
+		}
+		break;
+
+	default:
 		break;
 
 	}
@@ -374,20 +378,6 @@ void TitleBarWidget::onFeaturesChanged(QDockWidget::DockWidgetFeatures)
 void TitleBarWidget::onTopLevelChanged(bool)
 {
 	updateButtons();
-
-	// if (floating)
-	// 	return;
-
-	// QMainWindow *mainWindow = App()->GetMainWindow();
-
-	// if (!mainWindow)
-	// 	return;
-
-	// OBSDock *dock = getDock();
-	// QList<QDockWidget *> siblings = mainWindow->tabifiedDockWidgets(dock);
-
-	// if (siblings.count())
-	// 	mainWindow->tabifyDockWidget(siblings.first(), dock);
 }
 
 
@@ -404,6 +394,8 @@ bool OBSDock::event(QEvent *event)
 	case QEvent::WindowActivate:
 	case QEvent::WindowDeactivate:
 		update();
+		break;
+	default:
 		break;
 	}
 
@@ -431,6 +423,9 @@ bool OBSDock::event(QEvent *event)
 		// Re-enable the drop shadow
 		setDropShadow(true);
 #endif
+		break;
+
+	default:
 		break;
 
 	}
@@ -635,7 +630,7 @@ void OBSDock::setDropShadow(bool value)
 		DwmExtendFrameIntoClientArea(hwnd, &shadow);
 	}
 	else {
-		 style &= ~(WS_THICKFRAME | WS_CAPTION | WS_CLIPCHILDREN);
+		style &= ~(WS_THICKFRAME | WS_CAPTION | WS_CLIPCHILDREN);
 	}
 
 	SetWindowLong(hwnd, GWL_STYLE, style);
