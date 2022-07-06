@@ -117,11 +117,12 @@ public:
 	OBSDock(QWidget *parent = nullptr);
 	virtual bool event(QEvent *event) override;
 	virtual void paintEvent(QPaintEvent *event) override;
-	virtual void closeEvent(QCloseEvent *event);
+	virtual void closeEvent(QCloseEvent *event) override;
 
 protected:
 #ifdef _WIN32
-	virtual bool nativeEvent(const QByteArray &eventType, void *message, long *result);
+	virtual bool nativeEvent(
+		const QByteArray &eventType, void *message, long *result) override;
 #endif
 	void initStyleOption(QStyleOptionDockWidget *option) const;
 	friend class TitleBarLayout;
