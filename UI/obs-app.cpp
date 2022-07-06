@@ -1475,36 +1475,36 @@ void OBSStyle::drawControl(
 	QPainter *painter,
 	const QWidget *widget) const
 {
-	switch (element) {
-    case QStyle::CE_RubberBand:
-		{
-			// Use a simpler and fully opaque style for rubber bands
-			// This covers up graphical corruption in the browser docks
-			QRectF rect(option->rect);
+	if (element == QStyle::CE_RubberBand) {
+		// Use a simpler and fully opaque style for rubber bands
+		// This covers up graphical corruption in the browser docks
+		QRectF rect(option->rect);
 
-			qreal borderThickness = 1;
-			qreal halfBorderThickness = borderThickness / 2;
-			rect.adjust(halfBorderThickness, halfBorderThickness,
-				-halfBorderThickness, -halfBorderThickness);
+		static qreal borderThickness = 1;
+		static qreal halfBorderThickness = borderThickness / 2;
+		rect.adjust(halfBorderThickness, halfBorderThickness,
+			-halfBorderThickness, -halfBorderThickness);
 
-			QPainterPath path;
-			path.addRoundedRect(rect, 2, 2);
+		QPainterPath path;
+		path.addRoundedRect(rect, 2, 2);
 
-			const QPalette *palette = &option->palette;
-			QColor highlightColor = palette->color(QPalette::Highlight);
-			QColor windowColor = palette->color(QPalette::Window);
+		const QPalette *palette = &option->palette;
+		QColor highlightColor = palette->color(QPalette::Highlight);
+		QColor windowColor = palette->color(QPalette::Window);
 
-			QColor fillColor = QColor(
-				windowColor.red() * .75 + highlightColor.red() * .25,
-				windowColor.green() * .75 + highlightColor.green() * .25,
-				windowColor.blue() * .75 + highlightColor.blue() * .25
-			);
-			
-			painter->setPen(QPen(highlightColor, borderThickness));
-			painter->fillPath(path, fillColor);
-			painter->drawPath(path);
-			return;
-		}
+		static float hcAmount = .25;
+		static float wcAmount = 1 - hcAmount;
+
+		QColor fillColor = QColor(
+			windowColor.red() * wcAmount + highlightColor.red() * hcAmount,
+			windowColor.green() * wcAmount + highlightColor.green() * hcAmount,
+			windowColor.blue() * wcAmount + highlightColor.blue() * hcAmount
+		);
+		
+		painter->setPen(QPen(highlightColor, borderThickness));
+		painter->fillPath(path, fillColor);
+		painter->drawPath(path);
+		return;
 	}
 
 	QProxyStyle::drawControl(element, option, painter, widget);
@@ -1543,6 +1543,11 @@ bool OBSApp::OBSInit()
 #endif
 
 	setStyle(new OBSStyle);
+
+	// Fixes browser dock issues on Linux,
+	// and raster is the default on Windows anyway
+	// (hopefully no drawbacks elsewhere!)
+	setAttribute(Qt::AA_ForceRasterWidgets);
 
 	if (!StartupOBS(locale.c_str(), GetProfilerNameStore()))
 		return false;
