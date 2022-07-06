@@ -316,7 +316,6 @@ QGroupBox::title {
 
 QMainWindow {
   background: #212121;
-  padding: 5px;
 }
 QMainWindow::separator {
   background: transparent;
