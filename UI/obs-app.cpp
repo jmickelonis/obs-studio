@@ -1135,20 +1135,32 @@ bool OBSApp::SetTheme(std::string name, std::string path)
  * As an example, for the Dark theme,
  * CSS for twitch would be found in "themes/Dark/twitch.css"
  * in either the user config or data directory (user config takes precedence).
+ * 
+ * Also allows for a default CSS file to exist for themes that don't provide one.
  */
 std::string OBSApp::GetThemeCSSPath(std::string id)
 {
-	std::string relpath = "themes/" + theme + "/" + id + ".css";
+	// Try the theme-specific, then the default
+	std::string relpaths[] = {
+		"themes/" + theme + "/" + id + ".css",
+		"themes/" + id + ".css"
+	};
 
-	char cpath[512];
-	int res = GetConfigPath(cpath, sizeof(cpath), ("obs-studio/" + relpath).c_str());
-	if (res > 0 && os_file_exists(cpath))
-		// Found in user config
-		return std::string(cpath, res);
+	for (std::string relpath : relpaths) {
+		char cpath[512];
+		int res = GetConfigPath(cpath, sizeof(cpath),
+			("obs-studio/" + relpath).c_str());
+		if (res > 0 && os_file_exists(cpath))
+			// Found in user config
+			return std::string(cpath, res);
 
-	std::string path;
-	return GetDataFilePath(relpath.c_str(), path)
-		&& os_file_exists(path.c_str()) ? path : "";
+		std::string path;
+		if (GetDataFilePath(relpath.c_str(), path)
+				&& os_file_exists(path.c_str()))
+			return path;
+	}
+
+	return "";
 }
 
 /* "Prepares" the specified theme CSS file for use by a service's browser docks.
