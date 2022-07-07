@@ -8638,12 +8638,15 @@ void OBSBasic::UpdateTitleBar()
 	if (previewProgramMode)
 		name << "Studio ";
 
-	name << App()->GetVersionString();
+	/*name << App()->GetVersionString();
 	if (App()->IsPortableMode())
-		name << " - Portable Mode";
+		name << " - Portable Mode";*/
 
-	name << " - " << Str("TitleBar.Profile") << ": " << profile;
-	name << " - " << Str("TitleBar.Scenes") << ": " << sceneCollection;
+	if (strcmp(profile, "Untitled"))
+		name << " - " << Str("TitleBar.Profile") << ": " << profile;
+
+	if (strcmp(sceneCollection, "Untitled"))
+		name << " - " << Str("TitleBar.Scenes") << ": " << sceneCollection;
 
 	setWindowTitle(QT_UTF8(name.str().c_str()));
 }
