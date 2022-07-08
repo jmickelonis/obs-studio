@@ -9527,9 +9527,43 @@ void OBSBasic::ResizeOutputSizeOfSource()
 	on_actionFitToScreen_triggered();
 }
 
+/* Returns (creates if necessary) the specified service dock sub-menu.
+ */
+static QMenu *getServiceDockMenu(
+	QMenu *parent,
+	const QString &objectName, const QString &title)
+{
+	QMenu *menu;
+
+	foreach (QAction *action, parent->actions()) {
+		menu = action->menu();
+		if (menu && menu->objectName() == objectName)
+			return menu;
+	}
+
+	menu = new QMenu(title);
+	menu->setObjectName(objectName);
+	parent->addMenu(menu);
+
+	// Hide the menu dynamically when it's empty
+	QObject::connect(parent, &QMenu::aboutToShow,
+		[menu]() {
+			menu->menuAction()->setVisible(!menu->isEmpty());
+		});
+
+	return menu;
+}
+
 QAction *OBSBasic::AddDockWidget(QDockWidget *dock)
 {
-	QAction *action = ui->menuDocks->addAction(dock->windowTitle());
+	QMenu *menu = ui->menuDocks;
+	QString dockName = dock->objectName();
+
+	if (dockName.startsWith("twitch") && !dockName.endsWith("_extraBrowser"))
+		// Put all Twitch docks into their own sub-menu
+		menu = getServiceDockMenu(menu, "twitchMenu", "Twitch");
+
+	QAction *action = menu->addAction(dock->windowTitle());
 	action->setProperty("uuid", dock->property("uuid").toString());
 	action->setCheckable(true);
 	assignDockToggle(dock, action);
