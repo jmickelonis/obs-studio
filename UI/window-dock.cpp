@@ -9,6 +9,7 @@
 #include <QStyle>
 #include <QStyleOptionFrame>
 #include <QStylePainter>
+#include <QTimer>
 #include <QWindow>
 #include <iostream>
 
@@ -388,6 +389,23 @@ OBSDock::OBSDock(QWidget *parent)
 	setTitleBarWidget(titleBar);
 }
 
+static void enableAnimationsLater()
+{
+	static QTimer *timer;
+
+	if (!timer) {
+		timer = new QTimer();
+		QMainWindow *mainWindow = App()->GetMainWindow();
+		QObject::connect(timer, &QTimer::timeout,
+			[mainWindow]() {
+				mainWindow->setAnimated(true);
+			});
+	}
+
+	timer->stop();
+	timer->start(250);
+}
+
 bool OBSDock::event(QEvent *event)
 {
 	switch (event->type()) {
@@ -417,6 +435,12 @@ bool OBSDock::event(QEvent *event)
 #endif
 
 	case QEvent::MouseButtonRelease:
+		// Disabling animations temporarily and then re-enabling after we're docked
+		// improves the UI experience and alleviates a bug where the browser dock
+		// pops back out randomly
+		App()->GetMainWindow()->setAnimated(false);
+		enableAnimationsLater();
+
 		// The window may have been moved out of bounds, so fix that
 		fixBounds();
 #ifdef _WIN32
