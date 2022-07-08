@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QDialog>
+#include <QList>
 #include <QTimer>
 #include <string>
 #include <memory>
@@ -15,18 +16,10 @@ class TwitchAuth : public OAuthStreamKey {
 
 	friend class TwitchLogin;
 
-	QSharedPointer<BrowserDock> chat;
-	QSharedPointer<BrowserDock> info;
-	QSharedPointer<BrowserDock> stat;
-	QSharedPointer<BrowserDock> feed;
-	QSharedPointer<BrowserDock> health;
-	QSharedPointer<BrowserDock> quickActions;
-	QSharedPointer<QAction> chatMenu;
-	QSharedPointer<QAction> infoMenu;
-	QSharedPointer<QAction> statMenu;
-	QSharedPointer<QAction> feedMenu;
-	QSharedPointer<QAction> healthMenu;
-	QSharedPointer<QAction> quickActionsMenu;
+	QList<
+		std::pair<QSharedPointer<BrowserDock>, QSharedPointer<QAction> >
+	> docks;
+
 	bool uiLoaded = false;
 
 	std::string name;
@@ -41,6 +34,21 @@ class TwitchAuth : public OAuthStreamKey {
 	bool GetChannelInfo();
 
 	virtual void LoadUI() override;
+	
+	struct DockOptions
+	{
+		unsigned int width = 300;
+		unsigned int height = 600;
+		unsigned int minWidth = 200;
+		unsigned int minHeight = 300;
+	};
+	BrowserDock *addDock(
+		const std::string &name,
+		const std::string &localeName,
+		const std::string &title,
+		const std::string &url,
+		const std::string &startupScript,
+		const DockOptions &dockOptions);
 
 public:
 	TwitchAuth(const Def &d);
