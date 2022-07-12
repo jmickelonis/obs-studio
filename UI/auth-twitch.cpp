@@ -429,7 +429,7 @@ void TwitchAuth::LoadSecondaryUIPanes()
 			"https://www.twitch.tv/popout/"
 				+ name
 				+ "/dashboard/live/stats",
-			{200, 250, 200, 150},
+			{200, 250},
 			false, true
 		},
 		{

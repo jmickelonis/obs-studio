@@ -39,8 +39,8 @@ class TwitchAuth : public OAuthStreamKey {
 	{
 		unsigned int width = 300;
 		unsigned int height = 600;
-		unsigned int minWidth = 200;
-		unsigned int minHeight = 300;
+		unsigned int minWidth = 150;
+		unsigned int minHeight = 150;
 	};
 	BrowserDock *addDock(
 		const std::string &name,
