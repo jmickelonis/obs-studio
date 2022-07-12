@@ -11,27 +11,33 @@
 #include <QStylePainter>
 #include <QTimer>
 #include <QWindow>
-#include <iostream>
 
-#ifdef _WIN32
+#ifdef __WINDOWS__
 #include <windowsx.h>
 #include <dwmapi.h>
 #pragma comment (lib,"Dwmapi.lib")
 #endif
 
-
-static inline bool hasFeature(
-	const QDockWidget *dock, QDockWidget::DockWidgetFeature feature)
-{
-	return (dock->features() & feature) == feature;
-}
+#if defined(__WINDOWS__) || defined(__linux__)
+// Mac doesn't support this yet
+#define __SUPPORTS_SYSTEM_RESIZE
+#endif
 
 
 TitleBarButton::TitleBarButton(QAbstractButton *stockButton)
-		: stockButton(stockButton)
+	: stockButton(stockButton)
 {
 	setFocusPolicy(Qt::NoFocus);
 }
+
+TitleBarButton::~TitleBarButton()
+{
+	if (iconSize) {
+		delete iconSize;
+		iconSize = nullptr;
+	}
+}
+
 
 QSize TitleBarButton::minimumSizeHint() const
 {
@@ -44,28 +50,41 @@ QSize TitleBarButton::sizeHint() const
 
 	int size = 2 * stockButton->style()->pixelMetric(
 		QStyle::PM_DockWidgetTitleBarButtonMargin, nullptr, stockButton);
-	const QIcon qIcon = icon();
 
-	if (!qIcon.isNull()) {
-		const QSize qSize = qIcon.actualSize(getIconSize());
-		size += qMax(qSize.width(), qSize.height());
+	const QIcon icon = this->icon();
+	if (!icon.isNull()) {
+		const QSize iconSize = icon.actualSize(getIconSize());
+		size += qMax(iconSize.width(), iconSize.height());
 	}
 
 	return QSize(size, size);
 }
 
-void TitleBarButton::enterEvent(QEvent *event)
-{
-    if (isEnabled())
-		update();
-    QAbstractButton::enterEvent(event);
-}
 
-void TitleBarButton::leaveEvent(QEvent *event)
+bool TitleBarButton::event(QEvent *event)
 {
-    if (isEnabled())
-		update();
-    QAbstractButton::leaveEvent(event);
+    switch (event->type()) {
+
+    case QEvent::ScreenChangeInternal:
+    case QEvent::StyleChange:
+		if (iconSize) {
+			delete iconSize;
+        	iconSize = nullptr;
+		}
+        break;
+
+	case QEvent::Enter:
+	case QEvent::Leave:
+		if (isEnabled())
+			update();
+		break;
+
+    default:
+        break;
+
+    }
+
+    return QAbstractButton::event(event);
 }
 
 void TitleBarButton::paintEvent(QPaintEvent *)
@@ -85,40 +104,32 @@ void TitleBarButton::paintEvent(QPaintEvent *)
             opt.state |= QStyle::State_On;
         if (isDown())
             opt.state |= QStyle::State_Sunken;
-        style->drawPrimitive(QStyle::PE_PanelButtonTool, &opt, &painter, stockButton);
+        style->drawPrimitive(
+			QStyle::PE_PanelButtonTool, &opt, &painter, stockButton);
     }
 
     opt.icon = icon();
     opt.features = QStyleOptionToolButton::None;
     opt.arrowType = Qt::NoArrow;
     opt.iconSize = getIconSize();
-    style->drawComplexControl(QStyle::CC_ToolButton, &opt, &painter, stockButton);
+    style->drawComplexControl(
+		QStyle::CC_ToolButton, &opt, &painter, stockButton);
 }
 
-bool TitleBarButton::event(QEvent *event)
-{
-    switch (event->type()) {
-    case QEvent::StyleChange:
-    case QEvent::ScreenChangeInternal:
-        iconSize = -1;
-        break;
-    default:
-        break;
-    }
-    return QAbstractButton::event(event);
-}
 
-QSize TitleBarButton::getIconSize() const
+QSize &TitleBarButton::getIconSize() const
 {
-    if (iconSize < 0)
-        iconSize = stockButton->style()->pixelMetric(
+    if (!iconSize) {
+        int n = stockButton->style()->pixelMetric(
 			QStyle::PM_SmallIconSize, nullptr, stockButton);
-    return QSize(iconSize, iconSize);
+		iconSize = new QSize(n, n);
+	}
+	return *iconSize;
 }
 
 
 TitleBarLayout::TitleBarLayout(QWidget *parent)
-	: QLayout(parent), items(RoleCount, 0)
+	: QLayout(parent), items(RoleCount, nullptr)
 {
 }
 
@@ -127,19 +138,6 @@ TitleBarLayout::~TitleBarLayout()
 	qDeleteAll(items);
 }
 
-void TitleBarLayout::setVertical(bool value)
-{
-    if (value == vertical)
-        return;
-    vertical = value;
-    invalidate();
-    parentWidget()->update();
-}
-
-QLayoutItem *TitleBarLayout::getItemForRole(Role role) const
-{
-    return items.at(role);
-}
 
 QWidget *TitleBarLayout::getWidgetForRole(Role role) const
 {
@@ -168,32 +166,32 @@ void TitleBarLayout::setWidgetForRole(Role role, QWidget *widget)
     invalidate();
 }
 
+
 int TitleBarLayout::count() const
 {
     int result = 0;
-    for (int i = 0; i < items.count(); ++i)
-        if (items.at(i))
-            ++result;
+	for (QLayoutItem *item : items)
+		if (item)
+			result++;
     return result;
 }
 
 QLayoutItem *TitleBarLayout::itemAt(int index) const
 {
     int count = 0;
-    for (int i = 0; i < items.count(); ++i) {
-        QLayoutItem *item = items.at(i);
+	for (QLayoutItem *item : items) {
         if (!item)
             continue;
         if (index == count++)
             return item;
-    }
+	}
     return nullptr;
 }
 
 QLayoutItem *TitleBarLayout::takeAt(int index)
 {
     int count = 0;
-    for (int i = 0; i < items.count(); ++i) {
+    for (int i = 0; i < items.count(); i++) {
         QLayoutItem *item = items.at(i);
         if (!item)
             continue;
@@ -206,26 +204,29 @@ QLayoutItem *TitleBarLayout::takeAt(int index)
     return nullptr;
 }
 
+
 QSize TitleBarLayout::sizeHint() const
 {
-	OBSDock *dock = qobject_cast<OBSDock*>(parentWidget()->parentWidget());
+	OBSDock *dock = getDock();
 	QStyle *style = dock->style();
 
-	QSize closeSize = hasFeature(dock, QDockWidget::DockWidgetClosable)
+	QSize closeSize = dock->hasFeature(QDockWidget::DockWidgetClosable)
 		? items[CloseButton]->widget()->sizeHint()
 		: QSize(0, 0);
 
-	QSize floatSize = hasFeature(dock, QDockWidget::DockWidgetFloatable)
+	QSize floatSize = dock->hasFeature(QDockWidget::DockWidgetFloatable)
 		? items[FloatButton]->widget()->sizeHint()
 		: QSize(0, 0);
 
-	int buttonHeight =
-		vertical ? qMax(closeSize.width(), floatSize.width())
+	bool vertical = dock->hasFeature(QDockWidget::DockWidgetVerticalTitleBar);
+
+	int buttonHeight = vertical
+		? qMax(closeSize.width(), floatSize.width())
 		: qMax(closeSize.height(), floatSize.height());
 	int margin = style->pixelMetric(
 		QStyle::PM_DockWidgetTitleMargin, nullptr, dock);
 	
-	int h = qMax(buttonHeight + 2, dock->fontMetrics().height() + 2 * margin);
+	int h = qMax(buttonHeight, dock->fontMetrics().height()) + 2 * margin;
 	int w = (vertical ? closeSize.height() : closeSize.width())
 			+ (vertical ? floatSize.height() : floatSize.width())
 			+ h + 3 * margin;
@@ -244,7 +245,7 @@ QSize TitleBarLayout::maximumSize() const
 
 void TitleBarLayout::setGeometry(const QRect &)
 {
-	OBSDock *dock = qobject_cast<OBSDock*>(parentWidget()->parentWidget());
+	OBSDock *dock = getDock();
 	QStyle *style = dock->style();
 
 	QStyleOptionDockWidget opt;
@@ -270,9 +271,9 @@ TitleBarWidget::TitleBarWidget(OBSDock *dock)
 	// Don't cover up the dock widget
 	setAttribute(Qt::WA_NoSystemBackground);
 
+	// Hopefully these will never be null!
 	closeButton = new TitleBarButton(
 		dock->findChild<QAbstractButton*>("qt_dockwidget_closebutton"));
-
 	floatButton = new TitleBarButton(
 		dock->findChild<QAbstractButton*>("qt_dockwidget_floatbutton"));
 
@@ -299,10 +300,6 @@ TitleBarWidget::~TitleBarWidget()
 	delete floatButton;
 }
 
-OBSDock *TitleBarWidget::getDock()
-{
-	return qobject_cast<OBSDock*>(parentWidget());
-}
 
 bool TitleBarWidget::event(QEvent *event)
 {
@@ -351,13 +348,14 @@ void TitleBarWidget::updateButtons()
 	floatButton->setIcon(style->standardIcon(
 		QStyle::SP_TitleBarNormalButton, &opt, dock));
 	floatButton->setVisible(
-		hasFeature(dock, QDockWidget::DockWidgetFloatable));
+		dock->hasFeature(QDockWidget::DockWidgetFloatable));
 
 	closeButton->setIcon(style->standardIcon(
 		QStyle::SP_TitleBarCloseButton, &opt, dock));
 	closeButton->setVisible(
-		hasFeature(dock, QDockWidget::DockWidgetClosable));
+		dock->hasFeature(QDockWidget::DockWidgetClosable));
 }
+
 
 void TitleBarWidget::onCloseClicked()
 {
@@ -368,12 +366,14 @@ void TitleBarWidget::onCloseClicked()
 void TitleBarWidget::onFloatClicked()
 {
 	OBSDock *dock = getDock();
-	dock->setFloating(!dock->isFloating());
+	dock->toggleFloating();
 }
 
 void TitleBarWidget::onFeaturesChanged(QDockWidget::DockWidgetFeatures)
 {
 	updateButtons();
+	OBSDock *dock = getDock();
+	dock->updateCursor();
 }
 
 void TitleBarWidget::onTopLevelChanged(bool)
@@ -387,7 +387,66 @@ OBSDock::OBSDock(QWidget *parent)
 {
 	TitleBarWidget *titleBar = new TitleBarWidget(this);
 	setTitleBarWidget(titleBar);
+
+#ifdef __linux__
+	// Set the type to Dialog to always keep the windows showing
+	setAttribute(Qt::WA_X11NetWmWindowTypeDialog);
+#endif
 }
+
+
+#ifdef __linux__
+void OBSDock::setVisible(bool visible)
+{
+	if (!settingFlags) {
+		// Overrode this to remove the bypass flag that the base class sets
+		// This way, all drags act the same, and transparency works
+		// We do need to set it back when plugging (un-floating) docks
+		// (without it, the docks can pop back out after dragging them back in)
+		Qt::WindowFlags flags = windowFlags();
+		Qt::WindowFlags newFlags = flags & ~Qt::BypassWindowManagerHint;
+		if (newFlags != flags) {
+			settingFlags = true;
+			setWindowFlags(newFlags);
+			settingFlags = false;
+		}
+	}
+
+	QDockWidget::setVisible(visible);
+}
+#endif
+
+bool OBSDock::hasFeature(QDockWidget::DockWidgetFeature feature)
+{
+	return features() & feature;
+}
+
+bool OBSDock::isDraggable()
+{
+	return isFloating() || hasFeature(QDockWidget::DockWidgetMovable);
+}
+
+void OBSDock::toggleFloating()
+{
+	bool floating = !isFloating();
+#ifdef __linux__
+	if (!floating) {
+		Qt::WindowFlags flags = windowFlags();
+		if (!(flags & Qt::BypassWindowManagerHint)) {
+			// Stop the dock from popping back out
+			settingFlags = true;
+			flags |= Qt::BypassWindowManagerHint;
+			bool wasVisible = isVisible();
+			setWindowFlags(flags);
+			if (wasVisible)
+				setVisible(true);
+			settingFlags = false;
+		}
+	}
+#endif
+	setFloating(floating);
+}
+
 
 static void enableAnimationsLater()
 {
@@ -403,50 +462,91 @@ static void enableAnimationsLater()
 	}
 
 	timer->stop();
-	timer->start(250);
+	timer->start(1);
 }
 
 bool OBSDock::event(QEvent *event)
 {
 	switch (event->type()) {
+
+#ifdef __SUPPORTS_SYSTEM_RESIZE
+	case QEvent::ChildAdded:
+		{
+			QChildEvent *childEvent = static_cast<QChildEvent*>(event);
+			QObject *child = childEvent->child();
+
+			if (qobject_cast<QWidget*>(child))
+				break;  // We only care about objects, not widgets
+
+			// Since we handle system resize, we need to disable the default resizer
+			// Unfortunately this isn't easily done,
+			// so we have to remove any event filters that may have been installed
+			QTimer::singleShot(1, this, [child, this]() {
+				removeEventFilter(child);
+			});
+		}
+		break;
+#endif
+
+	// Update the cursor as the mouse is moved over us
+	case QEvent::HoverEnter:
+	case QEvent::HoverMove:
+		{
+			QHoverEvent *hoverEvent = static_cast<QHoverEvent*>(event);
+			QPoint point = hoverEvent->pos();
+			updateCursor(&point);
+		}
+		break;
+	case QEvent::HoverLeave:
+		updateCursor(nullptr);
+		break;
+
 	case QEvent::WindowActivate:
+#ifdef __WINDOWS__
+		// Show the drop shadow when the window has been activated
+		if (isFloating() && mouseState == MouseState::NotPressed)
+			setDropShadow(true);
+		// fall-through
+#endif
 	case QEvent::WindowDeactivate:
 		update();
 		break;
-	default:
+	
+	case QEvent::Move:
+		if (mouseState == MouseState::CtrlDragging) {
+			// This can be called after doing a system drag
+			// (the events aren't received until the entire operation is over)
+
+			// We need to fix the bounds later to get the proper screen
+			QTimer::singleShot(1, this, [this]() {
+				fixBounds();
+			});
+		}
 		break;
-	}
 
-	if (!isFloating())
-		goto END;
+	case QEvent::MouseButtonPress:
+		if (!onMouseButtonPressed(static_cast<QMouseEvent*>(event)))
+			return false;
+		break;
+	
+	case QEvent::MouseButtonDblClick:
+		if (!onMouseButtonDoubleClicked(static_cast<QMouseEvent*>(event)))
+			return false;
+		break;
 
-	switch (event->type()) {
-
-#ifdef _WIN32
 	case QEvent::MouseMove:
-		// Disable the drop shadow when moving the dock around
-		// This prevents a lot of glitches (like when moving between screens)
-		setDropShadow(false);
+		if (!onMouseMoved(static_cast<QMouseEvent*>(event)))
+			return false;
 		break;
-	case QEvent::WindowActivate:
-		// Show the drop shadow when the window has been activated
-		setDropShadow(true);
-		break;
-#endif
 
 	case QEvent::MouseButtonRelease:
-		// Disabling animations temporarily and then re-enabling after we're docked
-		// improves the UI experience and alleviates a bug where the browser dock
-		// pops back out randomly
-		App()->GetMainWindow()->setAnimated(false);
-		enableAnimationsLater();
-
-		// The window may have been moved out of bounds, so fix that
-		fixBounds();
-#ifdef _WIN32
-		// Re-enable the drop shadow
-		setDropShadow(true);
-#endif
+		if (!onMouseButtonReleased(static_cast<QMouseEvent*>(event)))
+			return false;
+		break;
+	
+	case QEvent::KeyPress:
+		if (!onKeyPressed(static_cast<QKeyEvent*>(event)))
+			return false;
 		break;
 
 	default:
@@ -454,25 +554,25 @@ bool OBSDock::event(QEvent *event)
 
 	}
 
-	END:
 	return QDockWidget::event(event);
 }
 
 void OBSDock::paintEvent(QPaintEvent *)
 {
-	QStylePainter p(this);
+	QStylePainter painter(this);
 
 	if (isFloating()) {
 		QStyleOptionFrame frameOpt;
 		frameOpt.init(this);
-		p.drawPrimitive(QStyle::PE_FrameDockWidget, frameOpt);
+		painter.drawPrimitive(QStyle::PE_FrameDockWidget, frameOpt);
 	}
 
 	QStyleOptionDockWidget titleOpt;
 	initStyleOption(&titleOpt);
-	titleOpt.fontMetrics = QFontMetrics(font());
-	p.setFont(font());
-	p.drawControl(QStyle::CE_DockWidgetTitle, titleOpt);
+	const QFont font = this->font();
+	titleOpt.fontMetrics = QFontMetrics(font);
+	painter.setFont(font);
+	painter.drawControl(QStyle::CE_DockWidgetTitle, titleOpt);
 }
 
 void OBSDock::closeEvent(QCloseEvent *event)
@@ -506,7 +606,7 @@ void OBSDock::closeEvent(QCloseEvent *event)
 	QDockWidget::closeEvent(event);
 }
 
-#ifdef _WIN32
+#ifdef __WINDOWS__
 bool OBSDock::nativeEvent(const QByteArray &eventType, void *message, long *result)
 {
 	if (!isFloating())
@@ -594,6 +694,9 @@ bool OBSDock::nativeEvent(const QByteArray &eventType, void *message, long *resu
 			}
 		}
 		break;
+
+	default:
+		break;
 	}
 
 	END:
@@ -601,11 +704,33 @@ bool OBSDock::nativeEvent(const QByteArray &eventType, void *message, long *resu
 }
 #endif
 
+
 void OBSDock::initStyleOption(QStyleOptionDockWidget *option) const
 {
 	// Make this accessible to the other classes
 	QDockWidget::initStyleOption(option);
 }
+
+
+#ifdef __WINDOWS__
+void OBSDock::setDropShadow(bool value)
+{
+	HWND hwnd = (HWND)winId();
+	DWORD style = GetWindowLong(hwnd, GWL_STYLE);
+	auto flags = WS_THICKFRAME | WS_CAPTION | WS_CLIPCHILDREN;
+
+	if (value) {
+		style |= flags;
+		const MARGINS shadow = { 1, 1, 1, 1 };
+		DwmExtendFrameIntoClientArea(hwnd, &shadow);
+	}
+	else {
+		style &= ~flags;
+	}
+
+	SetWindowLong(hwnd, GWL_STYLE, style);
+}
+#endif
 
 /* Moves the dock back onto the screen if it's too far off of it.
  */
@@ -641,22 +766,279 @@ void OBSDock::fixBounds()
 	move(x, y);
 }
 
-#ifdef _WIN32
-void OBSDock::setDropShadow(bool value)
+
+Qt::CursorShape OBSDock::getCursorShape(const QPoint *position)
 {
-	HWND hwnd = (HWND)winId();
-	DWORD style = GetWindowLong(hwnd, GWL_STYLE);
-	auto flags = WS_THICKFRAME | WS_CAPTION | WS_CLIPCHILDREN;
+	if (!position)
+		return Qt::ArrowCursor;
 
-	if (value) {
-		style |= flags;
-		const MARGINS shadow = { 1, 1, 1, 1 };
-		DwmExtendFrameIntoClientArea(hwnd, &shadow);
-	}
-	else {
-		style &= ~(WS_THICKFRAME | WS_CAPTION | WS_CLIPCHILDREN);
+	switch (mouseState) {
+	case MouseState::Pressed:
+	case MouseState::CtrlPressed:
+	case MouseState::Dragging:
+		return Qt::ClosedHandCursor;
+	default:
+		break;
 	}
 
-	SetWindowLong(hwnd, GWL_STYLE, style);
+	if (isFloating()) {
+		Qt::Edges edges = getResizeEdges(position);
+
+		if (edges & Qt::LeftEdge)
+			return edges & Qt::TopEdge ? Qt::SizeFDiagCursor
+				: edges & Qt::BottomEdge ? Qt::SizeBDiagCursor
+				: Qt::SizeHorCursor;
+		else if (edges & Qt::RightEdge)
+			return edges & Qt::TopEdge ? Qt::SizeBDiagCursor
+				: edges & Qt::BottomEdge ? Qt::SizeFDiagCursor
+				: Qt::SizeHorCursor;
+		else if (edges & (Qt::TopEdge | Qt::BottomEdge))
+			return Qt::SizeVerCursor;
+	}
+
+	if (isDraggable()) {
+		QWidget *widget = childAt(*position);
+		if (qobject_cast<TitleBarWidget*>(widget))
+			return Qt::OpenHandCursor;
+	}
+
+	return Qt::ArrowCursor;
 }
+
+Qt::Edges OBSDock::getResizeEdges(const QPoint *position)
+{
+	Qt::Edges edges;
+
+	if (!position || !isFloating())
+		return edges;
+
+	const int x = position->x();
+	const int y = position->y();
+
+#ifdef __SUPPORTS_SYSTEM_RESIZE
+	const int borderSize = 4;
+#else
+	const int borderSize = 1;
 #endif
+
+	if (x < borderSize)
+		edges |= Qt::LeftEdge;
+	else if (x >= width() - borderSize)
+		edges |= Qt::RightEdge;
+
+	if (y < borderSize)
+		edges |= Qt::TopEdge;
+	else if (y >= height() - borderSize)
+		edges |= Qt::BottomEdge;
+
+	return edges;
+}
+
+void OBSDock::updateCursor()
+{
+	QPoint position = QCursor::pos(screen());
+	updateCursor(geometry().contains(position) ? &position : nullptr);
+}
+
+void OBSDock::updateCursor(const QPoint *position)
+{
+	Qt::CursorShape shape = getCursorShape(position);
+	if (shape != Qt::ArrowCursor)
+		setCursor(shape);
+	else
+		unsetCursor();
+}
+
+
+bool OBSDock::onMouseButtonDoubleClicked(QMouseEvent *event)
+{
+	if (event->button() != Qt::LeftButton)
+		return true;
+
+	// Prevent dragging after double click and hold
+	mouseState = MouseState::NotPressed;
+
+	if (hasFeature(QDockWidget::DockWidgetMovable))
+		toggleFloating();
+
+	return false;
+}
+
+bool OBSDock::onMouseButtonPressed(QMouseEvent *event)
+{
+	if (event->button() != Qt::LeftButton)
+		return true;
+
+	pressPosition = event->pos();
+	QTimer::singleShot(1, this, [this]() {
+		updateCursor(&pressPosition);
+	});
+
+#ifdef __SUPPORTS_SYSTEM_RESIZE
+	pressEdges = getResizeEdges(&pressPosition);
+	if (pressEdges) {
+		// Pressed on the resizable border
+		mouseState = MouseState::Pressed;
+		// Wait for the drag operation
+		return false;
+	}
+#endif
+
+	if (!isDraggable())
+		return false;
+
+	QWidget *widget = childAt(pressPosition);
+	if (!qobject_cast<TitleBarWidget*>(widget))
+		// Didn't press on the title bar
+		return false;
+
+	initialScreen = screen();
+	initialCursorPosition = QCursor::pos(initialScreen);
+	initialFloating = isFloating();
+
+	if (event->modifiers() & Qt::ControlModifier) {
+		mouseState = MouseState::CtrlPressed;
+		// Don't let the base class do anything with Ctrl+drag
+		return false;
+	}
+	
+	mouseState = MouseState::Pressed;
+	return true;
+}
+
+bool OBSDock::onMouseButtonReleased(QMouseEvent *event)
+{
+	if (event->button() != Qt::LeftButton)
+		return true;
+
+	if (mouseState == MouseState::Dragging) {
+		setWindowOpacity(1);
+
+#ifdef __WINDOWS__
+		// Re-enable the drop shadow
+		setDropShadow(true);
+
+		// The window may have been moved out of bounds, so fix that
+		fixBounds();
+#endif
+
+		if (hasFeature(QDockWidget::DockWidgetMovable)) {
+			// Disabling animations then re-enabling after we're docked
+			// improves the UI experience
+			App()->GetMainWindow()->setAnimated(false);
+			enableAnimationsLater();
+
+#ifdef __linux__
+			Qt::WindowFlags flags = windowFlags();
+			if (!(flags & Qt::BypassWindowManagerHint)) {
+				// Stop the dock from popping back out
+				settingFlags = true;
+				flags |= Qt::BypassWindowManagerHint;
+				setWindowFlags(flags);
+				QTimer::singleShot(1, this, [this]() {
+					settingFlags = false;
+				});
+			}
+#endif
+		}
+	}
+
+	mouseState = MouseState::NotPressed;
+
+	QPoint position = event->pos();
+	updateCursor(&position);
+
+	return true;
+}
+
+bool OBSDock::onMouseMoved(QMouseEvent *event)
+{
+	if (mouseState == MouseState::CtrlPressed) {
+		qreal dragDistance = (event->pos() - pressPosition).manhattanLength();
+		if (dragDistance < QApplication::startDragDistance())
+			return false;
+
+		// We Ctrl-dragged far enough
+
+		if (!isFloating()) {
+			QRect bounds = geometry();
+
+			// Float the dock widget
+			setFloating(true);
+			
+			// Position the window properly
+			// (it might still have a previous float location)
+			bounds.moveTo(event->globalPos() - pressPosition);
+			setGeometry(bounds);
+		}
+
+		// Let the WM handle the rest
+		window()->windowHandle()->startSystemMove();
+		mouseState = MouseState::CtrlDragging;
+		return false;
+	}
+
+	if (mouseState == MouseState::Pressed) {
+#ifdef __SUPPORTS_SYSTEM_RESIZE
+		if (pressEdges) {
+			window()->windowHandle()->startSystemResize(pressEdges);
+			mouseState = MouseState::NotPressed;
+			return false;
+		}
+#endif
+
+		QDockWidget::event(event);
+		if (mouseGrabber()) {
+			// The grabber was set which means we must be dragging
+			mouseState = MouseState::Dragging;
+			setWindowOpacity(.75);
+
+#ifdef __WINDOWS__
+			// Disable the drop shadow when moving the dock around
+			// This prevents a lot of glitches (like when moving between screens)
+			setDropShadow(false);
+#endif
+		}
+		return false;
+	}
+
+	return true;
+}
+
+bool OBSDock::onKeyPressed(QKeyEvent *event)
+{
+	if (event->key() != Qt::Key_Escape)
+		return true;
+
+	// Try to cancel drag operations when hitting Esc
+
+	if (mouseState == MouseState::Dragging) {
+		// Just force the mouse cursor back to its original position
+		// Faking move events and such doesn't seem to work
+		QCursor::setPos(initialScreen, initialCursorPosition);
+
+		setWindowOpacity(1);
+
+		QTimer::singleShot(1, this, [this]() {
+			// This method aborts the drag operation in the base class
+			setFloating(initialFloating);
+
+#ifdef __WINDOWS__
+			if (initialFloating)
+				// Re-enable the drop shadow
+				setDropShadow(true);
+#endif
+
+			mouseState = MouseState::NotPressed;
+			updateCursor();
+		});
+	}
+	else if (mouseState == MouseState::CtrlDragging) {
+		// Fortunately, this is a lot cleaner than the default drags
+		mouseState = MouseState::NotPressed;
+		if (!initialFloating)
+			toggleFloating();
+	}
+
+	return false;
+}

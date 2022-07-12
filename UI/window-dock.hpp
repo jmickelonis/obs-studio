@@ -20,23 +20,22 @@ class TitleBarButton : public QAbstractButton
 public:
 
 	TitleBarButton(QAbstractButton *stockButton);
+	~TitleBarButton();
 
 	QSize minimumSizeHint() const override;
 	QSize sizeHint() const override;
-	void enterEvent(QEvent *event) override;
-	void leaveEvent(QEvent *event) override;
-	void paintEvent(QPaintEvent *event) override;
 
 protected:
 
     bool event(QEvent *event) override;
+	void paintEvent(QPaintEvent *event) override;
 
 private:
 
-	mutable int iconSize = -1;
+	mutable QSize *iconSize = nullptr;
 	QAbstractButton *stockButton;
 
-	QSize getIconSize() const;
+	QSize &getIconSize() const;
 
 };
 
@@ -52,10 +51,7 @@ public:
 	TitleBarLayout(QWidget *parent);
 	~TitleBarLayout();
 
-	void setVertical(bool value);
-
 	enum Role { FloatButton, CloseButton, RoleCount };
-	QLayoutItem *getItemForRole(Role role) const;
 	QWidget *getWidgetForRole(Role role) const;
 	void setWidgetForRole(Role role, QWidget *widget);
 
@@ -65,15 +61,21 @@ public:
 	void addItem(QLayoutItem *) override { }
 
 	QSize sizeHint() const override;
+
+protected:
+
 	QSize maximumSize() const override;
     QSize minimumSize() const override;
-
 	void setGeometry(const QRect &rect) override;
 
 private:
 
+	inline OBSDock *getDock() const
+	{
+		return qobject_cast<OBSDock*>(parentWidget()->parentWidget());
+	}
+
 	QVector<QLayoutItem*> items;
-	bool vertical = false;
 
 };
 
@@ -87,7 +89,10 @@ public:
 	TitleBarWidget(OBSDock *parent = nullptr);
 	~TitleBarWidget();
 
-	OBSDock *getDock();
+	inline OBSDock *getDock()
+	{
+		return qobject_cast<OBSDock*>(parentWidget());
+	}
 
 protected:
 
@@ -110,28 +115,62 @@ private slots:
 };
 
 
-class OBSDock : public QDockWidget {
+class OBSDock : public QDockWidget
+{
 	Q_OBJECT
 
 public:
+
 	OBSDock(QWidget *parent = nullptr);
+
+#ifdef __linux__
+	virtual void setVisible(bool visible) override;
+#endif
+	bool hasFeature(QDockWidget::DockWidgetFeature feature);
+	bool isDraggable();
+	void toggleFloating();
+
+protected:
+
 	virtual bool event(QEvent *event) override;
 	virtual void paintEvent(QPaintEvent *event) override;
 	virtual void closeEvent(QCloseEvent *event) override;
-
-protected:
 #ifdef _WIN32
 	virtual bool nativeEvent(
 		const QByteArray &eventType, void *message, long *result) override;
 #endif
+
 	void initStyleOption(QStyleOptionDockWidget *option) const;
 	friend class TitleBarLayout;
 	friend class TitleBarWidget;
 
 private:
-	void fixBounds();
+
+	enum MouseState { NotPressed, Pressed, CtrlPressed, Dragging, CtrlDragging };
 #ifdef _WIN32
 	void setDropShadow(bool value);
+#endif
+	void fixBounds();
+
+	Qt::CursorShape getCursorShape(const QPoint *position);
+	Qt::Edges getResizeEdges(const QPoint *position);
+	void updateCursor();
+	void updateCursor(const QPoint *position);
+
+	bool onMouseButtonDoubleClicked(QMouseEvent *event);
+	bool onMouseButtonPressed(QMouseEvent *event);
+	bool onMouseButtonReleased(QMouseEvent *event);
+	bool onMouseMoved(QMouseEvent *event);
+	bool onKeyPressed(QKeyEvent *event);
+
+	QPoint initialCursorPosition;
+	bool initialFloating;
+	QScreen *initialScreen;
+	MouseState mouseState = MouseState::NotPressed;
+	QPoint pressPosition;
+#ifdef __linux__
+	Qt::Edges pressEdges;
+	bool settingFlags = false;
 #endif
 
 };
