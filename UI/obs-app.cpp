@@ -1513,6 +1513,7 @@ void OBSStyle::drawControl(
 			windowColor.blue() * wcAmount + highlightColor.blue() * hcAmount
 		);
 		
+		painter->setRenderHint(QPainter::Antialiasing);
 		painter->setPen(QPen(highlightColor, borderThickness));
 		painter->fillPath(path, fillColor);
 		painter->drawPath(path);
