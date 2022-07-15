@@ -645,6 +645,7 @@ bool OBSDock::nativeEvent(const QByteArray &eventType, void *message, long *resu
 
 	case WM_EXITSIZEMOVE:
 		fixBounds();
+		setDropShadow(true);
 		break;
 
 	default:
@@ -904,16 +905,17 @@ bool OBSDock::onMouseMoved(QMouseEvent *event)
 
 			// Float the dock widget
 			setFloating(true);
-
-#ifdef _WIN32
-			setDropShadow(true);
-#endif
 			
 			// Position the window properly
 			// (it might still have a previous float location)
 			bounds.moveTo(event->globalPos() - pressPosition);
 			setGeometry(bounds);
 		}
+#ifdef _WIN32
+		else {
+			setDropShadow(false);
+		}
+#endif
 
 		// Let the WM handle the rest
 		window()->windowHandle()->startSystemMove();
