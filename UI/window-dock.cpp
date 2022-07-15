@@ -12,13 +12,13 @@
 #include <QTimer>
 #include <QWindow>
 
-#ifdef __WINDOWS__
+#ifdef _WIN32
 #include <windowsx.h>
 #include <dwmapi.h>
 #pragma comment (lib,"Dwmapi.lib")
 #endif
 
-#if defined(__WINDOWS__) || defined(__linux__)
+#if defined(_WIN32) || defined(__linux__)
 // Mac doesn't support this yet
 #define __SUPPORTS_SYSTEM_RESIZE
 #endif
@@ -485,7 +485,7 @@ bool OBSDock::event(QEvent *event)
 		break;
 
 	case QEvent::WindowActivate:
-#ifdef __WINDOWS__
+#ifdef _WIN32
 		// Show the drop shadow when the window has been activated
 		if (isFloating() && mouseState == MouseState::NotPressed)
 			setDropShadow(true);
@@ -495,6 +495,7 @@ bool OBSDock::event(QEvent *event)
 		update();
 		break;
 	
+#ifndef _WIN32
 	case QEvent::Move:
 		if (mouseState == MouseState::CtrlDragging) {
 			// This can be called after doing a system drag
@@ -506,6 +507,7 @@ bool OBSDock::event(QEvent *event)
 			});
 		}
 		break;
+#endif
 
 	case QEvent::MouseButtonPress:
 		if (!onMouseButtonPressed(static_cast<QMouseEvent*>(event)))
@@ -589,7 +591,7 @@ void OBSDock::closeEvent(QCloseEvent *event)
 	QDockWidget::closeEvent(event);
 }
 
-#ifdef __WINDOWS__
+#ifdef _WIN32
 bool OBSDock::nativeEvent(const QByteArray &eventType, void *message, long *result)
 {
 	if (!isFloating())
@@ -601,43 +603,6 @@ bool OBSDock::nativeEvent(const QByteArray &eventType, void *message, long *resu
 
 	case WM_NCCALCSIZE:
 		return true;  // Causes the window to be drawn over the frame
-
-	case WM_NCHITTEST:
-		// Determines which part of the window corresponds to the cursor location
-		{
-			RECT rect;
-			GetWindowRect(HWND(winId()), &rect);
-
-			long x = GET_X_LPARAM(msg->lParam);
-			long y = GET_Y_LPARAM(msg->lParam);
-
-			if (x < rect.left || x >= rect.right
-					|| y < rect.top || y >= rect.bottom)
-				// We're not over the window
-				break;
-
-			const LONG borderThickness = (LONG)(5 * devicePixelRatioF());
-
-			if (x < rect.left + borderThickness)
-				*result = HTLEFT;
-			else if (x >= rect.right - borderThickness)
-				*result = HTRIGHT;
-
-			if (y < rect.top + borderThickness)
-				*result = *result == HTLEFT ? HTTOPLEFT
-					: *result == HTRIGHT ? HTTOPRIGHT
-					: HTTOP;
-			else if (y >= rect.bottom - borderThickness)
-				*result = *result == HTLEFT ? HTBOTTOMLEFT
-					: *result == HTRIGHT ? HTBOTTOMRIGHT
-					: HTBOTTOM;
-
-			if (!*result)
-				// We aren't over a border area so it must be the client
-				*result = HTCLIENT;
-			return true;
-		}
-		break;
 
 	case WM_SIZING:
 		// Notifies us that we're about to resize,
@@ -678,6 +643,10 @@ bool OBSDock::nativeEvent(const QByteArray &eventType, void *message, long *resu
 		}
 		break;
 
+	case WM_EXITSIZEMOVE:
+		fixBounds();
+		break;
+
 	default:
 		break;
 	}
@@ -695,7 +664,7 @@ void OBSDock::initStyleOption(QStyleOptionDockWidget *option) const
 }
 
 
-#ifdef __WINDOWS__
+#ifdef _WIN32
 void OBSDock::setDropShadow(bool value)
 {
 	HWND hwnd = (HWND)winId();
@@ -897,7 +866,7 @@ bool OBSDock::onMouseButtonReleased(QMouseEvent *event)
 	if (mouseState == MouseState::Dragging) {
 		setWindowOpacity(1);
 
-#ifdef __WINDOWS__
+#ifdef _WIN32
 		// Re-enable the drop shadow
 		setDropShadow(true);
 
@@ -935,6 +904,10 @@ bool OBSDock::onMouseMoved(QMouseEvent *event)
 
 			// Float the dock widget
 			setFloating(true);
+
+#ifdef _WIN32
+			setDropShadow(true);
+#endif
 			
 			// Position the window properly
 			// (it might still have a previous float location)
@@ -963,7 +936,7 @@ bool OBSDock::onMouseMoved(QMouseEvent *event)
 			mouseState = MouseState::Dragging;
 			setWindowOpacity(.75);
 
-#ifdef __WINDOWS__
+#ifdef _WIN32
 			// Disable the drop shadow when moving the dock around
 			// This prevents a lot of glitches (like when moving between screens)
 			setDropShadow(false);
@@ -993,7 +966,7 @@ bool OBSDock::onKeyPressed(QKeyEvent *event)
 			// This method aborts the drag operation in the base class
 			setFloating(initialFloating);
 
-#ifdef __WINDOWS__
+#ifdef _WIN32
 			if (initialFloating)
 				// Re-enable the drop shadow
 				setDropShadow(true);
