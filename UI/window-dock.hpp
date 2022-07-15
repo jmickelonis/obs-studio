@@ -168,8 +168,10 @@ private:
 	QScreen *initialScreen;
 	MouseState mouseState = MouseState::NotPressed;
 	QPoint pressPosition;
-#ifdef __linux__
+#if defined(_WIN32) || defined(__linux__)
 	Qt::Edges pressEdges;
+#endif
+#ifdef __linux__
 	bool settingFlags = false;
 #endif
 
