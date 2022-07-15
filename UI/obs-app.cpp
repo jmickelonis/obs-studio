@@ -1557,10 +1557,8 @@ bool OBSApp::OBSInit()
 
 	setStyle(new OBSStyle);
 
-	// Fixes browser dock issues on Linux,
-	// and raster is the default on Windows anyway
-	// (hopefully no drawbacks elsewhere!)
-	setAttribute(Qt::AA_ForceRasterWidgets);
+	// Need to set this for browser docks to work in tabbed groups
+	setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
 
 	if (!StartupOBS(locale.c_str(), GetProfilerNameStore()))
 		return false;
