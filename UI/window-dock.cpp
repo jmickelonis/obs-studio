@@ -401,8 +401,6 @@ void OBSDock::setVisible(bool visible)
 	if (!settingFlags) {
 		// Overrode this to remove the bypass flag that the base class sets
 		// This way, all drags act the same, and transparency works
-		// We do need to set it back when plugging (un-floating) docks
-		// (without it, the docks can pop back out after dragging them back in)
 		Qt::WindowFlags flags = windowFlags();
 		Qt::WindowFlags newFlags = flags & ~Qt::BypassWindowManagerHint;
 		if (newFlags != flags) {
@@ -429,21 +427,6 @@ bool OBSDock::isDraggable()
 void OBSDock::toggleFloating()
 {
 	bool floating = !isFloating();
-#ifdef __linux__
-	if (!floating) {
-		Qt::WindowFlags flags = windowFlags();
-		if (!(flags & Qt::BypassWindowManagerHint)) {
-			// Stop the dock from popping back out
-			settingFlags = true;
-			flags |= Qt::BypassWindowManagerHint;
-			bool wasVisible = isVisible();
-			setWindowFlags(flags);
-			if (wasVisible)
-				setVisible(true);
-			settingFlags = false;
-		}
-	}
-#endif
 	setFloating(floating);
 }
 
@@ -818,7 +801,7 @@ Qt::Edges OBSDock::getResizeEdges(const QPoint *position)
 #ifdef __SUPPORTS_SYSTEM_RESIZE
 	const int borderSize = 4;
 #else
-	const int borderSize = 1;
+	const int borderSize = 3;
 #endif
 
 	if (x < borderSize)
@@ -927,19 +910,6 @@ bool OBSDock::onMouseButtonReleased(QMouseEvent *event)
 			// improves the UI experience
 			App()->GetMainWindow()->setAnimated(false);
 			enableAnimationsLater();
-
-#ifdef __linux__
-			Qt::WindowFlags flags = windowFlags();
-			if (!(flags & Qt::BypassWindowManagerHint)) {
-				// Stop the dock from popping back out
-				settingFlags = true;
-				flags |= Qt::BypassWindowManagerHint;
-				setWindowFlags(flags);
-				QTimer::singleShot(1, this, [this]() {
-					settingFlags = false;
-				});
-			}
-#endif
 		}
 	}
 
