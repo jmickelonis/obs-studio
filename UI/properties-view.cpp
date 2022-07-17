@@ -191,6 +191,10 @@ OBSPropertiesView::OBSPropertiesView(OBSData settings_, obs_object_t *obj,
 	  visUpdateCb(visUpdateCb_),
 	  minSize(minSize_)
 {
+	// Need this to properly update the UI when dragging the splitter
+	// (hopefully nothing breaks from this!)
+	setAttribute(Qt::WA_NativeWindow);
+
 	setFrameShape(QFrame::NoFrame);
 	QMetaObject::invokeMethod(this, "ReloadProperties",
 				  Qt::QueuedConnection);
