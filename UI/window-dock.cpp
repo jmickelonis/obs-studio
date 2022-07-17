@@ -808,6 +808,11 @@ bool OBSDock::onMouseButtonDoubleClicked(QMouseEvent *event)
 	if (event->button() != Qt::LeftButton)
 		return true;
 
+	QWidget *widget = childAt(event->pos());
+	if (!qobject_cast<TitleBarWidget*>(widget))
+		// Didn't click on the title bar
+		return false;
+
 	// Prevent dragging after double click and hold
 	mouseState = MouseState::NotPressed;
 
