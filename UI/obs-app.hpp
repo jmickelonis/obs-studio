@@ -20,6 +20,7 @@
 #include <QApplication>
 #include <QTranslator>
 #include <QPointer>
+#include <QSplashScreen>
 #include <obs.hpp>
 #include <util/lexer.h>
 #include <util/profiler.h>
@@ -108,6 +109,10 @@ private:
 				uint32_t color);
 
 	bool notify(QObject *receiver, QEvent *e) override;
+
+	void showSplash();
+	void hideSplash();
+	QSplashScreen *splash = nullptr;
 
 public:
 	OBSApp(int &argc, char **argv, profiler_name_store_t *store);

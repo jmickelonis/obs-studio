@@ -1211,6 +1211,9 @@ bool OBSApp::InitTheme()
 	return SetTheme("System");
 }
 
+#include <iostream>
+#include <QSplashScreen>
+
 OBSApp::OBSApp(int &argc, char **argv, profiler_name_store_t *store)
 	: QApplication(argc, argv), profilerNameStore(store)
 {
@@ -1338,6 +1341,50 @@ static void move_basic_to_scene_collections(void)
 	os_rename(path, new_path);
 }
 
+void OBSApp::showSplash()
+{
+	if (splash || std::getenv("obs_disable_splash"))
+		return;
+
+	std::string path;
+	GetDataFilePath("images/splash.png", path);
+
+	QPixmap pixmap(path.c_str());
+    splash = new QSplashScreen(
+		pixmap,
+		Qt::X11BypassWindowManagerHint | Qt::WindowStaysOnTopHint);
+
+	const char *geometry = config_get_string(
+		GlobalConfig(), "BasicWindow", "geometry");
+	if (geometry != NULL) {
+		QByteArray byteArray = QByteArray::fromBase64(QByteArray(geometry));
+		QWidget widget;
+		widget.restoreGeometry(byteArray);
+		
+		QRect bounds = widget.normalGeometry();
+		for (QScreen *screen : QGuiApplication::screens()) {
+			if (screen->availableGeometry().intersects(bounds)) {
+				splash->move(bounds.center() - splash->rect().center());
+				break;
+			}
+		}
+	}
+
+    splash->show();
+	processEvents();
+
+	QTimer::singleShot(3000, this, &OBSApp::hideSplash);
+}
+
+void OBSApp::hideSplash()
+{
+	if (!splash)
+		return;
+	splash->close();
+	delete splash;
+	splash = nullptr;
+}
+
 void OBSApp::AppInit()
 {
 	ProfileScope("OBSApp::AppInit");
@@ -1348,6 +1395,9 @@ void OBSApp::AppInit()
 		throw "Failed to create required user directories";
 	if (!InitGlobalConfig())
 		throw "Failed to initialize global config";
+
+	showSplash();
+
 	if (!InitLocale())
 		throw "Failed to load locale";
 	if (!InitTheme())
