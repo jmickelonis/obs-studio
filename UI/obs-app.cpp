@@ -1607,6 +1607,9 @@ bool OBSApp::OBSInit()
 
 	setStyle(new OBSStyle);
 
+	// Need to set this for browser docks to work in tabbed groups
+	setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
+
 	if (!StartupOBS(locale.c_str(), GetProfilerNameStore()))
 		return false;
 
