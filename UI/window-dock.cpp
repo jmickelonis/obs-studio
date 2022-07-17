@@ -379,6 +379,7 @@ void TitleBarWidget::onFeaturesChanged(QDockWidget::DockWidgetFeatures)
 void TitleBarWidget::onTopLevelChanged(bool)
 {
 	updateButtons();
+	floatButton->setAttribute(Qt::WA_UnderMouse, false);
 }
 
 
