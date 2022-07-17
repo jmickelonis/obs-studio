@@ -2284,6 +2284,8 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 		}
 
 		if (!multi) {
+			program.hideSplash();
+			
 			QMessageBox::StandardButtons buttons(
 				QMessageBox::Yes | QMessageBox::Cancel);
 			QMessageBox mb(QMessageBox::Question,

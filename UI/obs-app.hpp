@@ -110,13 +110,14 @@ private:
 
 	bool notify(QObject *receiver, QEvent *e) override;
 
-	void showSplash();
-	void hideSplash();
 	QSplashScreen *splash = nullptr;
 
 public:
 	OBSApp(int &argc, char **argv, profiler_name_store_t *store);
 	~OBSApp();
+
+	void showSplash();
+	void hideSplash();
 
 	void AppInit();
 	bool OBSInit();
