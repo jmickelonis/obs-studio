@@ -429,6 +429,9 @@ void OBSDock::toggleFloating()
 {
 	bool floating = !isFloating();
 	setFloating(floating);
+
+	if (!floating)
+		raise();
 }
 
 
