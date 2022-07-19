@@ -380,6 +380,11 @@ void TitleBarWidget::onTopLevelChanged(bool)
 {
 	updateButtons();
 	floatButton->setAttribute(Qt::WA_UnderMouse, false);
+#ifdef _WIN32
+	OBSDock *dock = getDock();
+	if (dock->isFloating() && dock->mouseState == OBSDock::MouseState::NotPressed)
+		dock->setDropShadow(true);
+#endif
 }
 
 
@@ -398,7 +403,6 @@ OBSDock::OBSDock(QWidget *parent)
 }
 
 
-#ifdef __linux__
 void OBSDock::setVisible(bool visible)
 {
 	if (!settingFlags) {
@@ -415,7 +419,6 @@ void OBSDock::setVisible(bool visible)
 
 	QDockWidget::setVisible(visible);
 }
-#endif
 
 bool OBSDock::hasFeature(QDockWidget::DockWidgetFeature feature)
 {
@@ -491,13 +494,8 @@ bool OBSDock::event(QEvent *event)
 		break;
 
 	case QEvent::WindowActivate:
-#ifdef _WIN32
-		// Show the drop shadow when the window has been activated
-		if (isFloating() && mouseState == MouseState::NotPressed)
-			setDropShadow(true);
-		// fall-through
-#endif
 	case QEvent::WindowDeactivate:
+		// Update the window border
 		update();
 		break;
 	
@@ -652,6 +650,7 @@ bool OBSDock::nativeEvent(const QByteArray &eventType, void *message, long *resu
 	case WM_EXITSIZEMOVE:
 		fixBounds();
 		setDropShadow(true);
+		setTranslucent(false);
 		break;
 
 	default:
@@ -690,6 +689,11 @@ void OBSDock::setDropShadow(bool value)
 	SetWindowLong(hwnd, GWL_STYLE, style);
 }
 #endif
+
+void OBSDock::setTranslucent(bool value)
+{
+	setWindowOpacity(value ? .75 : 1);
+}
 
 /* Moves the dock back onto the screen if it's too far off of it.
  */
@@ -734,6 +738,7 @@ Qt::CursorShape OBSDock::getCursorShape(const QPoint *position)
 	switch (mouseState) {
 	case MouseState::Pressed:
 	case MouseState::CtrlPressed:
+	case MouseState::CtrlDragging:
 	case MouseState::Dragging:
 		return Qt::ClosedHandCursor;
 	default:
@@ -876,7 +881,7 @@ bool OBSDock::onMouseButtonReleased(QMouseEvent *event)
 		return true;
 
 	if (mouseState == MouseState::Dragging) {
-		setWindowOpacity(1);
+		setTranslucent(false);
 
 #ifdef _WIN32
 		// Re-enable the drop shadow
@@ -916,6 +921,8 @@ bool OBSDock::onMouseMoved(QMouseEvent *event)
 
 			// Float the dock widget
 			setFloating(true);
+
+			setTranslucent(true);
 			
 			// Position the window properly
 			// (it might still have a previous float location)
@@ -924,6 +931,7 @@ bool OBSDock::onMouseMoved(QMouseEvent *event)
 		}
 #ifdef _WIN32
 		else {
+			setTranslucent(true);
 			setDropShadow(false);
 		}
 #endif
@@ -947,7 +955,7 @@ bool OBSDock::onMouseMoved(QMouseEvent *event)
 		if (mouseGrabber()) {
 			// The grabber was set which means we must be dragging
 			mouseState = MouseState::Dragging;
-			setWindowOpacity(.75);
+			setTranslucent(true);
 
 #ifdef _WIN32
 			// Disable the drop shadow when moving the dock around
@@ -973,7 +981,7 @@ bool OBSDock::onKeyPressed(QKeyEvent *event)
 		// Faking move events and such doesn't seem to work
 		QCursor::setPos(initialScreen, initialCursorPosition);
 
-		setWindowOpacity(1);
+		setTranslucent(false);
 
 		QTimer::singleShot(1, this, [this]() {
 			// This method aborts the drag operation in the base class

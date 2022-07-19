@@ -123,9 +123,7 @@ public:
 
 	OBSDock(QWidget *parent = nullptr);
 
-#ifdef __linux__
 	virtual void setVisible(bool visible) override;
-#endif
 	bool hasFeature(QDockWidget::DockWidgetFeature feature);
 	bool isDraggable();
 	void toggleFloating();
@@ -150,6 +148,7 @@ private:
 #ifdef _WIN32
 	void setDropShadow(bool value);
 #endif
+	void setTranslucent(bool value);
 	void fixBounds();
 
 	Qt::CursorShape getCursorShape(const QPoint *position);
@@ -171,9 +170,7 @@ private:
 #if defined(_WIN32) || defined(__linux__)
 	Qt::Edges pressEdges;
 #endif
-#ifdef __linux__
 	bool settingFlags = false;
-#endif
 
 private slots:
 
