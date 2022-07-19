@@ -175,4 +175,8 @@ private:
 	bool settingFlags = false;
 #endif
 
+private slots:
+
+	void onVisibilityChanged(bool visible);
+
 };

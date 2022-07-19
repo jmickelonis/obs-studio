@@ -389,6 +389,8 @@ OBSDock::OBSDock(QWidget *parent)
 	TitleBarWidget *titleBar = new TitleBarWidget(this);
 	setTitleBarWidget(titleBar);
 
+	connect(this, &QDockWidget::visibilityChanged, this, &OBSDock::onVisibilityChanged);
+
 #ifdef __linux__
 	// Set the type to Dialog to always keep the windows showing
 	setAttribute(Qt::WA_X11NetWmWindowTypeDialog);
@@ -995,4 +997,11 @@ bool OBSDock::onKeyPressed(QKeyEvent *event)
 	}
 
 	return false;
+}
+
+void OBSDock::onVisibilityChanged(bool visible)
+{
+	if (visible && !isFloating())
+		// This fixes browser docks disappearing when tabbed
+		raise();
 }
