@@ -1607,8 +1607,11 @@ bool OBSApp::OBSInit()
 
 	setStyle(new OBSStyle);
 
-	// Need to set this for browser docks to work in tabbed groups
+#ifdef __linux__
+	// This fixes multiple issues on Linux
+	// (browser docks popping back out, not being able to click things on app load...)
 	setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
+#endif
 
 	if (!StartupOBS(locale.c_str(), GetProfilerNameStore()))
 		return false;
