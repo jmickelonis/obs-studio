@@ -605,6 +605,16 @@ bool OBSDock::nativeEvent(const QByteArray &eventType, void *message, long *resu
 
 	switch (msg->message) {
 
+	case WM_SHOWWINDOW:
+		if (msg->wParam) {
+			// Don't allow rounded corners on Windows 11
+			DWM_WINDOW_CORNER_PREFERENCE preference = DWMWCP_DONOTROUND;
+			DwmSetWindowAttribute(
+				HWND(winId()), DWMWA_WINDOW_CORNER_PREFERENCE,
+				&preference, sizeof(preference));
+		}
+		break;
+
 	case WM_NCCALCSIZE:
 		return true;  // Causes the window to be drawn over the frame
 
