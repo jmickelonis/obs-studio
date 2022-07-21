@@ -1607,11 +1607,10 @@ bool OBSApp::OBSInit()
 
 	setStyle(new OBSStyle);
 
-#ifdef __linux__
 	// This fixes multiple issues on Linux
 	// (browser docks popping back out, not being able to click things on app load...)
+	// Also seems decidedly smoother on Windows
 	setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
-#endif
 
 	if (!StartupOBS(locale.c_str(), GetProfilerNameStore()))
 		return false;
