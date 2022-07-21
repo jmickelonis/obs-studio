@@ -1343,7 +1343,7 @@ static void move_basic_to_scene_collections(void)
 
 void OBSApp::showSplash()
 {
-	if (splash || std::getenv("obs_disable_splash"))
+	if (splash || std::getenv("OBS_DISABLE_SPLASH"))
 		return;
 
 	std::string path;
@@ -1572,7 +1572,6 @@ void OBSStyle::drawControl(
 
 	QProxyStyle::drawControl(element, option, painter, widget);
 }
-
 
 bool OBSApp::OBSInit()
 {
