@@ -82,9 +82,9 @@ OBSQTDisplay::OBSQTDisplay(QWidget *parent, Qt::WindowFlags flags)
 	: QWidget(parent, flags)
 {
 	setAttribute(Qt::WA_PaintOnScreen);
-	// setAttribute(Qt::WA_StaticContents);
-	// setAttribute(Qt::WA_NoSystemBackground);
-	// setAttribute(Qt::WA_OpaquePaintEvent);
+	setAttribute(Qt::WA_StaticContents);
+	setAttribute(Qt::WA_NoSystemBackground);
+	setAttribute(Qt::WA_OpaquePaintEvent);
 	// setAttribute(Qt::WA_DontCreateNativeAncestors);
 	setAttribute(Qt::WA_NativeWindow);
 
