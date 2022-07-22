@@ -2265,7 +2265,7 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 #endif
 
 	if (shouldForceFusion())
-		setenv("QT_STYLE_OVERRIDE", "fusion", true);
+		qputenv("QT_STYLE_OVERRIDE", QVariant("fusion").toByteArray());
 
 	QCoreApplication::addLibraryPath(".");
 
