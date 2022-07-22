@@ -1598,6 +1598,10 @@ bool OBSApp::OBSInit()
 {
 	ProfileScope("OBSApp::OBSInit");
 
+	// Make the pixel ratio available to sub-processes
+	qreal pixelRatio = QGuiApplication::primaryScreen()->devicePixelRatio();
+	qputenv("OBS_PRIMARY_PIXEL_RATIO", QVariant(pixelRatio).toByteArray());
+
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 	setAttribute(Qt::AA_UseHighDpiPixmaps);
 #endif
@@ -1678,6 +1682,7 @@ bool OBSApp::OBSInit()
 			ResetHotkeyState(state == Qt::ApplicationActive);
 		});
 	ResetHotkeyState(applicationState() == Qt::ApplicationActive);
+
 	return true;
 }
 
