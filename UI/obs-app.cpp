@@ -30,7 +30,6 @@
 #include <util/cf-parser.h>
 #include <obs-config.h>
 #include <obs.hpp>
-#include <boost/lexical_cast.hpp>
 
 #include <QFile>
 #include <QGuiApplication>
@@ -1340,9 +1339,15 @@ static void move_basic_to_scene_collections(void)
 	os_rename(path, new_path);
 }
 
+static bool shouldDisableSplash()
+{
+	const char *value = getenv("OBS_DISABLE_SPLASH");
+	return value ? QVariant(value).toBool() : false;
+}
+
 void OBSApp::showSplash()
 {
-	if (splash || std::getenv("OBS_DISABLE_SPLASH"))
+	if (splash || shouldDisableSplash())
 		return;
 
 	std::string path;
@@ -2230,20 +2235,8 @@ QAccessibleInterface *accessibleFactory(const QString &classname,
  */
 static bool shouldForceFusion()
 {
-	char *value = getenv("OBS_USE_FUSION");
-
-	if (value) {
-		try {
-			return boost::lexical_cast<bool>(value);
-		}
-		catch (boost::bad_lexical_cast &) { }
-
-		bool b;
-		istringstream(value) >> std::boolalpha >> b;
-		return b;
-	}
-
-	return true;
+	const char *value = getenv("OBS_USE_FUSION");
+	return value ? QVariant(value).toBool() : true;
 }
 
 static const char *run_program_init = "run_program_init";
