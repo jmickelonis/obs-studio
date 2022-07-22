@@ -30,6 +30,7 @@
 #include <util/cf-parser.h>
 #include <obs-config.h>
 #include <obs.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include <QFile>
 #include <QGuiApplication>
@@ -37,6 +38,7 @@
 #include <QScreen>
 #include <QProcess>
 #include <QAccessible>
+#include <QSplashScreen>
 
 #include "qt-wrappers.hpp"
 #include "obs-app.hpp"
@@ -1211,9 +1213,6 @@ bool OBSApp::InitTheme()
 	return SetTheme("System");
 }
 
-#include <iostream>
-#include <QSplashScreen>
-
 OBSApp::OBSApp(int &argc, char **argv, profiler_name_store_t *store)
 	: QApplication(argc, argv), profilerNameStore(store)
 {
@@ -1529,7 +1528,24 @@ public:
 		const QStyleOption *option,
 		QPainter *painter,
 		const QWidget *widget) const override;
+	int styleHint(
+		StyleHint hint,
+		const QStyleOption *option = nullptr,
+		const QWidget *widget = nullptr,
+		QStyleHintReturn *returnData = nullptr) const override;
 };
+
+int OBSStyle::styleHint(
+	StyleHint hint,
+	const QStyleOption *option,
+	const QWidget *widget,
+	QStyleHintReturn *returnData) const
+{
+	if (hint == QStyle::SH_Widget_Animation_Duration)
+		return 170;
+
+	return QProxyStyle::styleHint(hint, option, widget, returnData);
+}
 
 void OBSStyle::drawControl(
 	ControlElement element,
@@ -2209,6 +2225,27 @@ QAccessibleInterface *accessibleFactory(const QString &classname,
 	return nullptr;
 }
 
+/* Returns true if OBS should be forced to use the cross-platform Fusion style
+ * (this is the default, as themes will look better overall).
+ */
+static bool shouldForceFusion()
+{
+	char *value = getenv("OBS_USE_FUSION");
+
+	if (value) {
+		try {
+			return boost::lexical_cast<bool>(value);
+		}
+		catch (boost::bad_lexical_cast &) { }
+
+		bool b;
+		istringstream(value) >> std::boolalpha >> b;
+		return b;
+	}
+
+	return true;
+}
+
 static const char *run_program_init = "run_program_init";
 static int run_program(fstream &logFile, int argc, char *argv[])
 {
@@ -2233,6 +2270,9 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 	QGuiApplication::setHighDpiScaleFactorRoundingPolicy(
 		Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
 #endif
+
+	if (shouldForceFusion())
+		setenv("QT_STYLE_OVERRIDE", "fusion", true);
 
 	QCoreApplication::addLibraryPath(".");
 
