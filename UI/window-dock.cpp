@@ -505,6 +505,8 @@ bool OBSDock::event(QEvent *event)
 			// This can be called after doing a system drag
 			// (the events aren't received until the entire operation is over)
 
+			setTranslucent(false);
+
 			// We need to fix the bounds later to get the proper screen
 			QTimer::singleShot(1, this, [this]() {
 				fixBounds();
@@ -931,19 +933,16 @@ bool OBSDock::onMouseMoved(QMouseEvent *event)
 
 			// Float the dock widget
 			setFloating(true);
-
-			setTranslucent(true);
 			
 			// Position the window properly
 			// (it might still have a previous float location)
 			bounds.moveTo(event->globalPos() - pressPosition);
 			setGeometry(bounds);
 		}
+
+		setTranslucent(true);
 #ifdef _WIN32
-		else {
-			setTranslucent(true);
-			setDropShadow(false);
-		}
+		setDropShadow(false);
 #endif
 
 		// Let the WM handle the rest
