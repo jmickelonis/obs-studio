@@ -391,6 +391,8 @@ void TitleBarWidget::onTopLevelChanged(bool)
 OBSDock::OBSDock(QWidget *parent)
 	: QDockWidget(parent)
 {
+	setAttribute(Qt::WA_NoSystemBackground);
+
 	TitleBarWidget *titleBar = new TitleBarWidget(this);
 	setTitleBarWidget(titleBar);
 
@@ -561,8 +563,10 @@ void OBSDock::paintEvent(QPaintEvent *)
 	QStyleOptionDockWidget titleOpt;
 	initStyleOption(&titleOpt);
 	const QFont font = this->font();
-	titleOpt.fontMetrics = QFontMetrics(font);
-	painter.setFont(font);
+	if (font == QApplication::font("QDockWidget")) {
+		titleOpt.fontMetrics = QFontMetrics(font);
+		painter.setFont(font);
+	}
 	painter.drawControl(QStyle::CE_DockWidgetTitle, titleOpt);
 }
 
