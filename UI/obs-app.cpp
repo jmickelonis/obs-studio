@@ -41,6 +41,7 @@
 
 #include "qt-wrappers.hpp"
 #include "obs-app.hpp"
+#include "obs-proxy-style.hpp"
 #include "log-viewer.hpp"
 #include "slider-ignorewheel.hpp"
 #include "window-basic-main.hpp"
@@ -1120,6 +1121,7 @@ bool OBSApp::SetTheme(std::string name, std::string path)
 	QString mpath = QString("file:///") + path.c_str();
 	setPalette(defaultPalette);
 	ParseExtraThemeData(path.c_str());
+	setStyle(new OBSProxyStyle);
 	setStyleSheet(mpath);
 	QColor color = palette().text().color();
 	themeDarkMode = !(color.redF() < 0.5);
@@ -1521,79 +1523,6 @@ static void ui_task_handler(obs_task_t task, void *param, bool wait)
 				  Q_ARG(VoidFunc, doTask));
 }
 
-
-#include <QPainter>
-#include <QPainterPath>
-
-class OBSStyle : public QProxyStyle
-{
-public:
-	void drawControl(
-		ControlElement element,
-		const QStyleOption *option,
-		QPainter *painter,
-		const QWidget *widget) const override;
-	int styleHint(
-		StyleHint hint,
-		const QStyleOption *option = nullptr,
-		const QWidget *widget = nullptr,
-		QStyleHintReturn *returnData = nullptr) const override;
-};
-
-int OBSStyle::styleHint(
-	StyleHint hint,
-	const QStyleOption *option,
-	const QWidget *widget,
-	QStyleHintReturn *returnData) const
-{
-	if (hint == QStyle::SH_Widget_Animation_Duration)
-		return 170;
-
-	return QProxyStyle::styleHint(hint, option, widget, returnData);
-}
-
-void OBSStyle::drawControl(
-	ControlElement element,
-	const QStyleOption *option,
-	QPainter *painter,
-	const QWidget *widget) const
-{
-	if (element == QStyle::CE_RubberBand) {
-		// Use a simpler and fully opaque style for rubber bands
-		// This covers up graphical corruption in the browser docks
-		QRectF rect(option->rect);
-
-		static qreal borderThickness = 1;
-		static qreal halfBorderThickness = borderThickness / 2;
-		rect.adjust(halfBorderThickness, halfBorderThickness,
-			-halfBorderThickness, -halfBorderThickness);
-
-		QPainterPath path;
-		path.addRoundedRect(rect, 2, 2);
-
-		const QPalette *palette = &option->palette;
-		QColor highlightColor = palette->color(QPalette::Highlight);
-		QColor windowColor = palette->color(QPalette::Window);
-
-		static float hcAmount = .25;
-		static float wcAmount = 1 - hcAmount;
-
-		QColor fillColor = QColor(
-			windowColor.red() * wcAmount + highlightColor.red() * hcAmount,
-			windowColor.green() * wcAmount + highlightColor.green() * hcAmount,
-			windowColor.blue() * wcAmount + highlightColor.blue() * hcAmount
-		);
-		
-		painter->setRenderHint(QPainter::Antialiasing);
-		painter->setPen(QPen(highlightColor, borderThickness));
-		painter->fillPath(path, fillColor);
-		painter->drawPath(path);
-		return;
-	}
-
-	QProxyStyle::drawControl(element, option, painter, widget);
-}
-
 bool OBSApp::OBSInit()
 {
 	ProfileScope("OBSApp::OBSInit");
@@ -1628,8 +1557,6 @@ bool OBSApp::OBSInit()
 	obs_set_nix_platform_display(
 		native->nativeResourceForIntegration("display"));
 #endif
-
-	setStyle(new OBSStyle);
 
 	// This fixes multiple issues on Linux
 	// (browser docks popping back out, not being able to click things on app load...)
