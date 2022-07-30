@@ -391,8 +391,6 @@ void TitleBarWidget::onTopLevelChanged(bool)
 OBSDock::OBSDock(QWidget *parent)
 	: QDockWidget(parent)
 {
-	setAttribute(Qt::WA_NoSystemBackground);
-
 	TitleBarWidget *titleBar = new TitleBarWidget(this);
 	setTitleBarWidget(titleBar);
 
