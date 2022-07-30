@@ -284,10 +284,10 @@ QDockWidget > QCefWidget {
   padding: 2px;
 }
 QDockWidget::window {
-  border: 1px solid #c62828;
+  border: 1px solid #7e2f2f;
 }
 QDockWidget::active:window {
-  border-color: #d53131;
+  border-color: #c62828;
 }
 QDockWidget QToolBar QAbstractButton {
   margin-top: 3px;
