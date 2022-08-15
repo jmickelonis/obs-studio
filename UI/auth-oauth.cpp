@@ -91,7 +91,7 @@ void OAuthLogin::urlChanged(const QString &url)
 	if (code_idx == -1)
 		return;
 
-	if (url.left(22) != "https://obsproject.com")
+	if (!url.startsWith("https://obs-oauth.jmickelonis.workers.dev/"))
 		return;
 
 	code_idx += (int)uri.size();
