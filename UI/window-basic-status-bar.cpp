@@ -38,6 +38,7 @@ OBSBasicStatusBar::OBSBasicStatusBar(QWidget *parent)
 	donate->setTextInteractionFlags(Qt::TextBrowserInteraction);
 	donate->setOpenExternalLinks(true);
 	donate->setText("<a href='https://paypal.me/jmickelonis'>PayPal.me/jmickelonis</a>");
+	donate->setFocusPolicy(Qt::FocusPolicy::NoFocus);
 
 	streamTime->setText(QString("LIVE: 00:00:00"));
 	recordTime->setText(QString("REC: 00:00:00"));
