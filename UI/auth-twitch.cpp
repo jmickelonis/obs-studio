@@ -22,8 +22,8 @@ using namespace json11;
 
 /* ------------------------------------------------------------------------- */
 
-#define TWITCH_AUTH_URL "https://obsproject.com/app-auth/twitch?action=redirect"
-#define TWITCH_TOKEN_URL "https://obsproject.com/app-auth/twitch-token"
+#define TWITCH_AUTH_URL "https://obs-oauth.jmickelonis.workers.dev/v1/twitch/redirect"
+#define TWITCH_TOKEN_URL "https://obs-oauth.jmickelonis.workers.dev/v1/twitch/token"
 
 #define TWITCH_SCOPE_VERSION 1
 
@@ -448,14 +448,14 @@ void TwitchAuth::LoadSecondaryUIPanes()
 			{},
 			true
 		},
-		{
-			"twitchStreamPreview", "Twitch.StreamPreview", "Stream Preview",
-			"https://dashboard.twitch.tv/popout/u/"
-				+ name
-				+ "/stream-manager/stream-preview?uuid="
-				+ uuid,
-			{}
-		},
+		// {
+		// 	"twitchStreamPreview", "Twitch.StreamPreview", "Stream Preview",
+		// 	"https://dashboard.twitch.tv/popout/u/"
+		// 		+ name
+		// 		+ "/stream-manager/stream-preview?uuid="
+		// 		+ uuid,
+		// 	{}
+		// },
 		{
 			"twitchQuickActions", "Twitch.QuickActions", "Quick Actions",
 			"https://dashboard.twitch.tv/popout/u/"
