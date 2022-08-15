@@ -9,6 +9,7 @@
 
 OBSBasicStatusBar::OBSBasicStatusBar(QWidget *parent)
 	: QStatusBar(parent),
+	  donate(new QLabel),
 	  delayInfo(new QLabel),
 	  droppedFrames(new QLabel),
 	  streamIcon(new QLabel),
@@ -34,6 +35,10 @@ OBSBasicStatusBar::OBSBasicStatusBar(QWidget *parent)
 	  streamingInactivePixmap(QIcon(":/res/images/streaming-inactive.svg")
 					  .pixmap(QSize(20, 20)))
 {
+	donate->setTextInteractionFlags(Qt::TextBrowserInteraction);
+	donate->setOpenExternalLinks(true);
+	donate->setText("<a href='https://paypal.me/jmickelonis'>PayPal.me/jmickelonis</a>");
+
 	streamTime->setText(QString("LIVE: 00:00:00"));
 	recordTime->setText(QString("REC: 00:00:00"));
 	cpuUsage->setText(QString("CPU: 0.0%, 0.00 fps"));
@@ -53,6 +58,8 @@ OBSBasicStatusBar::OBSBasicStatusBar(QWidget *parent)
 
 	brWidget->setLayout(brLayout);
 
+	donate->setAlignment(Qt::AlignRight);
+	donate->setAlignment(Qt::AlignVCenter);
 	delayInfo->setAlignment(Qt::AlignRight);
 	delayInfo->setAlignment(Qt::AlignVCenter);
 	droppedFrames->setAlignment(Qt::AlignRight);
@@ -85,6 +92,7 @@ OBSBasicStatusBar::OBSBasicStatusBar(QWidget *parent)
 	addPermanentWidget(cpuUsage);
 	addPermanentWidget(delayInfo);
 	addPermanentWidget(brWidget);
+	addPermanentWidget(donate);
 
 	transparentPixmap.fill(QColor(0, 0, 0, 0));
 	greenPixmap.fill(QColor(0, 255, 0));
