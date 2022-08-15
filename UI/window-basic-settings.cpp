@@ -576,10 +576,10 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 	ui->advOutFFVBitrate->setSuffix(" Kbps");
 	ui->advOutFFABitrate->setSuffix(" Kbps");
 
-#if !defined(_WIN32) && !defined(__APPLE__)
+// #if !defined(_WIN32) && !defined(__APPLE__)
 	delete ui->enableAutoUpdates;
 	ui->enableAutoUpdates = nullptr;
-#endif
+// #endif
 
 	// Remove the Advanced Audio section if monitoring is not supported, as the monitoring device selection is the only item in the group box.
 	if (!obs_audio_monitoring_available()) {
@@ -1226,11 +1226,11 @@ void OBSBasicSettings::LoadGeneralSettings()
 	LoadLanguageList();
 	LoadThemeList();
 
-#if defined(_WIN32) || defined(__APPLE__)
-	bool enableAutoUpdates = config_get_bool(GetGlobalConfig(), "General",
-						 "EnableAutoUpdates");
-	ui->enableAutoUpdates->setChecked(enableAutoUpdates);
-#endif
+// #if defined(_WIN32) || defined(__APPLE__)
+// 	bool enableAutoUpdates = config_get_bool(GetGlobalConfig(), "General",
+// 						 "EnableAutoUpdates");
+// 	ui->enableAutoUpdates->setChecked(enableAutoUpdates);
+// #endif
 	bool openStatsOnStartup = config_get_bool(main->Config(), "General",
 						  "OpenStatsOnStartup");
 	ui->openStatsOnStartup->setChecked(openStatsOnStartup);
@@ -2987,12 +2987,12 @@ void OBSBasicSettings::SaveGeneralSettings()
 		config_set_string(GetGlobalConfig(), "General", "CurrentTheme2",
 				  QT_TO_UTF8(themeData));
 
-#if defined(_WIN32) || defined(__APPLE__)
-	if (WidgetChanged(ui->enableAutoUpdates))
-		config_set_bool(GetGlobalConfig(), "General",
-				"EnableAutoUpdates",
-				ui->enableAutoUpdates->isChecked());
-#endif
+// #if defined(_WIN32) || defined(__APPLE__)
+// 	if (WidgetChanged(ui->enableAutoUpdates))
+// 		config_set_bool(GetGlobalConfig(), "General",
+// 				"EnableAutoUpdates",
+// 				ui->enableAutoUpdates->isChecked());
+// #endif
 #ifdef _WIN32
 	if (ui->hideOBSFromCapture && WidgetChanged(ui->hideOBSFromCapture)) {
 		bool hide_window = ui->hideOBSFromCapture->isChecked();
