@@ -31,6 +31,15 @@ ManifestDPIAware true
 
 !define APPNAMEANDVERSION "jmick's OBS Mod ${SHORTVERSION}"
 
+; Path to signtool on your system
+!define SIGNTOOL_PATH "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe"
+; Your certificate to use for signing and its password
+!define CERT_PATH ""
+!define CERT_PASSWORD ""
+
+!finalize '"${SIGNTOOL_PATH}" sign /f "${CERT_PATH}" /p "${CERT_PASSWORD}" /fd SHA256 "%1"'
+!uninstfinalize '"${SIGNTOOL_PATH}" sign /f "${CERT_PATH}" /p "${CERT_PASSWORD}" /fd SHA256 "%1"'
+
 ; Additional script dependencies
 !include WinVer.nsh
 !include x64.nsh
