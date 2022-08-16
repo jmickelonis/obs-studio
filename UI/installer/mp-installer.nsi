@@ -29,7 +29,7 @@ ManifestDPIAware true
 !define SHORTVERSION "25.0.8"
 !endif
 
-!define APPNAMEANDVERSION "${APPNAME} ${SHORTVERSION}"
+!define APPNAMEANDVERSION "jmick's OBS Mod ${SHORTVERSION}"
 
 ; Additional script dependencies
 !include WinVer.nsh
@@ -45,9 +45,9 @@ InstallDir "$PROGRAMFILES32\obs-studio"
 InstallDirRegKey HKLM "Software\${APPNAME}" ""
 
 !ifdef INSTALL64
- OutFile "OBS-Studio-${SHORTVERSION}-Full-Installer-x64.exe"
+ OutFile "OBS-jmick-${SHORTVERSION}-Full-Installer-x64.exe"
 !else
- OutFile "OBS-Studio-${SHORTVERSION}-Full-Installer-x86.exe"
+ OutFile "OBS-jmick-${SHORTVERSION}-Full-Installer-x86.exe"
 !endif
 
 ; Use compression
@@ -68,20 +68,20 @@ RequestExecutionLevel admin
 !define MUI_FINISHPAGE_RUN
 !define MUI_FINISHPAGE_RUN_TEXT "Launch ${APPNAMEANDVERSION}"
 !define MUI_FINISHPAGE_RUN_FUNCTION "LaunchOBS"
-!define MUI_FINISHPAGE_SHOWREADME "https://github.com/obsproject/obs-studio/releases/${APPVERSION}"
-!define MUI_FINISHPAGE_SHOWREADME_TEXT "View Release Notes"
-!define MUI_FINISHPAGE_SHOWREADME_NOTCHECKED
-!define MUI_FINISHPAGE_LINK "New to OBS? Check out our 4-step Quickstart Guide."
+; !define MUI_FINISHPAGE_SHOWREADME "https://github.com/obsproject/obs-studio/releases/${APPVERSION}"
+; !define MUI_FINISHPAGE_SHOWREADME_TEXT "View Release Notes"
+; !define MUI_FINISHPAGE_SHOWREADME_NOTCHECKED
+!define MUI_FINISHPAGE_LINK "New to OBS? Check out the 4-step Quickstart Guide."
 !define MUI_FINISHPAGE_LINK_LOCATION "https://obsproject.com/wiki/OBS-Studio-Quickstart"
 !define MUI_FINISHPAGE_LINK_COLOR 000080
 
-!define MUI_WELCOMEPAGE_TEXT "This setup will guide you through installing OBS Studio.\n\nIt is recommended that you close all other applications before starting, including OBS Studio. This will make it possible to update relevant files without having to reboot your computer.\n\nClick Next to continue."
+!define MUI_WELCOMEPAGE_TEXT "This setup will guide you through installing jmick's OBS Mod.\n\nIt is recommended that you close all other applications before starting, including any version of OBS. This will make it possible to update relevant files without having to reboot your computer.\n\nThis mod cannot be installed alongside stock OBS.  When switching between different mods or versions, it may be necessary to uninstall the existing OBS first.\n\nClick Next to continue."
 
 !define MUI_PAGE_CUSTOMFUNCTION_LEAVE PreReqCheck
 
 !define MUI_HEADERIMAGE
 !define MUI_PAGE_HEADER_TEXT "License Information"
-!define MUI_PAGE_HEADER_SUBTEXT "Please review the license terms before installing OBS Studio."
+!define MUI_PAGE_HEADER_SUBTEXT "Please review the license terms before installing jmick's OBS Mod."
 !define MUI_LICENSEPAGE_TEXT_TOP "Press Page Down or scroll to see the rest of the license."
 !define MUI_LICENSEPAGE_TEXT_BOTTOM " "
 !define MUI_LICENSEPAGE_BUTTON "&Next >"
@@ -317,7 +317,7 @@ Section "OBS Studio" SecCore
 	SetShellVarContext all
 
 	SetOutPath "$INSTDIR"
-	File /r "new\obs-browser\data"
+	; File /r "new\obs-browser\data"
 	SetOutPath "$INSTDIR\obs-plugins"
 	OBSInstallerUtils::KillProcess "32bit\cef-bootstrap.exe"
 	OBSInstallerUtils::KillProcess "32bit\obs-browser-page.exe"
@@ -326,17 +326,17 @@ Section "OBS Studio" SecCore
 		OBSInstallerUtils::KillProcess "64bit\obs-browser-page.exe"
 	${endif}
 !ifdef INSTALL64
-	File /r "new\obs-browser\obs-plugins\64bit"
+	; File /r "new\obs-browser\obs-plugins\64bit"
 	SetOutPath "$INSTDIR\bin\64bit"
 !else
-	File /r "new\obs-browser\obs-plugins\32bit"
+	; File /r "new\obs-browser\obs-plugins\32bit"
 	SetOutPath "$INSTDIR\bin\32bit"
 !endif
 
 	# ----------------------------
 	# Copy game capture files to ProgramData
 	SetOutPath "$APPDATA\obs-studio-hook"
-	File "new\core\data\obs-plugins\win-capture\graphics-hook32.dll"
+	; File "new\core\data\obs-plugins\win-capture\graphics-hook32.dll"
 	File "new\core\data\obs-plugins\win-capture\graphics-hook64.dll"
 	File "new\core\data\obs-plugins\win-capture\obs-vulkan32.json"
 	File "new\core\data\obs-plugins\win-capture\obs-vulkan64.json"
