@@ -339,6 +339,9 @@ static bool h264_vaapi_supported(void)
 #ifdef _WIN32
 extern void jim_nvenc_load(bool h264, bool hevc, bool av1);
 extern void jim_nvenc_unload(void);
+#endif
+
+#if defined(_WIN32) || defined(__linux__)
 extern void amf_load(void);
 extern void amf_unload(void);
 #endif
@@ -408,7 +411,7 @@ bool obs_module_load(void)
 #endif
 	}
 
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__linux__)
 	amf_load();
 #endif
 
@@ -440,8 +443,11 @@ void obs_module_unload(void)
 	obs_ffmpeg_unload_logging();
 #endif
 
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__linux__)
 	amf_unload();
+#endif
+
+#ifdef _WIN32
 	jim_nvenc_unload();
 #endif
 }
