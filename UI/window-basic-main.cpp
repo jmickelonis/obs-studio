@@ -8879,14 +8879,15 @@ void OBSBasic::UpdateTitleBar()
 	const char *sceneCollection = config_get_string(
 		App()->GlobalConfig(), "Basic", "SceneCollection");
 
-	name << "OBS ";
-	if (previewProgramMode)
-		name << "Studio ";
+	// name << "OBS ";
+	// if (previewProgramMode)
+	// 	name << "Studio ";
 
-	name << App()->GetVersionString();
-	if (App()->IsPortableMode())
-		name << " - Portable Mode";
+	// name << App()->GetVersionString();
+	// if (App()->IsPortableMode())
+	// 	name << " - Portable Mode";
 
+	name << "jmick's OBS Mod";
 	name << " - " << Str("TitleBar.Profile") << ": " << profile;
 	name << " - " << Str("TitleBar.Scenes") << ": " << sceneCollection;
 
