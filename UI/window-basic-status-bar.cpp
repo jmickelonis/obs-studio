@@ -16,6 +16,7 @@ OBSBasicStatusBar::OBSBasicStatusBar(QWidget *parent)
 	  recordTime(new QLabel),
 	  recordIcon(new QLabel),
 	  cpuUsage(new QLabel),
+	  donate(new QLabel),
 	  transparentPixmap(20, 20),
 	  greenPixmap(20, 20),
 	  grayPixmap(20, 20),
@@ -70,6 +71,14 @@ OBSBasicStatusBar::OBSBasicStatusBar(QWidget *parent)
 	kbps->setAlignment(Qt::AlignRight);
 	kbps->setAlignment(Qt::AlignVCenter);
 
+	donate->setTextInteractionFlags(Qt::TextBrowserInteraction);
+	donate->setOpenExternalLinks(true);
+	donate->setText(
+		"<a href='https://paypal.me/jmickelonis'>PayPal.me/jmickelonis</a>");
+	donate->setFocusPolicy(Qt::FocusPolicy::NoFocus);
+	donate->setAlignment(Qt::AlignRight);
+	donate->setAlignment(Qt::AlignVCenter);
+
 	delayInfo->setIndent(20);
 	droppedFrames->setIndent(20);
 	streamIcon->setIndent(20);
@@ -85,6 +94,7 @@ OBSBasicStatusBar::OBSBasicStatusBar(QWidget *parent)
 	addPermanentWidget(cpuUsage);
 	addPermanentWidget(delayInfo);
 	addPermanentWidget(brWidget);
+	addPermanentWidget(donate);
 
 	transparentPixmap.fill(QColor(0, 0, 0, 0));
 	greenPixmap.fill(QColor(0, 255, 0));
