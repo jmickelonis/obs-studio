@@ -8,6 +8,8 @@
 #include <json11.hpp>
 #include "auth-oauth.hpp"
 
+#include <QList>
+
 class BrowserDock;
 
 class TwitchAuth : public OAuthStreamKey {
@@ -15,14 +17,9 @@ class TwitchAuth : public OAuthStreamKey {
 
 	friend class TwitchLogin;
 
-	QSharedPointer<BrowserDock> chat;
-	QSharedPointer<BrowserDock> info;
-	QSharedPointer<BrowserDock> stat;
-	QSharedPointer<BrowserDock> feed;
-	QSharedPointer<QAction> chatMenu;
-	QSharedPointer<QAction> infoMenu;
-	QSharedPointer<QAction> statMenu;
-	QSharedPointer<QAction> feedMenu;
+	QList<
+		std::pair<QSharedPointer<BrowserDock>, QSharedPointer<QAction> >
+	> docks;
 	bool uiLoaded = false;
 
 	std::string name;
@@ -37,6 +34,21 @@ class TwitchAuth : public OAuthStreamKey {
 	bool GetChannelInfo();
 
 	virtual void LoadUI() override;
+
+	struct DockOptions
+	{
+		unsigned int width = 300;
+		unsigned int height = 600;
+		unsigned int minWidth = 150;
+		unsigned int minHeight = 150;
+	};
+	BrowserDock *addDock(
+		const std::string &name,
+		const std::string &localeName,
+		const std::string &title,
+		const std::string &url,
+		const std::string &startupScript,
+		const DockOptions &dockOptions);
 
 public:
 	TwitchAuth(const Def &d);
