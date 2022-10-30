@@ -151,7 +151,6 @@ private:
 	void setTranslucent(bool value);
 	void fixBounds();
 
-	Qt::CursorShape getCursorShape(const QPoint *position);
 	Qt::Edges getResizeEdges(const QPoint *position);
 	void updateCursor();
 	void updateCursor(const QPoint *position);

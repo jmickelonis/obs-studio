@@ -486,7 +486,7 @@ bool OBSDock::event(QEvent *event)
 	case QEvent::HoverMove:
 		{
 			QHoverEvent *hoverEvent = static_cast<QHoverEvent*>(event);
-			QPoint point = hoverEvent->pos();
+			QPoint point = hoverEvent->position().toPoint();
 			updateCursor(&point);
 		}
 		break;
@@ -729,45 +729,6 @@ void OBSDock::fixBounds()
 }
 
 
-Qt::CursorShape OBSDock::getCursorShape(const QPoint *position)
-{
-	if (!position)
-		return Qt::ArrowCursor;
-
-	switch (mouseState) {
-	case MouseState::Pressed:
-	case MouseState::CtrlPressed:
-	case MouseState::CtrlDragging:
-	case MouseState::Dragging:
-		return Qt::ClosedHandCursor;
-	default:
-		break;
-	}
-
-	if (isFloating()) {
-		Qt::Edges edges = getResizeEdges(position);
-
-		if (edges & Qt::LeftEdge)
-			return edges & Qt::TopEdge ? Qt::SizeFDiagCursor
-				: edges & Qt::BottomEdge ? Qt::SizeBDiagCursor
-				: Qt::SizeHorCursor;
-		else if (edges & Qt::RightEdge)
-			return edges & Qt::TopEdge ? Qt::SizeBDiagCursor
-				: edges & Qt::BottomEdge ? Qt::SizeFDiagCursor
-				: Qt::SizeHorCursor;
-		else if (edges & (Qt::TopEdge | Qt::BottomEdge))
-			return Qt::SizeVerCursor;
-	}
-
-	if (isDraggable()) {
-		QWidget *widget = childAt(*position);
-		if (qobject_cast<TitleBarWidget*>(widget))
-			return Qt::OpenHandCursor;
-	}
-
-	return Qt::ArrowCursor;
-}
-
 Qt::Edges OBSDock::getResizeEdges(const QPoint *position)
 {
 	Qt::Edges edges;
@@ -805,11 +766,62 @@ void OBSDock::updateCursor()
 
 void OBSDock::updateCursor(const QPoint *position)
 {
-	Qt::CursorShape shape = getCursorShape(position);
-	if (shape != Qt::ArrowCursor)
-		setCursor(shape);
-	else
+	// For some reason, on Qt6,
+	// cursors don't always work correctly the way we were setting them.
+	// The workaround is to set a cursor on the title bar widget if necessary.
+
+	TitleBarWidget* titleBar = findChild<TitleBarWidget*>();
+
+	if (!position) {
+		titleBar->unsetCursor();
 		unsetCursor();
+		return;
+	}
+
+	Qt::CursorShape cursor = Qt::ArrowCursor;
+
+	if (isFloating()) {
+		Qt::Edges edges = getResizeEdges(position);
+
+		if (edges & Qt::LeftEdge)
+			cursor = edges & Qt::TopEdge ? Qt::SizeFDiagCursor
+				: edges & Qt::BottomEdge ? Qt::SizeBDiagCursor
+				: Qt::SizeHorCursor;
+		else if (edges & Qt::RightEdge)
+			cursor = edges & Qt::TopEdge ? Qt::SizeBDiagCursor
+				: edges & Qt::BottomEdge ? Qt::SizeFDiagCursor
+				: Qt::SizeHorCursor;
+		else if (edges & (Qt::TopEdge | Qt::BottomEdge))
+			cursor = Qt::SizeVerCursor;
+
+		if (cursor) {
+			titleBar->unsetCursor();
+			setCursor(cursor);
+			return;
+		}
+	}
+
+	switch (mouseState) {
+	case MouseState::Pressed:
+	case MouseState::CtrlPressed:
+	case MouseState::CtrlDragging:
+	case MouseState::Dragging:
+		cursor = Qt::ClosedHandCursor;
+		break;
+	default:
+		if (isDraggable()) {
+			QWidget *widget = childAt(*position);
+			if (qobject_cast<TitleBarWidget*>(widget))
+				cursor = Qt::OpenHandCursor;
+		}
+		break;
+	}
+
+	if (cursor)
+		titleBar->setCursor(cursor);
+	else
+		titleBar->unsetCursor();
+	unsetCursor();
 }
 
 
@@ -929,11 +941,16 @@ bool OBSDock::onMouseMoved(QMouseEvent *event)
 			QRect bounds = geometry();
 
 			// Float the dock widget
+
+			// Clear the cursor first.
+			// Otherwise, when changing to a floating window, the cursor can get stuck.
+			updateCursor(nullptr);
+
 			setFloating(true);
 			
 			// Position the window properly
 			// (it might still have a previous float location)
-			bounds.moveTo(event->globalPos() - pressPosition);
+			bounds.moveTo(event->globalPosition().toPoint() - pressPosition);
 			setGeometry(bounds);
 		}
 
@@ -956,6 +973,11 @@ bool OBSDock::onMouseMoved(QMouseEvent *event)
 			return false;
 		}
 #endif
+
+		qreal dragDistance = (event->pos() - pressPosition).manhattanLength();
+		if (dragDistance >= QApplication::startDragDistance())
+			// As noted above, do this to avoid the cursor getting stuck
+			updateCursor(nullptr);
 
 		QDockWidget::event(event);
 		if (mouseGrabber()) {
