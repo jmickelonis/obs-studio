@@ -14,7 +14,7 @@ static inline uint qt_intensity(uint r, uint g, uint b)
  * https://code.woboq.org/qt5/qtbase/src/widgets/styles/qcommonstyle.cpp.html#6429
  */
 QPixmap
-OBSContextBarProxyStyle::generatedIconPixmap(QIcon::Mode iconMode,
+OBSProxyStyle::generatedIconPixmap(QIcon::Mode iconMode,
 					     const QPixmap &pixmap,
 					     const QStyleOption *option) const
 {
