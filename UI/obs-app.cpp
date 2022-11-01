@@ -3028,6 +3028,10 @@ int main(int argc, char *argv[])
 #endif
 
 #ifdef _WIN32
+	// Uncomment to get a console window for cout and debugging purposes
+	// AllocConsole();
+	// freopen("CONOUT$", "w", stdout);
+
 	obs_init_win32_crash_handler();
 	SetErrorMode(SEM_FAILCRITICALERRORS);
 	load_debug_privilege();
