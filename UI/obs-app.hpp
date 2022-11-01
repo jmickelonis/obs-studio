@@ -34,6 +34,8 @@
 
 #include "window-main.hpp"
 
+#include <QSplashScreen>
+
 std::string CurrentTimeString();
 std::string CurrentDateTimeString();
 std::string GenerateTimeDateFilename(const char *extension,
@@ -117,10 +119,14 @@ private:
 
 	bool notify(QObject *receiver, QEvent *e) override;
 
+	QSplashScreen *splash = nullptr;
+
 public:
 	OBSApp(int &argc, char **argv, profiler_name_store_t *store);
 	~OBSApp();
 
+	void showSplash();
+	void hideSplash();
 	void AppInit();
 	bool OBSInit();
 
