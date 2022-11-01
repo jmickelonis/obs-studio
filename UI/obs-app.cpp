@@ -2266,6 +2266,19 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 #endif
 #endif
 
+#ifdef _WIN32
+	// Rather than use private APIs, enable dark mode with a command-line switch
+	std::vector<const char*> *newArgv = nullptr;
+	const char *darkMode = getenv("OBS_WINDOWS_DARKMODE");
+	if (darkMode ? QVariant(darkMode).toBool() : true) {
+		newArgv = new std::vector<const char*>(argv, argv + argc);
+		newArgv->push_back("-platform");
+		newArgv->push_back("windows:darkmode=1");
+		argc = (int) newArgv->size();
+		argv = (char **) newArgv->data();
+	}
+#endif
+
 	OBSApp program(argc, argv, profilerNameStore.get());
 	try {
 		QAccessible::installFactory(accessibleFactory);
@@ -2423,6 +2436,12 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 	if (restart)
 		QProcess::startDetached(qApp->arguments()[0],
 					qApp->arguments());
+
+#ifdef _WIN32
+	if (newArgv)
+		// Free the vector after enabling dark mode
+		delete newArgv;
+#endif
 
 	return ret;
 }
