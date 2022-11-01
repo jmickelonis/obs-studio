@@ -2263,6 +2263,12 @@ QAccessibleInterface *accessibleFactory(const QString &classname,
 	return nullptr;
 }
 
+static bool shouldForceFusionStyle()
+{
+	const char *value = getenv("OBS_FORCE_FUSION_STYLE");
+	return value ? QVariant(value).toBool() : true;
+}
+
 static const char *run_program_init = "run_program_init";
 static int run_program(fstream &logFile, int argc, char *argv[])
 {
@@ -2302,13 +2308,11 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 	}
 #endif
 
+	if (shouldForceFusionStyle())
+		// Use Fusion to improve cross-platform looks
+		setenv("QT_STYLE_OVERRIDE", "Fusion", false);
+
 #if !defined(_WIN32) && !defined(__APPLE__)
-	/* NOTE: The Breeze Qt style plugin adds frame arround QDockWidget with
-	 * QPainter which can not be modifed. To avoid this the base style is
-	 * enforce to the Qt default style on Linux: Fusion. */
-
-	setenv("QT_STYLE_OVERRIDE", "Fusion", false);
-
 #if defined(ENABLE_WAYLAND) && defined(USE_XDG)
 	/* NOTE: Qt doesn't use the Wayland platform on GNOME, so we have to
 	 * force it using the QT_QPA_PLATFORM env var. It's still possible to
