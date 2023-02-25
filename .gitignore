@@ -17,7 +17,6 @@
 /debug64/
 /builds/
 .vs/
-.vscode/
 *.o.d
 *.ninja
 .ninja*
