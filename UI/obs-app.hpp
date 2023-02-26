@@ -34,6 +34,8 @@
 
 #include "window-main.hpp"
 
+#include <QSplashScreen>
+
 std::string CurrentTimeString();
 std::string CurrentDateTimeString();
 std::string GenerateTimeDateFilename(const char *extension,
@@ -113,10 +115,13 @@ private:
 	bool InitGlobalConfigDefaults();
 	bool InitLocale();
 	bool InitTheme();
+	std::string GetThemeCSSPath(std::string id);
+	void PrepareThemeCSS(std::string id);
 
 	inline void ResetHotkeyState(bool inFocus);
 
 	QPalette defaultPalette;
+	QSplashScreen *splash = nullptr;
 
 	void ParseExtraThemeData(const char *path);
 	static OBSThemeMeta *ParseThemeMeta(const char *path);
@@ -129,6 +134,8 @@ public:
 	OBSApp(int &argc, char **argv, profiler_name_store_t *store);
 	~OBSApp();
 
+	void ShowSplash();
+	void HideSplash();
 	void AppInit();
 	bool OBSInit();
 
