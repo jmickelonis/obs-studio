@@ -576,23 +576,23 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 	ui->advOutFFVBitrate->setSuffix(" Kbps");
 	ui->advOutFFABitrate->setSuffix(" Kbps");
 
-#if !defined(_WIN32) && !defined(__APPLE__)
+// #if !defined(_WIN32) && !defined(__APPLE__)
 	delete ui->enableAutoUpdates;
 	ui->enableAutoUpdates = nullptr;
 	delete ui->updateChannelBox;
 	ui->updateChannelBox = nullptr;
 	delete ui->updateSettingsGroupBox;
 	ui->updateSettingsGroupBox = nullptr;
-#elif defined(__APPLE__)
-	delete ui->updateChannelBox;
-	ui->updateChannelBox = nullptr;
-	delete ui->updateChannelLabel;
-	ui->updateChannelLabel = nullptr;
-#else
-	// Hide update section if disabled
-	if (App()->IsUpdaterDisabled())
-		ui->updateSettingsGroupBox->hide();
-#endif
+// #elif defined(__APPLE__)
+// 	delete ui->updateChannelBox;
+// 	ui->updateChannelBox = nullptr;
+// 	delete ui->updateChannelLabel;
+// 	ui->updateChannelLabel = nullptr;
+// #else
+// 	// Hide update section if disabled
+// 	if (App()->IsUpdaterDisabled())
+// 		ui->updateSettingsGroupBox->hide();
+// #endif
 
 	// Remove the Advanced Audio section if monitoring is not supported, as the monitoring device selection is the only item in the group box.
 	if (!obs_audio_monitoring_available()) {
@@ -1281,15 +1281,15 @@ void OBSBasicSettings::LoadGeneralSettings()
 	LoadLanguageList();
 	LoadThemeList();
 
-#if defined(_WIN32) || defined(__APPLE__)
-	bool enableAutoUpdates = config_get_bool(GetGlobalConfig(), "General",
-						 "EnableAutoUpdates");
-	ui->enableAutoUpdates->setChecked(enableAutoUpdates);
+// #if defined(_WIN32) || defined(__APPLE__)
+// 	bool enableAutoUpdates = config_get_bool(GetGlobalConfig(), "General",
+// 						 "EnableAutoUpdates");
+// 	ui->enableAutoUpdates->setChecked(enableAutoUpdates);
 
-#ifdef _WIN32
-	LoadBranchesList();
-#endif
-#endif
+// #ifdef _WIN32
+// 	LoadBranchesList();
+// #endif
+// #endif
 	bool openStatsOnStartup = config_get_bool(main->Config(), "General",
 						  "OpenStatsOnStartup");
 	ui->openStatsOnStartup->setChecked(openStatsOnStartup);
@@ -3115,22 +3115,22 @@ void OBSBasicSettings::SaveGeneralSettings()
 				  QT_TO_UTF8(themeData));
 	}
 
-#if defined(_WIN32) || defined(__APPLE__)
-	if (WidgetChanged(ui->enableAutoUpdates))
-		config_set_bool(GetGlobalConfig(), "General",
-				"EnableAutoUpdates",
-				ui->enableAutoUpdates->isChecked());
-#endif
+// #if defined(_WIN32) || defined(__APPLE__)
+// 	if (WidgetChanged(ui->enableAutoUpdates))
+// 		config_set_bool(GetGlobalConfig(), "General",
+// 				"EnableAutoUpdates",
+// 				ui->enableAutoUpdates->isChecked());
+// #endif
 #ifdef _WIN32
-	int branchIdx = ui->updateChannelBox->currentIndex();
-	QString branchName =
-		ui->updateChannelBox->itemData(branchIdx).toString();
+	// int branchIdx = ui->updateChannelBox->currentIndex();
+	// QString branchName =
+	// 	ui->updateChannelBox->itemData(branchIdx).toString();
 
-	if (WidgetChanged(ui->updateChannelBox)) {
-		config_set_string(GetGlobalConfig(), "General", "UpdateBranch",
-				  QT_TO_UTF8(branchName));
-		forceUpdateCheck = true;
-	}
+	// if (WidgetChanged(ui->updateChannelBox)) {
+	// 	config_set_string(GetGlobalConfig(), "General", "UpdateBranch",
+	// 			  QT_TO_UTF8(branchName));
+	// 	forceUpdateCheck = true;
+	// }
 
 	if (ui->hideOBSFromCapture && WidgetChanged(ui->hideOBSFromCapture)) {
 		bool hide_window = ui->hideOBSFromCapture->isChecked();
