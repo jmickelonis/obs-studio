@@ -277,9 +277,9 @@ OBSBasic::OBSBasic(QWidget *parent)
 
 	ui->setupUi(this);
 	ui->previewDisabledWidget->setVisible(false);
-	QStyle *contextBarStyle = new OBSContextBarProxyStyle();
-	contextBarStyle->setParent(ui->contextContainer);
-	ui->contextContainer->setStyle(contextBarStyle);
+	// QStyle *contextBarStyle = new OBSContextBarProxyStyle();
+	// contextBarStyle->setParent(ui->contextContainer);
+	// ui->contextContainer->setStyle(contextBarStyle);
 	ui->broadcastButton->setVisible(false);
 
 	startingDockLayout = saveState();
@@ -2100,7 +2100,7 @@ void OBSBasic::OBSInit()
 
 #if defined(_WIN32) || defined(__APPLE__)
 	if (App()->IsUpdaterDisabled()) {
-		ui->actionCheckForUpdates->setEnabled(false);
+		ui->actionCheckForUpdates->setVisible(false);
 #if defined(_WIN32)
 		ui->actionRepair->setEnabled(false);
 #endif
@@ -8906,14 +8906,15 @@ void OBSBasic::UpdateTitleBar()
 	const char *sceneCollection = config_get_string(
 		App()->GlobalConfig(), "Basic", "SceneCollection");
 
-	name << "OBS ";
-	if (previewProgramMode)
-		name << "Studio ";
+	// name << "OBS ";
+	// if (previewProgramMode)
+	// 	name << "Studio ";
 
-	name << App()->GetVersionString();
-	if (App()->IsPortableMode())
-		name << " - Portable Mode";
+	// name << App()->GetVersionString();
+	// if (App()->IsPortableMode())
+	// 	name << " - Portable Mode";
 
+	name << "OBS Studio (jmick's Mod)";
 	name << " - " << Str("TitleBar.Profile") << ": " << profile;
 	name << " - " << Str("TitleBar.Scenes") << ": " << sceneCollection;
 
@@ -9815,9 +9816,43 @@ void OBSBasic::ResizeOutputSizeOfSource()
 	on_actionFitToScreen_triggered();
 }
 
+/* Returns (creates if necessary) the specified service dock sub-menu.
+ */
+static QMenu *getServiceDockMenu(
+	QMenu *parent,
+	const QString &objectName, const QString &title)
+{
+	QMenu *menu;
+
+	foreach (QAction *action, parent->actions()) {
+		menu = action->menu();
+		if (menu && menu->objectName() == objectName)
+			return menu;
+	}
+
+	menu = new QMenu(title);
+	menu->setObjectName(objectName);
+	parent->addMenu(menu);
+
+	// Hide the menu dynamically when it's empty
+	QObject::connect(parent, &QMenu::aboutToShow,
+		[menu]() {
+			menu->menuAction()->setVisible(!menu->isEmpty());
+		});
+
+	return menu;
+}
+
 QAction *OBSBasic::AddDockWidget(QDockWidget *dock)
 {
-	QAction *action = ui->menuDocks->addAction(dock->windowTitle());
+	QMenu *menu = ui->menuDocks;
+	QString dockName = dock->objectName();
+
+	if (dockName.startsWith("twitch") && !dockName.endsWith("_extraBrowser"))
+		// Put all Twitch docks into their own sub-menu
+		menu = getServiceDockMenu(menu, "twitchMenu", "Twitch");
+
+	QAction *action = menu->addAction(dock->windowTitle());
 	action->setProperty("uuid", dock->property("uuid").toString());
 	action->setCheckable(true);
 	assignDockToggle(dock, action);
