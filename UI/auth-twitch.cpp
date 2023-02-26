@@ -194,6 +194,54 @@ static const char *referrer_script1 = "\
 Object.defineProperty(document, 'referrer', {get : function() { return '";
 static const char *referrer_script2 = "'; }});";
 
+static const char *style_script = "\
+var _style = document.createElement('style');\
+function _updateCSS(css) {\
+	_style.innerText = css;\
+}\
+_updateCSS(obsstudio.getCSS('twitch'));\
+document.head.appendChild(_style);\
+obsstudio.onCSSChanged('twitch', _updateCSS);";
+
+
+/* Adds a Twitch dock and its associated menu action to the main window.
+ */
+BrowserDock *TwitchAuth::addDock(
+		const std::string &name,
+		const std::string &localeName,
+		const std::string &title,
+		const std::string &url,
+		const std::string &startupScript,
+		const DockOptions &dockOptions)
+{
+	BrowserDock *dock = new BrowserDock();
+	dock->setObjectName(QString::fromStdString(name));
+	dock->resize(dockOptions.width, dockOptions.height);
+	dock->setMinimumSize(dockOptions.minWidth, dockOptions.minHeight);
+	dock->setAllowedAreas(Qt::AllDockWidgetAreas);
+
+	QString windowTitle = QTStr(localeName.c_str());
+	if (!windowTitle.toStdString().compare(localeName))
+		windowTitle = QString::fromStdString(title);
+	dock->setWindowTitle(windowTitle);
+
+	QCefWidget *widget = cef->create_widget(dock, url, panel_cookies);
+	widget->setStartupScript(startupScript);
+	dock->SetWidget(widget);
+
+	OBSBasic *main = OBSBasic::Get();
+	main->addDockWidget(Qt::RightDockWidgetArea, dock);
+	QAction *action = main->AddDockWidget(dock);
+
+	dock->setFloating(true);
+	dock->setVisible(false);
+
+	docks.append(std::make_pair(
+		QSharedPointer<BrowserDock>(dock),
+		QSharedPointer<QAction>(action)));
+	return dock;
+}
+
 void TwitchAuth::LoadUI()
 {
 	if (!cef)
@@ -204,11 +252,6 @@ void TwitchAuth::LoadUI()
 		return;
 
 	OBSBasic::InitBrowserPanelSafeBlock();
-	OBSBasic *main = OBSBasic::Get();
-
-	QCefWidget *browser;
-	std::string url;
-	std::string script;
 
 	/* Twitch panels require a UUID, it does not actually need to be unique,
 	 * and is generated client-side.
@@ -226,23 +269,8 @@ void TwitchAuth::LoadUI()
 
 	/* ----------------------------------- */
 
-	url = "https://www.twitch.tv/popout/";
-	url += name;
-	url += "/chat";
-
-	QSize size = main->frameSize();
-	QPoint pos = main->pos();
-
-	chat.reset(new BrowserDock());
-	chat->setObjectName("twitchChat");
-	chat->resize(300, 600);
-	chat->setMinimumSize(200, 300);
-	chat->setWindowTitle(QTStr("Auth.Chat"));
-	chat->setAllowedAreas(Qt::AllDockWidgetAreas);
-
-	browser = cef->create_widget(chat.data(), url, panel_cookies);
-	chat->SetWidget(browser);
-	cef->add_force_popup_url(moderation_tools_url, chat.data());
+	OBSBasic *main = OBSBasic::Get();
+	std::string script;
 
 	if (App()->IsThemeDark()) {
 		script = "localStorage.setItem('twilight.theme', 1);";
@@ -259,14 +287,21 @@ void TwitchAuth::LoadUI()
 			script += ffz_script;
 	}
 
-	browser->setStartupScript(script);
+	script += style_script;
+	
+	BrowserDock *chat = addDock(
+		"twitchChat", "Twitch.Chat", "Chat",
+		"https://www.twitch.tv/popout/" + name + "/chat",
+		script,
+		{});
 
-	main->addDockWidget(Qt::RightDockWidgetArea, chat.data());
-	chatMenu.reset(main->AddDockWidget(chat.data()));
+	cef->add_force_popup_url(moderation_tools_url, chat);
 
 	/* ----------------------------------- */
 
-	chat->setFloating(true);
+	QSize size = main->frameSize();
+	QPoint pos = main->pos();
+
 	chat->move(pos.x() + size.width() - chat->width() - 50, pos.y() + 50);
 
 	if (firstLoad) {
@@ -290,8 +325,6 @@ void TwitchAuth::LoadSecondaryUIPanes()
 {
 	OBSBasic *main = OBSBasic::Get();
 
-	QCefWidget *browser;
-	std::string url;
 	std::string script;
 
 	QSize size = main->frameSize();
@@ -302,6 +335,8 @@ void TwitchAuth::LoadSecondaryUIPanes()
 	} else {
 		script = "localStorage.setItem('twilight.theme', 0);";
 	}
+
+	script += style_script;
 	script += referrer_script1;
 	script += "https://www.twitch.tv/";
 	script += name;
@@ -317,90 +352,163 @@ void TwitchAuth::LoadSecondaryUIPanes()
 			script += ffz_script;
 	}
 
-	/* ----------------------------------- */
+	struct DockConfig
+	{
+		const std::string &name;
+		const std::string &localeName;
+		const std::string &title;
+		const std::string &url;
+		const DockOptions &dockOptions;
+		bool visible;  // whether to show the dock on first load
+		bool center;  // whether to center the dock over the main window at first
+	};
+	DockConfig docks[] = {
+		{
+			"twitchActiveMods", "Twitch.ActiveMods", "Active Mods",
+			"https://dashboard.twitch.tv/popout/u/"
+				+ name
+				+ "/stream-manager/active-mods?uuid="
+				+ uuid,
+			{}
+		},
+		{
+			"twitchFeed", "Twitch.ActivityFeed", "Activity Feed",
+			"https://dashboard.twitch.tv/popout/u/"
+				+ name
+				+ "/stream-manager/activity-feed?uuid="
+				+ uuid,
+			{}
+		},
+		{
+			"twitchAdManager", "Twitch.AdManager", "Ad Manager",
+			"https://dashboard.twitch.tv/popout/u/"
+				+ name
+				+ "/stream-manager/streamer-ads-manager-panel?uuid="
+				+ uuid,
+			{}
+		},
+		{
+			"twitchAutoModQueue", "Twitch.AutoModQueue", "AutoMod Queue",
+			"https://dashboard.twitch.tv/popout/u/"
+				+ name
+				+ "/stream-manager/auto-mod-queue?uuid="
+				+ uuid,
+			{}
+		},
+		// {
+		// 	"twitchHostingYou", "Twitch.HostingYou", "Hosting You",
+		// 	"https://dashboard.twitch.tv/popout/u/"
+		// 		+ name
+		// 		+ "/stream-manager/hosting-you?uuid="
+		// 		+ uuid,
+		// 	{}
+		// },
+		{
+			"twitchModActions", "Twitch.ModActions", "Mod Actions",
+			"https://dashboard.twitch.tv/popout/u/"
+				+ name
+				+ "/stream-manager/moderation-actions?uuid="
+				+ uuid,
+			{}
+		},
+		{
+			"twitchPredictions", "Twitch.Predictions", "Predictions",
+			"https://dashboard.twitch.tv/popout/u/"
+				+ name
+				+ "/stream-manager/predictions?uuid="
+				+ uuid,
+			{}
+		},
+		{
+			"twitchRewardQueue", "Twitch.RewardQueue", "Reward Queue",
+			"https://dashboard.twitch.tv/popout/u/"
+				+ name
+				+ "/stream-manager/reward-queue?uuid="
+				+ uuid,
+			{}
+		},
+		{
+			"twitchStats", "Twitch.Stats", "Stats",
+			"https://www.twitch.tv/popout/"
+				+ name
+				+ "/dashboard/live/stats",
+			{200, 250},
+			false, true
+		},
+		{
+			"twitchStreamHealth", "Twitch.StreamHealth", "Stream Health",
+			"https://dashboard.twitch.tv/popout/u/"
+				+ name
+				+ "/stream-manager/stream-health?uuid="
+				+ uuid,
+			{}
+		},
+		{
+			"twitchInfo", "Twitch.StreamInfo", "Stream Info",
+			"https://dashboard.twitch.tv/popout/u/"
+				+ name
+				+ "/stream-manager/edit-stream-info",
+			{},
+			true
+		},
+		// {
+		// 	"twitchStreamPreview", "Twitch.StreamPreview", "Stream Preview",
+		// 	"https://dashboard.twitch.tv/popout/u/"
+		// 		+ name
+		// 		+ "/stream-manager/stream-preview?uuid="
+		// 		+ uuid,
+		// 	{}
+		// },
+		{
+			"twitchQuickActions", "Twitch.QuickActions", "Quick Actions",
+			"https://dashboard.twitch.tv/popout/u/"
+				+ name
+				+ "/stream-manager/quick-actions?uuid="
+				+ uuid,
+			{}
+		},
+		{
+			"twitchUnbanRequests", "Twitch.UnbanRequests", "Unban Requests",
+			"https://dashboard.twitch.tv/popout/u/"
+				+ name
+				+ "/stream-manager/unban-requests?uuid="
+				+ uuid,
+			{}
+		},
+	};
 
-	url = "https://dashboard.twitch.tv/popout/u/";
-	url += name;
-	url += "/stream-manager/edit-stream-info";
+	QHash<QString, BrowserDock*> dockMap;
+	unsigned int offset = 0;
 
-	info.reset(new BrowserDock());
-	info->setObjectName("twitchInfo");
-	info->resize(300, 650);
-	info->setMinimumSize(200, 300);
-	info->setWindowTitle(QTStr("Auth.StreamInfo"));
-	info->setAllowedAreas(Qt::AllDockWidgetAreas);
+	for (DockConfig config : docks) {
+		BrowserDock *dock = addDock(
+			config.name, config.localeName, config.title, config.url,
+			script, config.dockOptions);
+		dockMap[dock->objectName()] = dock;
 
-	browser = cef->create_widget(info.data(), url, panel_cookies);
-	info->SetWidget(browser);
-	browser->setStartupScript(script);
+		if (config.center) {
+			// Center the dock if specified...
+			QSize frameSize = dock->frameSize();
+			dock->move(
+				pos.x() + size.width() / 2 - frameSize.width() / 2,
+				pos.y() + size.height() / 2 - frameSize.height() / 2);
+		}
+		else {
+			// ... Otherwise, just stagger each dock
+			offset += 25;
+			dock->move(pos.x() + offset, pos.y() + offset);
+		}
 
-	main->addDockWidget(Qt::RightDockWidgetArea, info.data());
-	infoMenu.reset(main->AddDockWidget(info.data()));
+		if (firstLoad && config.visible)
+			dock->setVisible(true);
+	}
 
-	/* ----------------------------------- */
-
-	url = "https://www.twitch.tv/popout/";
-	url += name;
-	url += "/dashboard/live/stats";
-
-	stat.reset(new BrowserDock());
-	stat->setObjectName("twitchStats");
-	stat->resize(200, 250);
-	stat->setMinimumSize(200, 150);
-	stat->setWindowTitle(QTStr("TwitchAuth.Stats"));
-	stat->setAllowedAreas(Qt::AllDockWidgetAreas);
-
-	browser = cef->create_widget(stat.data(), url, panel_cookies);
-	stat->SetWidget(browser);
-	browser->setStartupScript(script);
-
-	main->addDockWidget(Qt::RightDockWidgetArea, stat.data());
-	statMenu.reset(main->AddDockWidget(stat.data()));
-
-	/* ----------------------------------- */
-
-	url = "https://dashboard.twitch.tv/popout/u/";
-	url += name;
-	url += "/stream-manager/activity-feed";
-	url += "?uuid=" + uuid;
-
-	feed.reset(new BrowserDock());
-	feed->setObjectName("twitchFeed");
-	feed->resize(300, 650);
-	feed->setMinimumSize(200, 300);
-	feed->setWindowTitle(QTStr("TwitchAuth.Feed"));
-	feed->setAllowedAreas(Qt::AllDockWidgetAreas);
-
-	browser = cef->create_widget(feed.data(), url, panel_cookies);
-	feed->SetWidget(browser);
-	browser->setStartupScript(script);
-
-	main->addDockWidget(Qt::RightDockWidgetArea, feed.data());
-	feedMenu.reset(main->AddDockWidget(feed.data()));
-
-	/* ----------------------------------- */
-
-	info->setFloating(true);
-	stat->setFloating(true);
-	feed->setFloating(true);
-
-	QSize statSize = stat->frameSize();
-
-	info->move(pos.x() + 50, pos.y() + 50);
-	stat->move(pos.x() + size.width() / 2 - statSize.width() / 2,
-		   pos.y() + size.height() / 2 - statSize.height() / 2);
-	feed->move(pos.x() + 100, pos.y() + 100);
-
-	if (firstLoad) {
-		info->setVisible(true);
-		stat->setVisible(false);
-		feed->setVisible(false);
-	} else {
+	if (!firstLoad) {
 		uint32_t lastVersion = config_get_int(App()->GlobalConfig(),
 						      "General", "LastVersion");
 
 		if (lastVersion <= MAKE_SEMANTIC_VERSION(23, 0, 2)) {
-			feed->setVisible(false);
+			dockMap["twitchFeed"]->setVisible(false);
 		}
 
 		const char *dockStateStr = config_get_string(
