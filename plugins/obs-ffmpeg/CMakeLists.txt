@@ -101,10 +101,12 @@ if(OS_WINDOWS)
             obs-nvenc-ver.h
             obs-ffmpeg.rc)
 elseif(OS_LINUX OR OS_FREEBSD)
+  add_subdirectory(obs-amf-test)
+
   find_package(Libva REQUIRED)
   find_package(Libpci REQUIRED)
 
-  target_sources(obs-ffmpeg PRIVATE obs-ffmpeg-vaapi.c vaapi-utils.c vaapi-utils.h)
+  target_sources(obs-ffmpeg PRIVATE obs-ffmpeg-vaapi.c vaapi-utils.c vaapi-utils.h texture-amf.cpp)
   target_link_libraries(obs-ffmpeg PRIVATE Libva::va Libva::drm Libpci::pci)
 endif()
 
