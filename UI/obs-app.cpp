@@ -2306,6 +2306,20 @@ QAccessibleInterface *accessibleFactory(const QString &classname,
 	return nullptr;
 }
 
+static bool shouldForceFusionStyle()
+{
+	const char *value = getenv("OBS_FORCE_FUSION_STYLE");
+	return value ? QVariant(value).toBool() : true;
+}
+
+#if _WIN32
+static bool useWindowsDarkMode()
+{
+	const char *value = getenv("OBS_WINDOWS_DARKMODE");
+	return value ? QVariant(darkMode).toBool() : true;
+}
+#endif
+
 static const char *run_program_init = "run_program_init";
 static int run_program(fstream &logFile, int argc, char *argv[])
 {
@@ -2345,13 +2359,14 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 	}
 #endif
 
-#if !defined(_WIN32) && !defined(__APPLE__)
 	/* NOTE: The Breeze Qt style plugin adds frame arround QDockWidget with
 	 * QPainter which can not be modifed. To avoid this the base style is
 	 * enforce to the Qt default style on Linux: Fusion. */
+	if (shouldForceFusionStyle())
+		// Use Fusion to improve cross-platform looks
+		setenv("QT_STYLE_OVERRIDE", "Fusion", false);
 
-	setenv("QT_STYLE_OVERRIDE", "Fusion", false);
-
+#if !defined(_WIN32) && !defined(__APPLE__)
 #if OBS_QT_VERSION == 6
 	/* NOTE: Users blindly set this, but this theme is incompatble with Qt6 and
 	 * crashes loading saved geometry. Just turn off this theme and let users complain OBS
@@ -2381,6 +2396,18 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 	 * and in the case of OBS it significantly slows down lists with many
 	 * elements (e.g. Hotkeys) and it is actually faster to disable it. */
 	qputenv("QT_NO_SUBTRACTOPAQUESIBLINGS", "1");
+
+#ifdef _WIN32
+	// Rather than use private APIs, enable dark mode with a command-line switch
+	std::vector<const char*> *newArgv = nullptr;
+	if (useWindowsDarkMode()) {
+		newArgv = new std::vector<const char*>(argv, argv + argc);
+		newArgv->push_back("-platform");
+		newArgv->push_back("windows:darkmode=1");
+		argc = (int) newArgv->size();
+		argv = (char **) newArgv->data();
+	}
+#endif
 
 	OBSApp program(argc, argv, profilerNameStore.get());
 	try {
