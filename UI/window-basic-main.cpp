@@ -10232,6 +10232,35 @@ void OBSBasic::ResizeOutputSizeOfSource()
 	on_actionFitToScreen_triggered();
 }
 
+#ifdef BROWSER_AVAILABLE
+/* Returns (creates if necessary) the specified service dock sub-menu.
+ */
+static QMenu *getServiceDockMenu(
+	QMenu *parent,
+	const QString &objectName, const QString &title)
+{
+	QMenu *menu;
+
+	foreach (QAction *action, parent->actions()) {
+		menu = action->menu();
+		if (menu && menu->objectName() == objectName)
+			return menu;
+	}
+
+	menu = new QMenu(title);
+	menu->setObjectName(objectName);
+	parent->addMenu(menu);
+
+	// Hide the menu dynamically when it's empty
+	QObject::connect(parent, &QMenu::aboutToShow,
+		[menu]() {
+			menu->menuAction()->setVisible(!menu->isEmpty());
+		});
+
+	return menu;
+}
+#endif
+
 QAction *OBSBasic::AddDockWidget(QDockWidget *dock)
 {
 	// Prevent the object name from being changed
@@ -10239,13 +10268,19 @@ QAction *OBSBasic::AddDockWidget(QDockWidget *dock)
 		&OBSBasic::RepairOldExtraDockName);
 
 #ifdef BROWSER_AVAILABLE
-	QAction *action = new QAction(dock->windowTitle(), ui->menuDocks);
+	QMenu *menu = ui->menuDocks;
+	QString dockName = dock->objectName();
+	if (dockName.startsWith("twitch") && !dockName.endsWith("_extraBrowser")) {
+		// Put all Twitch docks into their own sub-menu
+		menu = getServiceDockMenu(menu, "twitchMenu", "Twitch");
+	}
 
-	if (!extraBrowserMenuDocksSeparator.isNull())
-		ui->menuDocks->insertAction(extraBrowserMenuDocksSeparator,
-					    action);
+	QAction *action = new QAction(dock->windowTitle(), menu);
+
+	if (menu == ui->menuDocks && !extraBrowserMenuDocksSeparator.isNull())
+		menu->insertAction(extraBrowserMenuDocksSeparator, action);
 	else
-		ui->menuDocks->addAction(action);
+		menu->addAction(action);
 #else
 	QAction *action = ui->menuDocks->addAction(dock->windowTitle());
 #endif
