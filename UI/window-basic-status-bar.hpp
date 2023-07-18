@@ -21,6 +21,7 @@ private:
 	QLabel *cpuUsage;
 	QLabel *kbps;
 	QLabel *statusSquare;
+	QLabel *donate;
 
 	obs_output_t *streamOutput = nullptr;
 	obs_output_t *recordOutput = nullptr;
