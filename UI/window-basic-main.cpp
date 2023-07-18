@@ -312,9 +312,9 @@ OBSBasic::OBSBasic(QWidget *parent)
 
 	ui->setupUi(this);
 	ui->previewDisabledWidget->setVisible(false);
-	QStyle *contextBarStyle = new OBSContextBarProxyStyle();
-	contextBarStyle->setParent(ui->contextContainer);
-	ui->contextContainer->setStyle(contextBarStyle);
+	// QStyle *contextBarStyle = new OBSContextBarProxyStyle();
+	// contextBarStyle->setParent(ui->contextContainer);
+	// ui->contextContainer->setStyle(contextBarStyle);
 	ui->broadcastButton->setVisible(false);
 
 	startingDockLayout = saveState();
