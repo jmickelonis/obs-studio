@@ -9264,16 +9264,22 @@ void OBSBasic::UpdateTitleBar()
 	const char *sceneCollection = config_get_string(
 		App()->GlobalConfig(), "Basic", "SceneCollection");
 
-	name << "OBS ";
-	if (previewProgramMode)
-		name << "Studio ";
+	// name << "OBS ";
+	// if (previewProgramMode)
+	// 	name << "Studio ";
 
-	name << App()->GetVersionString(false);
-	if (App()->IsPortableMode())
-		name << " - " << Str("TitleBar.PortableMode");
+	// name << App()->GetVersionString(false);
+	// if (App()->IsPortableMode())
+	// 	name << " - " << Str("TitleBar.PortableMode");
 
-	name << " - " << Str("TitleBar.Profile") << ": " << profile;
-	name << " - " << Str("TitleBar.Scenes") << ": " << sceneCollection;
+	name << "OBS Studio (jmick's Mod)";
+
+	// Only show Profile/Scenes names if they're non-default
+	const char *untitled = Str("Untitled");
+	if (strcmp(profile, untitled))
+		name << " - " << Str("TitleBar.Profile") << ": " << profile;
+	if (strcmp(sceneCollection, untitled))
+		name << " - " << Str("TitleBar.Scenes") << ": " << sceneCollection;
 
 	setWindowTitle(QT_UTF8(name.str().c_str()));
 }
