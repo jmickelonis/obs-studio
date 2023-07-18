@@ -96,4 +96,6 @@ public:
 	void RecordingUnpaused();
 
 	void ReconnectClear();
+
+	virtual bool event(QEvent *) override;
 };

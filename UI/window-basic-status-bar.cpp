@@ -104,6 +104,25 @@ OBSBasicStatusBar::OBSBasicStatusBar(QWidget *parent)
 	statusSquare->setPixmap(transparentPixmap);
 }
 
+bool OBSBasicStatusBar::event(QEvent *event)
+{
+	switch (event->type()) {
+	case QEvent::StyleChange:
+		{
+			// HTML links don't get their style updated automatically.
+			// Clear and re-set it to force an update.
+			QString text = donate->text();
+			donate->setText("");
+			donate->setText(text);
+		}
+		break;
+	default:
+		break;
+	}
+
+	return QStatusBar::event(event);
+}
+
 void OBSBasicStatusBar::Activate()
 {
 	if (!active) {
