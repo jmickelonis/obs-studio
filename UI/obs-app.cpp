@@ -2587,6 +2587,12 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 		QProcess::startDetached(qApp->arguments()[0],
 					qApp->arguments());
 
+#ifdef _WIN32
+	if (newArgv)
+		// Free the vector after enabling dark mode
+		delete newArgv;
+#endif
+
 	return ret;
 }
 
