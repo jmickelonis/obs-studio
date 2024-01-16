@@ -117,6 +117,8 @@ private:
 	bool InitGlobalConfigDefaults();
 	bool InitLocale();
 	bool InitTheme();
+	std::string GetThemeCSSPath(std::string id);
+	void PrepareThemeCSS(std::string id);
 
 	inline void ResetHotkeyState(bool inFocus);
 
