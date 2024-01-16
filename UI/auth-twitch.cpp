@@ -212,6 +212,16 @@ static const char *referrer_script1 = "\
 Object.defineProperty(document, 'referrer', {get : function() { return '";
 static const char *referrer_script2 = "'; }});";
 
+static const char *style_script = R"(
+var _style = document.createElement('style');
+function _updateCSS(css) {
+	_style.innerText = css;
+}
+_updateCSS(obsstudio.getCSS('twitch'));
+document.head.appendChild(_style);
+obsstudio.onCSSChanged('twitch', _updateCSS);
+)";
+
 void TwitchAuth::LoadUI()
 {
 	if (!cef)
@@ -267,6 +277,7 @@ void TwitchAuth::LoadUI()
 	} else {
 		script = "localStorage.setItem('twilight.theme', 0);";
 	}
+	script += style_script;
 
 	const int twAddonChoice =
 		config_get_int(main->Config(), service(), "AddonChoice");
@@ -319,6 +330,7 @@ void TwitchAuth::LoadSecondaryUIPanes()
 	} else {
 		script = "localStorage.setItem('twilight.theme', 0);";
 	}
+	script += style_script;
 	script += referrer_script1;
 	script += "https://www.twitch.tv/";
 	script += name;
