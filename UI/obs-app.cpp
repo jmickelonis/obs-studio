@@ -1758,9 +1758,11 @@ bool OBSApp::OBSInit()
 		native->nativeResourceForIntegration("display"));
 #endif
 
-#ifdef __APPLE__
+	// Don't create native siblings on all platforms now.
+	// This fixes multiple issues on Linux, such as browser docks popping back out,
+	// and not being able to click things on app load.
+	// Also seems decidedly smoother on Windows.
 	setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
-#endif
 
 	if (!StartupOBS(locale.c_str(), GetProfilerNameStore()))
 		return false;
