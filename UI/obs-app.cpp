@@ -2391,6 +2391,14 @@ static bool shouldForceFusionStyle()
 	return value ? QVariant(value).toBool() : true;
 }
 
+#if _WIN32
+static bool useWindowsDarkMode()
+{
+	const char *value = getenv("OBS_WINDOWS_DARK_MODE");
+	return value ? QVariant(darkMode).toBool() : true;
+}
+#endif
+
 static const char *run_program_init = "run_program_init";
 static int run_program(fstream &logFile, int argc, char *argv[])
 {
@@ -2458,6 +2466,18 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 	 * and in the case of OBS it significantly slows down lists with many
 	 * elements (e.g. Hotkeys) and it is actually faster to disable it. */
 	qputenv("QT_NO_SUBTRACTOPAQUESIBLINGS", "1");
+
+#ifdef _WIN32
+	// Rather than use private APIs, enable dark mode with a command-line switch
+	std::vector<const char *> *newArgv = nullptr;
+	if (useWindowsDarkMode()) {
+		newArgv = new std::vector<const char *>(argv, argv + argc);
+		newArgv->push_back("-platform");
+		newArgv->push_back("windows:darkmode=1");
+		argc = (int)newArgv->size();
+		argv = (char **)newArgv->data();
+	}
+#endif
 
 	OBSApp program(argc, argv, profilerNameStore.get());
 	try {
@@ -2674,6 +2694,12 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 			arguments.removeAll("--safe-mode");
 		}
 	}
+
+#ifdef _WIN32
+	if (newArgv)
+		// Free the vector after enabling dark mode
+		delete newArgv;
+#endif
 
 	return ret;
 }
