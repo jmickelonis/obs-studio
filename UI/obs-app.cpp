@@ -1664,7 +1664,8 @@ void OBSApp::AppInit()
 		throw "Failed to create required user directories";
 	if (!InitGlobalConfig())
 		throw "Failed to initialize global config";
-	ShowSplash();
+	if (!unclean_shutdown || safe_mode)
+		ShowSplash();
 	if (!InitLocale())
 		throw "Failed to load locale";
 	if (!InitTheme())
@@ -2643,6 +2644,7 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 			mb.exec();
 
 			safe_mode = mb.clickedButton() == launchSafeButton;
+			program.ShowSplash();
 			if (safe_mode) {
 				blog(LOG_INFO,
 				     "[Safe Mode] User has launched in Safe Mode.");
