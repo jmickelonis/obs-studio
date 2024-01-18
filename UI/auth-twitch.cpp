@@ -431,6 +431,11 @@ void TwitchAuth::LoadSecondaryUIPanes()
 		 "https://dashboard.twitch.tv/popout/u/" + name +
 			 "/stream-manager/unban-requests?uuid=" + uuid,
 		 {}},
+		{"twitchWhispers",
+		 "Twitch.Whispers",
+		 "Whispers",
+		 "https://www.twitch.tv/popout/moderator/" + name + "/whispers?id=8",
+		 {}},
 	};
 
 	QHash<QString, BrowserDock *> dockMap;
