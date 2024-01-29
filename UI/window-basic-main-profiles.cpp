@@ -344,7 +344,9 @@ bool OBSBasic::CreateProfile(const std::string &newName, bool create_new,
 	UpdateTitleBar();
 	UpdateVolumeControlsDecayRate();
 
-	Auth::Load();
+	if (create_new)
+		// Don't load the auth if we're renaming or duplicating.
+		Auth::Load();
 
 	// Run auto configuration setup wizard when a new profile is made to assist
 	// setting up blank settings
