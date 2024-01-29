@@ -98,8 +98,8 @@ try {
 	device_props.pNext = &driver_props;
 	vkGetPhysicalDeviceProperties2(devices[0], &device_props);
 
-	if (strcmp(driver_props.driverName, "AMD proprietary driver"))
-		throw "Not running AMD proprietary driver";
+	// if (strcmp(driver_props.driverName, "AMD proprietary driver"))
+	// 	throw "Not running AMD proprietary driver";
 
 	vkDestroyInstance(instance, nullptr);
 
