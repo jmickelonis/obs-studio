@@ -254,7 +254,7 @@ static void set_amf_property(amf_base *enc, const wchar_t *name, const T &value)
 		 : AMF_VIDEO_ENCODER_AV1_##name)
 #define get_opt_name_enum(name)                                              \
 	((enc->codec == amf_codec_type::AVC) ? (int)AMF_VIDEO_ENCODER_##name \
-	 : (enc->codec == amf_codec_type::HEVC)                         \
+	 : (enc->codec == amf_codec_type::HEVC)                              \
 		 ? (int)AMF_VIDEO_ENCODER_HEVC_##name                        \
 		 : (int)AMF_VIDEO_ENCODER_AV1_##name)
 #define set_opt(name, value) set_amf_property(enc, get_opt_name(name), value)
@@ -262,8 +262,9 @@ static void set_amf_property(amf_base *enc, const wchar_t *name, const T &value)
 #define set_avc_opt(name, value) set_avc_property(enc, name, value)
 #define set_hevc_opt(name, value) set_hevc_property(enc, name, value)
 #define set_av1_opt(name, value) set_av1_property(enc, name, value)
-#define set_enum_opt(name, value) \
-	set_amf_property(enc, get_opt_name(name), get_opt_name_enum(name##_##value))
+#define set_enum_opt(name, value)                 \
+	set_amf_property(enc, get_opt_name(name), \
+			 get_opt_name_enum(name##_##value))
 #define set_avc_enum(name, value) \
 	set_avc_property(enc, name, AMF_VIDEO_ENCODER_##name##_##value)
 #define set_hevc_enum(name, value) \
@@ -474,9 +475,17 @@ static inline void refresh_throughput_caps(amf_base *enc, const char *&preset)
 	}
 }
 
+static bool should_check_max_throughput()
+{
+	const char *value = getenv("OBS_AMF_CHECK_MAX_THROUGHPUT");
+	return value;
+}
+
 static inline void check_preset_compatibility(amf_base *enc,
 					      const char *&preset)
 {
+	if (!should_check_max_throughput())
+		return;
 	/* The throughput depends on the current preset and the other static
 	 * encoder properties. If the throughput is lower than the max
 	 * throughput, switch to a lower preset. */
