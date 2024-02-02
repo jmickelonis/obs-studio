@@ -1789,6 +1789,10 @@ bool OBSApp::OBSInit()
 {
 	ProfileScope("OBSApp::OBSInit");
 
+	// Make the pixel ratio available to sub-processes
+	qreal pixelRatio = QGuiApplication::primaryScreen()->devicePixelRatio();
+	qputenv("OBS_PRIMARY_PIXEL_RATIO", QVariant(pixelRatio).toByteArray());
+
 	qRegisterMetaType<VoidFunc>("VoidFunc");
 
 #if !defined(_WIN32) && !defined(__APPLE__)
