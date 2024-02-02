@@ -51,6 +51,19 @@
 #define info(format, ...) do_log(LOG_INFO, format, ##__VA_ARGS__)
 #define debug(format, ...) do_log(LOG_DEBUG, format, ##__VA_ARGS__)
 
+typedef struct {
+	union {
+		unsigned int quality;
+		struct {
+			unsigned int valid_setting : 1;
+			unsigned int preset_mode : 2;
+			unsigned int pre_encode_mode : 1;
+			unsigned int vbaq_mode : 1;
+			unsigned int reservered : 27;
+		};
+	};
+} vlVaQualityBits;
+
 struct vaapi_encoder {
 	obs_encoder_t *encoder;
 
@@ -76,6 +89,19 @@ struct vaapi_encoder {
 	bool first_packet;
 	bool initialized;
 };
+
+static int vaapi_profile(int ff_profile)
+{
+	switch (ff_profile) {
+	case FF_PROFILE_H264_CONSTRAINED_BASELINE:
+		return VAProfileH264ConstrainedBaseline;
+	case FF_PROFILE_H264_MAIN:
+		return VAProfileH264Main;
+	case FF_PROFILE_H264_HIGH:
+		return VAProfileH264High;
+	}
+	return VAProfileNone;
+}
 
 static const char *h264_vaapi_getname(void *unused)
 {
@@ -257,6 +283,7 @@ static bool vaapi_update(void *data, obs_data_t *settings, bool hevc)
 			      ? (int)obs_data_get_int(settings, "maxrate")
 			      : 0;
 	int keyint_sec = (int)obs_data_get_int(settings, "keyint_sec");
+	const char *preset = hevc ? 0 : obs_data_get_string(settings, "preset");
 
 	/* For Rate Control which allows maxrate, FFMPEG will give
 	 * an error if maxrate > bitrate. To prevent that set maxrate
@@ -356,6 +383,29 @@ static bool vaapi_update(void *data, obs_data_t *settings, bool hevc)
 	}
 
 	enc->height = enc->context->height;
+
+	if (!hevc) {
+		int drm_fd = -1;
+		VADisplay va_dpy =
+			vaapi_open_device(&drm_fd, device, "vaapi_update");
+		if (va_dpy && vaapi_quality_preset_supported(
+				      vaapi_profile(profile), va_dpy)) {
+			vlVaQualityBits q = {.valid_setting = 1,
+					     .pre_encode_mode = 1,
+					     .vbaq_mode = 0};
+			if (strcmp(preset, "speed") == 0) {
+				q.preset_mode = 0;
+			} else if (strcmp(preset, "balanced") == 0) {
+				q.preset_mode = 1;
+			} else {
+				q.preset_mode = 2;
+			}
+			enc->context->compression_level = q.quality;
+		}
+
+		if (va_dpy)
+			vaapi_close_device(&drm_fd, va_dpy);
+	}
 
 	const char *ffmpeg_opts = obs_data_get_string(settings, "ffmpeg_opts");
 	struct obs_options opts = obs_parse_options(ffmpeg_opts);
@@ -664,6 +714,8 @@ static void vaapi_defaults_internal(obs_data_t *settings, bool hevc)
 	obs_data_set_default_int(settings, "rendermode", 0);
 	obs_data_set_default_int(settings, "qp", 20);
 	obs_data_set_default_int(settings, "maxrate", 0);
+	if (!hevc)
+		obs_data_set_default_string(settings, "preset", "quality");
 
 	int drm_fd = -1;
 	VADisplay va_dpy = vaapi_open_device(&drm_fd, device, "vaapi_defaults");
@@ -753,6 +805,9 @@ static bool vaapi_device_modified(obs_properties_t *ppts, obs_property_t *p,
 		obs_property_list_add_string(rc_p, "CQP", "CQP");
 
 	set_visible(ppts, "bf", vaapi_device_bframe_supported(profile, va_dpy));
+
+	set_visible(ppts, "preset",
+		    vaapi_quality_preset_supported(profile, va_dpy));
 
 fail:
 	vaapi_close_device(&drm_fd, va_dpy);
@@ -946,6 +1001,20 @@ static obs_properties_t *vaapi_properties_internal(bool hevc)
 
 	obs_properties_add_int(props, "bf", obs_module_text("BFrames"), 0, 4,
 			       1);
+
+	if (!hevc) {
+		p = obs_properties_add_list(props, "preset",
+					    obs_module_text("Preset"),
+					    OBS_COMBO_TYPE_LIST,
+					    OBS_COMBO_FORMAT_STRING);
+
+#define add_preset(val) \
+	obs_property_list_add_string(p, obs_module_text("AMF.Preset." val), val)
+		add_preset("quality");
+		add_preset("balanced");
+		add_preset("speed");
+#undef add_preset
+	}
 
 	obs_properties_add_text(props, "ffmpeg_opts",
 				obs_module_text("FFmpegOpts"),
