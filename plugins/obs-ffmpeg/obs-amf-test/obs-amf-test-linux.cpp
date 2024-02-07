@@ -100,6 +100,7 @@ try {
 
 	// if (strcmp(driver_props.driverName, "AMD proprietary driver"))
 	// 	throw "Not running AMD proprietary driver";
+	putenv("AMD_VULKAN_ICD=AMDVLK-PRO");
 
 	vkDestroyInstance(instance, nullptr);
 
