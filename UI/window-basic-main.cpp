@@ -332,9 +332,9 @@ OBSBasic::OBSBasic(QWidget *parent)
 
 	ui->setupUi(this);
 	ui->previewDisabledWidget->setVisible(false);
-	QStyle *contextBarStyle = new OBSContextBarProxyStyle();
-	contextBarStyle->setParent(ui->contextContainer);
-	ui->contextContainer->setStyle(contextBarStyle);
+	// QStyle *contextBarStyle = new OBSContextBarProxyStyle();
+	// contextBarStyle->setParent(ui->contextContainer);
+	// ui->contextContainer->setStyle(contextBarStyle);
 	ui->broadcastButton->setVisible(false);
 
 	startingDockLayout = saveState();
@@ -9472,18 +9472,25 @@ void OBSBasic::UpdateTitleBar()
 	const char *sceneCollection = config_get_string(
 		App()->GlobalConfig(), "Basic", "SceneCollection");
 
-	name << "OBS ";
-	if (previewProgramMode)
-		name << "Studio ";
+	// name << "OBS ";
+	// if (previewProgramMode)
+	// 	name << "Studio ";
+	name << "OBS Studio (jmick's Mod)";
 
-	name << App()->GetVersionString(false);
+	// name << App()->GetVersionString(false);
+	// if (App()->IsPortableMode())
+	// 	name << " - " << Str("TitleBar.PortableMode");
+
+	// Only show Profile/Scenes names if they're non-default
+	const char *untitled = Str("Untitled");
+	if (strcmp(profile, untitled))
+		name << " • " << Str("TitleBar.Profile") << ": " << profile;
+	if (strcmp(sceneCollection, untitled))
+		name << " • " << Str("TitleBar.Scenes") << ": "
+		     << sceneCollection;
+
 	if (safe_mode)
-		name << " (" << Str("TitleBar.SafeMode") << ")";
-	if (App()->IsPortableMode())
-		name << " - " << Str("TitleBar.PortableMode");
-
-	name << " - " << Str("TitleBar.Profile") << ": " << profile;
-	name << " - " << Str("TitleBar.Scenes") << ": " << sceneCollection;
+		name << " • " << Str("TitleBar.SafeMode") << ")";
 
 	setWindowTitle(QT_UTF8(name.str().c_str()));
 }
@@ -10444,6 +10451,34 @@ void OBSBasic::ResizeOutputSizeOfSource()
 	on_actionFitToScreen_triggered();
 }
 
+#ifdef BROWSER_AVAILABLE
+/* Returns (creates if necessary) the specified service dock sub-menu.
+ */
+static QMenu *getServiceDockMenu(QMenu *parent, const QString &objectName,
+				 const QString &title)
+{
+	QMenu *menu;
+
+	foreach(QAction * action, parent->actions())
+	{
+		menu = action->menu();
+		if (menu && menu->objectName() == objectName)
+			return menu;
+	}
+
+	menu = new QMenu(title);
+	menu->setObjectName(objectName);
+	parent->addMenu(menu);
+
+	// Hide the menu dynamically when it's empty
+	QObject::connect(parent, &QMenu::aboutToShow, [menu]() {
+		menu->menuAction()->setVisible(!menu->isEmpty());
+	});
+
+	return menu;
+}
+#endif
+
 QAction *OBSBasic::AddDockWidget(QDockWidget *dock)
 {
 	// Prevent the object name from being changed
@@ -10451,13 +10486,20 @@ QAction *OBSBasic::AddDockWidget(QDockWidget *dock)
 		&OBSBasic::RepairOldExtraDockName);
 
 #ifdef BROWSER_AVAILABLE
-	QAction *action = new QAction(dock->windowTitle(), ui->menuDocks);
+	QMenu *menu = ui->menuDocks;
+	QString dockName = dock->objectName();
+	if (dockName.startsWith("twitch") &&
+	    !dockName.endsWith("_extraBrowser")) {
+		// Put all Twitch docks into their own sub-menu
+		menu = getServiceDockMenu(menu, "twitchMenu", "Twitch");
+	}
 
-	if (!extraBrowserMenuDocksSeparator.isNull())
-		ui->menuDocks->insertAction(extraBrowserMenuDocksSeparator,
-					    action);
+	QAction *action = new QAction(dock->windowTitle(), menu);
+
+	if (menu == ui->menuDocks && !extraBrowserMenuDocksSeparator.isNull())
+		menu->insertAction(extraBrowserMenuDocksSeparator, action);
 	else
-		ui->menuDocks->addAction(action);
+		menu->addAction(action);
 #else
 	QAction *action = ui->menuDocks->addAction(dock->windowTitle());
 #endif

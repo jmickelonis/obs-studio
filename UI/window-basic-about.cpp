@@ -50,6 +50,17 @@ OBSAbout::OBSAbout(QWidget *parent) : QDialog(parent), ui(new Ui::OBSAbout)
 	ui->getInvolved->setTextInteractionFlags(Qt::TextBrowserInteraction);
 	ui->getInvolved->setOpenExternalLinks(true);
 
+	ui->info->setVisible(false);
+	ui->contribute->setVisible(false);
+	ui->getInvolved->setVisible(false);
+
+	ui->donate->setText(
+		"All modifications to stock © 2023-2024 John Mickelonis."
+		"<br>Donations are much appreciated and can be sent using "
+		"<a href='https://paypal.me/jmickelonis'>PayPal</a>."
+		"<br>Source code can be found at "
+		"<a href='https://github.com/jmickelonis/obs-studio'>GitHub</a>.");
+
 	ui->about->setText("<a href='#'>" + QTStr("About") + "</a>");
 	ui->authors->setText("<a href='#'>" + QTStr("About.Authors") + "</a>");
 	ui->license->setText("<a href='#'>" + QTStr("About.License") + "</a>");
@@ -78,11 +89,11 @@ OBSAbout::OBSAbout(QWidget *parent) : QDialog(parent), ui(new Ui::OBSAbout)
 		QObject::connect(thread, &RemoteTextThread::Result, main,
 				 &OBSBasic::UpdatePatronJson);
 		QObject::connect(thread, &RemoteTextThread::Result, this,
-				 &OBSAbout::ShowAbout);
+				 &OBSAbout::ShowLicense);
 		main->patronJsonThread.reset(thread);
 		thread->start();
 	} else {
-		ShowAbout();
+		ShowLicense();
 	}
 }
 

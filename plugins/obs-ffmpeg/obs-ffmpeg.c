@@ -447,7 +447,7 @@ void obs_module_unload(void)
 	amf_unload();
 #endif
 
-#ifdef _WIN32	
+#ifdef _WIN32
 	obs_nvenc_unload();
 #endif
 }

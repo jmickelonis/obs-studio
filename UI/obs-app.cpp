@@ -103,7 +103,7 @@ bool opt_start_virtualcam = false;
 bool opt_minimize_tray = false;
 bool opt_allow_opengl = false;
 bool opt_always_on_top = false;
-bool opt_disable_updater = false;
+bool opt_disable_updater = true;
 bool opt_disable_missing_files_check = false;
 string opt_starting_collection;
 string opt_starting_profile;
@@ -1226,6 +1226,61 @@ std::string OBSApp::SetParentTheme(std::string name)
 	return path;
 }
 
+/* Returns the path to the specified CSS file for the current theme.
+ * If a file does not exist, an empty string is returned.
+ *
+ * As an example, for the Dark theme,
+ * CSS for twitch would be found in "themes/Dark/twitch.css"
+ * in either the user config or data directory (user config takes precedence).
+ *
+ * Also allows for a default CSS file to exist for themes that don't provide one.
+ */
+std::string OBSApp::GetThemeCSSPath(std::string id)
+{
+	// Try the theme-specific, then the default
+	std::string relpaths[] = {"themes/" + theme + "/" + id + ".css",
+				  "themes/" + id + ".css"};
+
+	for (std::string relpath : relpaths) {
+		char cpath[512];
+		int res = GetConfigPath(cpath, sizeof(cpath),
+					("obs-studio/" + relpath).c_str());
+		if (res > 0 && os_file_exists(cpath))
+			// Found in user config
+			return std::string(cpath, res);
+
+		std::string path;
+		if (GetDataFilePath(relpath.c_str(), path) &&
+		    os_file_exists(path.c_str()))
+			return path;
+	}
+
+	return "";
+}
+
+/* "Prepares" the specified theme CSS file for use by a service's browser docks.
+ * The file is copied to a central location (currently <CONFIG_DIR>/obs-studio/.<ID>.css).
+ */
+void OBSApp::PrepareThemeCSS(std::string id)
+{
+	char cpath[512];
+	int res = GetConfigPath(cpath, sizeof(cpath),
+				("obs-studio/." + id + ".css").c_str());
+	if (res <= 0)
+		// Shouldn't happen.
+		return;
+
+	std::string path = GetThemeCSSPath(id);
+	if (path != "")
+		// Copy the existing file
+		std::filesystem::copy_file(
+			path, cpath,
+			std::filesystem::copy_options::overwrite_existing);
+	else
+		// Remove the target (all docks should just use their default styles)
+		std::filesystem::remove(cpath);
+}
+
 bool OBSApp::SetTheme(std::string name, std::string path)
 {
 	theme = name;
@@ -1264,6 +1319,7 @@ bool OBSApp::SetTheme(std::string name, std::string path)
 	SetMacOSDarkMode(themeDarkMode);
 #endif
 
+	PrepareThemeCSS("twitch");
 	emit StyleChanged();
 	return true;
 }
@@ -1552,6 +1608,57 @@ static void move_basic_to_scene_collections(void)
 	os_rename(path, new_path);
 }
 
+static bool shouldShowSplash()
+{
+	const char *value = getenv("OBS_SHOW_SPLASH");
+	return value ? QVariant(value).toBool() : true;
+}
+
+void OBSApp::ShowSplash()
+{
+	if (splash || !shouldShowSplash())
+		return;
+
+	std::string path;
+	GetDataFilePath("images/splash.png", path);
+
+	QPixmap pixmap(path.c_str());
+	splash = new QSplashScreen(pixmap, Qt::X11BypassWindowManagerHint |
+						   Qt::WindowStaysOnTopHint);
+
+	const char *geometry =
+		config_get_string(GlobalConfig(), "BasicWindow", "geometry");
+	if (geometry != NULL) {
+		QByteArray byteArray =
+			QByteArray::fromBase64(QByteArray(geometry));
+		QWidget widget;
+		widget.restoreGeometry(byteArray);
+
+		QRect bounds = widget.normalGeometry();
+		for (QScreen *screen : QGuiApplication::screens()) {
+			if (screen->availableGeometry().intersects(bounds)) {
+				splash->move(bounds.center() -
+					     splash->rect().center());
+				break;
+			}
+		}
+	}
+
+	splash->show();
+	processEvents();
+
+	QTimer::singleShot(2000, this, &OBSApp::HideSplash);
+}
+
+void OBSApp::HideSplash()
+{
+	if (!splash)
+		return;
+	splash->close();
+	delete splash;
+	splash = nullptr;
+}
+
 void OBSApp::AppInit()
 {
 	ProfileScope("OBSApp::AppInit");
@@ -1560,6 +1667,8 @@ void OBSApp::AppInit()
 		throw "Failed to create required user directories";
 	if (!InitGlobalConfig())
 		throw "Failed to initialize global config";
+	if (!unclean_shutdown || safe_mode)
+		ShowSplash();
 	if (!InitLocale())
 		throw "Failed to load locale";
 	if (!InitTheme())
@@ -1683,6 +1792,10 @@ bool OBSApp::OBSInit()
 {
 	ProfileScope("OBSApp::OBSInit");
 
+	// Make the pixel ratio available to sub-processes
+	qreal pixelRatio = QGuiApplication::primaryScreen()->devicePixelRatio();
+	qputenv("OBS_PRIMARY_PIXEL_RATIO", QVariant(pixelRatio).toByteArray());
+
 	qRegisterMetaType<VoidFunc>("VoidFunc");
 
 #if !defined(_WIN32) && !defined(__APPLE__)
@@ -1705,9 +1818,11 @@ bool OBSApp::OBSInit()
 		native->nativeResourceForIntegration("display"));
 #endif
 
-#ifdef __APPLE__
+	// Don't create native siblings on all platforms now.
+	// This fixes multiple issues on Linux, such as browser docks popping back out,
+	// and not being able to click things on app load.
+	// Also seems decidedly smoother on Windows.
 	setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
-#endif
 
 	if (!StartupOBS(locale.c_str(), GetProfilerNameStore()))
 		return false;
@@ -2330,6 +2445,20 @@ QAccessibleInterface *accessibleFactory(const QString &classname,
 	return nullptr;
 }
 
+static bool shouldForceFusionStyle()
+{
+	const char *value = getenv("OBS_FORCE_FUSION_STYLE");
+	return value ? QVariant(value).toBool() : true;
+}
+
+#if _WIN32
+static bool useWindowsDarkMode()
+{
+	const char *value = getenv("OBS_WINDOWS_DARK_MODE");
+	return value ? QVariant(darkMode).toBool() : true;
+}
+#endif
+
 static const char *run_program_init = "run_program_init";
 static int run_program(fstream &logFile, int argc, char *argv[])
 {
@@ -2363,13 +2492,13 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 	}
 #endif
 
-#if !defined(_WIN32) && !defined(__APPLE__)
 	/* NOTE: The Breeze Qt style plugin adds frame arround QDockWidget with
 	 * QPainter which can not be modifed. To avoid this the base style is
 	 * enforce to the Qt default style on Linux: Fusion. */
+	if (shouldForceFusionStyle())
+		setenv("QT_STYLE_OVERRIDE", "Fusion", false);
 
-	setenv("QT_STYLE_OVERRIDE", "Fusion", false);
-
+#if !defined(_WIN32) && !defined(__APPLE__)
 	/* NOTE: Users blindly set this, but this theme is incompatble with Qt6 and
 	 * crashes loading saved geometry. Just turn off this theme and let users complain OBS
 	 * looks ugly instead of crashing. */
@@ -2397,6 +2526,18 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 	 * and in the case of OBS it significantly slows down lists with many
 	 * elements (e.g. Hotkeys) and it is actually faster to disable it. */
 	qputenv("QT_NO_SUBTRACTOPAQUESIBLINGS", "1");
+
+#ifdef _WIN32
+	// Rather than use private APIs, enable dark mode with a command-line switch
+	std::vector<const char *> *newArgv = nullptr;
+	if (useWindowsDarkMode()) {
+		newArgv = new std::vector<const char *>(argv, argv + argc);
+		newArgv->push_back("-platform");
+		newArgv->push_back("windows:darkmode=1");
+		argc = (int)newArgv->size();
+		argv = (char **)newArgv->data();
+	}
+#endif
 
 	OBSApp program(argc, argv, profilerNameStore.get());
 	try {
@@ -2431,6 +2572,8 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 		}
 
 		if (!multi) {
+			program.HideSplash();
+
 			QMessageBox mb(QMessageBox::Question,
 				       QTStr("AlreadyRunning.Title"),
 				       QTStr("AlreadyRunning.Text"));
@@ -2508,6 +2651,7 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 			mb.exec();
 
 			safe_mode = mb.clickedButton() == launchSafeButton;
+			program.ShowSplash();
 			if (safe_mode) {
 				blog(LOG_INFO,
 				     "[Safe Mode] User has launched in Safe Mode.");
@@ -2613,6 +2757,12 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 			arguments.removeAll("--safe-mode");
 		}
 	}
+
+#ifdef _WIN32
+	if (newArgv)
+		// Free the vector after enabling dark mode
+		delete newArgv;
+#endif
 
 	return ret;
 }
