@@ -657,6 +657,16 @@ void VolumeMeter::setMinorTickColor(QColor c)
 	minorTickColor = std::move(c);
 }
 
+bool VolumeMeter::getShowTickValues() const
+{
+	return showTickValues;
+}
+
+void VolumeMeter::setShowTickValues(bool b)
+{
+	showTickValues = b;
+}
+
 int VolumeMeter::getMeterThickness() const
 {
 	return meterThickness;
@@ -867,6 +877,7 @@ VolumeMeter::VolumeMeter(QWidget *parent, obs_volmeter_t *obs_volmeter,
 	meterThickness = 3;                      // Bar thickness in pixels
 	meterFontScaling =
 		0.7; // Font size for numbers is 70% of Widget's font size
+	showTickValues = true;
 	channels = (int)audio_output_get_channels(obs_get_audio());
 
 	doLayout();
@@ -953,7 +964,8 @@ inline void VolumeMeter::doLayout()
 
 	tickFont = font();
 	QFontInfo info(tickFont);
-	tickFont.setPointSizeF(info.pointSizeF() * meterFontScaling);
+	tickFont.setPointSizeF(
+		showTickValues ? info.pointSizeF() * meterFontScaling : 1);
 	QFontMetrics metrics(tickFont);
 	if (vertical) {
 		// Each meter channel is meterThickness pixels wide, plus one pixel
@@ -1103,6 +1115,10 @@ void VolumeMeter::paintHTicks(QPainter &painter, int x, int y, int width)
 	// Draw major tick lines and numeric indicators.
 	for (int i = 0; i >= minimumLevel; i -= 5) {
 		int position = int(x + width - (i * scale) - 1);
+		painter.drawLine(position, y, position, y + 2);
+		if (!showTickValues)
+			continue;
+
 		QString str = QString::number(i);
 
 		// Center the number on the tick, but don't overflow
@@ -1116,8 +1132,6 @@ void VolumeMeter::paintHTicks(QPainter &painter, int x, int y, int width)
 				pos = 0;
 		}
 		painter.drawText(pos, y + 4 + metrics.capHeight(), str);
-
-		painter.drawLine(position, y, position, y + 2);
 	}
 
 	// Draw minor tick lines.
@@ -1140,6 +1154,10 @@ void VolumeMeter::paintVTicks(QPainter &painter, int x, int y, int height)
 	// Draw major tick lines and numeric indicators.
 	for (int i = 0; i >= minimumLevel; i -= 5) {
 		int position = y + int(i * scale) + METER_PADDING;
+		painter.drawLine(x, position, x + 2, position);
+		if (!showTickValues)
+			continue;
+
 		QString str = QString::number(i);
 
 		// Center the number on the tick, but don't overflow
@@ -1151,8 +1169,6 @@ void VolumeMeter::paintVTicks(QPainter &painter, int x, int y, int height)
 					 position + (metrics.capHeight() / 2),
 					 str);
 		}
-
-		painter.drawLine(x, position, x + 2, position);
 	}
 
 	// Draw minor tick lines.

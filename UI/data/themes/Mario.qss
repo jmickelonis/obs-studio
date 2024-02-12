@@ -944,8 +944,9 @@ VolControl QLabel {
   max-height: 14px;
 }
 VolControl VolumeMeter {
-  qproperty-majorTickColor: #2e2e2e;
+  qproperty-majorTickColor: #424242;
   qproperty-minorTickColor: transparent;
+  qproperty-showTickValues: false;
 }
 
 #mixerToolbar {
