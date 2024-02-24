@@ -1433,6 +1433,10 @@ void VolumeMeter::paintEvent(QPaintEvent *event)
 
 	QPainter painter(this);
 
+	// Paint window background color (as widget is opaque)
+	QColor background = palette().color(QPalette::ColorRole::Window);
+	painter.fillRect(event->region().boundingRect(), background);
+
 	if (vertical)
 		height -= METER_PADDING * 2;
 
@@ -1441,11 +1445,6 @@ void VolumeMeter::paintEvent(QPaintEvent *event)
 	if (event->region().boundingRect() != getBarRect()) {
 		if (needLayoutChange())
 			doLayout();
-
-		// Paint window background color (as widget is opaque)
-		QColor background =
-			palette().color(QPalette::ColorRole::Window);
-		painter.fillRect(widgetRect, background);
 
 		if (vertical) {
 			paintVTicks(painter,

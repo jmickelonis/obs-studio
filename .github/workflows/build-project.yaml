@@ -245,7 +245,7 @@ jobs:
       run:
         shell: bash
     container:
-      image: bilelmoussaoui/flatpak-github-actions:kde-6.5
+      image: ghcr.io/flathub-infra/flatpak-github-actions:kde-6.6
       options: --privileged
     steps:
       - uses: actions/checkout@v4
@@ -264,8 +264,7 @@ jobs:
 
           git config --global --add safe.directory "${GITHUB_WORKSPACE}"
 
-          echo '::group::Install GitHub CLI tool'
-          dnf install -y -q gh
+          echo '::group::Install actions/gh-actions-cache'
           gh extension install actions/gh-actions-cache
           echo '::endgroup::'
 
@@ -287,10 +286,9 @@ jobs:
         with:
           artifact: manifest
           path: build-aux/com.obsproject.Studio.json
-          validateToPublish: false
 
       - name: Build Flatpak Manifest 🧾
-        uses: flatpak/flatpak-github-actions/flatpak-builder@0ab9dd6a6afa6fe7e292db0325171660bf5b6fdf
+        uses: flathub-infra/flatpak-github-actions/flatpak-builder@23796715b3dfa4c86ddf50cf29c3cc8b3c82dca8
         with:
           build-bundle: ${{ fromJSON(needs.check-event.outputs.package) }}
           bundle: obs-studio-flatpak-${{ needs.check-event.outputs.commitHash }}.flatpak
@@ -298,20 +296,19 @@ jobs:
           cache: ${{ fromJSON(steps.setup.outputs.cacheHit) || (github.event_name == 'push' && github.ref_name == 'master')}}
           restore-cache: ${{ fromJSON(steps.setup.outputs.cacheHit) }}
           cache-key: ${{ steps.setup.outputs.cacheKey }}
+          mirror-screenshots-url: https://dl.flathub.org/media
 
       - name: Validate build directory
         uses: ./.github/actions/flatpak-builder-lint
         with:
           artifact: builddir
           path: flatpak_app
-          validateToPublish: false
 
       - name: Validate repository
         uses: ./.github/actions/flatpak-builder-lint
         with:
           artifact: repo
           path: repo
-          validateToPublish: false
 
   windows-build:
     name: Windows 🪟
