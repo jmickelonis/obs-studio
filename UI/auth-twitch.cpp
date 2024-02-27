@@ -49,6 +49,17 @@ TwitchAuth::TwitchAuth(const Def &d) : OAuthStreamKey(d)
 		&TwitchAuth::TryLoadSecondaryUIPanes);
 }
 
+TwitchAuth::~TwitchAuth()
+{
+	if (!uiLoaded)
+		return;
+
+	OBSBasic *main = OBSBasic::Get();
+	for (BrowserDock *dock : docks)
+		main->RemoveDockWidget(dock->objectName());
+	docks.clear();
+}
+
 bool TwitchAuth::MakeApiRequest(const char *path, Json &json_out)
 {
 	std::string client_id = TWITCH_CLIENTID;
@@ -229,14 +240,12 @@ BrowserDock *TwitchAuth::addDock(const std::string &name,
 	dock->SetWidget(widget);
 
 	OBSBasic *main = OBSBasic::Get();
-	main->addDockWidget(Qt::RightDockWidgetArea, dock);
-	QAction *action = main->AddDockWidget(dock);
+	main->AddDockWidget(dock, Qt::RightDockWidgetArea);
 
 	dock->setFloating(true);
 	dock->setVisible(false);
 
-	docks.append(std::make_pair(QSharedPointer<BrowserDock>(dock),
-				    QSharedPointer<QAction>(action)));
+	docks.append(dock);
 	return dock;
 }
 
