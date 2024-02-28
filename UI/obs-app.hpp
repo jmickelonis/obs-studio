@@ -145,6 +145,15 @@ private slots:
 #endif
 
 public:
+#ifdef ENABLE_WAYLAND
+	static inline bool IsWayland()
+	{
+		return QApplication::platformName().contains("wayland");
+	}
+#else
+	static inline bool IsWayland() { return false; }
+#endif
+
 	OBSApp(int &argc, char **argv, profiler_name_store_t *store);
 	~OBSApp();
 
