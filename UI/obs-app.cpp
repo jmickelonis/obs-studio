@@ -1611,7 +1611,7 @@ static void move_basic_to_scene_collections(void)
 static bool shouldShowSplash()
 {
 	const char *value = getenv("OBS_SHOW_SPLASH");
-	return value ? QVariant(value).toBool() : true;
+	return value ? QVariant(value).toBool() : !OBSApp::IsWayland();
 }
 
 void OBSApp::ShowSplash()
