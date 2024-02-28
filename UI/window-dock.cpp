@@ -858,7 +858,8 @@ bool OBSDock::onMouseButtonPressed(QMouseEvent *event)
 	initialCursorPosition = QCursor::pos(initialScreen);
 	initialFloating = isFloating();
 
-	if (event->modifiers() & Qt::ControlModifier) {
+	if ((event->modifiers() & Qt::ControlModifier) &&
+	    hasFeature(QDockWidget::DockWidgetFloatable)) {
 		mouseState = MouseState::CtrlPressed;
 		// Don't let the base class do anything with Ctrl+drag
 		return false;
