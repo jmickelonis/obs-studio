@@ -279,6 +279,19 @@ void assignDockToggle(QDockWidget *dock, QAction *action)
 	dock->connect(action, &QAction::toggled, handleMenuToggle);
 }
 
+static QDockWidget::DockWidgetFeatures getDockWidgetFeatures(bool lock = false)
+{
+	if (lock)
+		return QDockWidget::NoDockWidgetFeatures;
+	QDockWidget::DockWidgetFeatures features =
+		QDockWidget::DockWidgetClosable |
+		QDockWidget::DockWidgetMovable;
+	if (!OBSApp::IsWayland())
+		// Wayland doesn't support floating docks yet.
+		features |= QDockWidget::DockWidgetFloatable;
+	return features;
+}
+
 void setupDockAction(QDockWidget *dock)
 {
 	QAction *action = dock->toggleViewAction();
@@ -341,9 +354,7 @@ OBSBasic::OBSBasic(QWidget *parent)
 
 	statsDock = new OBSDock();
 	statsDock->setObjectName(QStringLiteral("statsDock"));
-	statsDock->setFeatures(QDockWidget::DockWidgetClosable |
-			       QDockWidget::DockWidgetMovable |
-			       QDockWidget::DockWidgetFloatable);
+	statsDock->setFeatures(getDockWidgetFeatures());
 	statsDock->setWindowTitle(QTStr("Basic.Stats"));
 	addDockWidget(Qt::BottomDockWidgetArea, statsDock);
 	statsDock->setVisible(false);
@@ -9613,12 +9624,7 @@ void OBSBasic::on_resetDocks_triggered(bool force)
 
 void OBSBasic::on_lockDocks_toggled(bool lock)
 {
-	QDockWidget::DockWidgetFeatures features =
-		lock ? QDockWidget::NoDockWidgetFeatures
-		     : (QDockWidget::DockWidgetClosable |
-			QDockWidget::DockWidgetMovable |
-			QDockWidget::DockWidgetFloatable);
-
+	QDockWidget::DockWidgetFeatures features = getDockWidgetFeatures(lock);
 	QDockWidget::DockWidgetFeatures mainFeatures = features;
 	mainFeatures &= ~QDockWidget::QDockWidget::DockWidgetClosable;
 
@@ -10476,11 +10482,7 @@ QAction *OBSBasic::AddDockWidget(QDockWidget *dock)
 	oldExtraDockNames.push_back(dock->objectName());
 
 	bool lock = ui->lockDocks->isChecked();
-	QDockWidget::DockWidgetFeatures features =
-		lock ? QDockWidget::NoDockWidgetFeatures
-		     : (QDockWidget::DockWidgetClosable |
-			QDockWidget::DockWidgetMovable |
-			QDockWidget::DockWidgetFloatable);
+	QDockWidget::DockWidgetFeatures features = getDockWidgetFeatures(lock);
 
 	dock->setFeatures(features);
 
@@ -10547,11 +10549,7 @@ void OBSBasic::AddDockWidget(QDockWidget *dock, Qt::DockWidgetArea area,
 		return;
 
 	bool lock = ui->lockDocks->isChecked();
-	QDockWidget::DockWidgetFeatures features =
-		lock ? QDockWidget::NoDockWidgetFeatures
-		     : (QDockWidget::DockWidgetClosable |
-			QDockWidget::DockWidgetMovable |
-			QDockWidget::DockWidgetFloatable);
+	QDockWidget::DockWidgetFeatures features = getDockWidgetFeatures(lock);
 
 	setupDockAction(dock);
 	dock->setFeatures(features);
@@ -10623,11 +10621,7 @@ void OBSBasic::AddCustomDockWidget(QDockWidget *dock)
 		&OBSBasic::RepairCustomExtraDockName);
 
 	bool lock = ui->lockDocks->isChecked();
-	QDockWidget::DockWidgetFeatures features =
-		lock ? QDockWidget::NoDockWidgetFeatures
-		     : (QDockWidget::DockWidgetClosable |
-			QDockWidget::DockWidgetMovable |
-			QDockWidget::DockWidgetFloatable);
+	QDockWidget::DockWidgetFeatures features = getDockWidgetFeatures(lock);
 
 	dock->setFeatures(features);
 	addDockWidget(Qt::RightDockWidgetArea, dock);
