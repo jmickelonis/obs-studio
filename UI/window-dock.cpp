@@ -401,6 +401,12 @@ void OBSDock::setVisible(bool visible)
 		// This way, all drags act the same, and transparency works
 		Qt::WindowFlags flags = windowFlags();
 		Qt::WindowFlags newFlags = flags & ~Qt::BypassWindowManagerHint;
+
+		if ((flags & Qt::Tool) && OBSApp::IsWayland())
+			// Hide the floating window on Wayland.
+			// Otherwise, it just kinda sits there, looking stupid.
+			window()->setAttribute(Qt::WA_DontShowOnScreen);
+
 		if (newFlags != flags) {
 			settingFlags = true;
 			setWindowFlags(newFlags);
