@@ -477,17 +477,9 @@ static inline void refresh_throughput_caps(amf_base *enc, const char *&preset)
 	}
 }
 
-static bool should_check_max_throughput()
-{
-	const char *value = getenv("OBS_AMF_CHECK_MAX_THROUGHPUT");
-	return value;
-}
-
 static inline void check_preset_compatibility(amf_base *enc,
 					      const char *&preset)
 {
-	if (!should_check_max_throughput())
-		return;
 	/* The throughput depends on the current preset and the other static
 	 * encoder properties. If the throughput is lower than the max
 	 * throughput, switch to a lower preset. */
