@@ -2507,16 +2507,26 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 		unsetenv("QT_QPA_PLATFORMTHEME");
 
 #if defined(ENABLE_WAYLAND) && defined(USE_XDG)
-	/* NOTE: Qt doesn't use the Wayland platform on GNOME, so we have to
-	 * force it using the QT_QPA_PLATFORM env var. It's still possible to
-	 * use other QPA platforms using this env var, or the -platform command
-	 * line option. Remove after Qt 6.3 is everywhere. */
-
-	const char *desktop = getenv("XDG_CURRENT_DESKTOP");
 	const char *session_type = getenv("XDG_SESSION_TYPE");
-	if (session_type && desktop && strstr(desktop, "GNOME") != nullptr &&
-	    strcmp(session_type, "wayland") == 0)
-		setenv("QT_QPA_PLATFORM", "wayland", false);
+	const char *desktop = getenv("XDG_CURRENT_DESKTOP");
+
+	if (session_type && desktop && strcmp(session_type, "wayland") == 0) {
+		const char *value = getenv("OBS_WAYLAND_COMPATIBILITY");
+		if (value ? QVariant(value).toBool() : true) {
+			if (!setenv("QT_QPA_PLATFORM", "xcb", false))
+				blog(LOG_INFO,
+				     "Using QT_QPA_PLATFORM=xcb for compatibility on Wayland.");
+		} else {
+			blog(LOG_INFO,
+			     "Wayland compatibility was disabled (OBS_WAYLAND_COMPATIBILITY=false).");
+			/* NOTE: Qt doesn't use the Wayland platform on GNOME, so we have to
+			* force it using the QT_QPA_PLATFORM env var. It's still possible to
+			* use other QPA platforms using this env var, or the -platform command
+			* line option. Remove after Qt 6.3 is everywhere. */
+			if (strstr(desktop, "GNOME") != nullptr)
+				setenv("QT_QPA_PLATFORM", "wayland", false);
+		}
+	}
 #endif
 #endif
 
