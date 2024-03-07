@@ -63,8 +63,6 @@ static bool get_adapter_caps(uint32_t adapter_idx)
 
 int main(void)
 try {
-	putenv("AMD_VULKAN_ICD=AMDVLK-PRO");
-
 	AMF_RESULT res;
 	VkResult vkres;
 
