@@ -2528,6 +2528,28 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 		}
 	}
 #endif
+
+	QFileInfo vulkan_layer_d("/opt/share/vulkan/implicit_layer.d");
+	if (vulkan_layer_d.exists() && vulkan_layer_d.isDir()) {
+		// vkcapture plugin is installed.
+		// Add the layer path and enable the layer,
+		// taking care to preserve existing env values.
+		const char *s;
+
+		QStringList path(vulkan_layer_d.filePath());
+		s = getenv("VK_ADD_LAYER_PATH");
+		if (s)
+			path << QString(s).split(';', Qt::SkipEmptyParts);
+
+		QStringList enable("VK_LAYER_OBS_vkcapture_*");
+		s = getenv("VK_LOADER_LAYERS_ENABLE");
+		if (s)
+			enable << QString(s).split(';', Qt::SkipEmptyParts);
+
+		qputenv("VK_ADD_LAYER_PATH", path.join(';').toUtf8());
+		qputenv("VK_LOADER_LAYERS_ENABLE", enable.join(';').toUtf8());
+		blog(LOG_INFO, "Activated vkcapture Vulkan layer.");
+	}
 #endif
 
 	/* NOTE: This disables an optimisation in Qt that attempts to determine if
