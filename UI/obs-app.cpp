@@ -75,6 +75,8 @@
 #endif
 
 #include <iostream>
+#include <json11.hpp>
+using namespace json11;
 
 #include "ui-config.h"
 
@@ -2459,6 +2461,91 @@ static bool useWindowsDarkMode()
 }
 #endif
 
+#if !defined(_WIN32) && !defined(__APPLE__)
+static QFileInfo GetAMDGPUProICDPath()
+{
+	// Prefer standard ICD search paths.
+	QString homePath = QDir::homePath();
+	QStringList paths = {
+		homePath + "/.config",
+		"/etc/xdg",
+		"/usr/local/etc",
+		"/etc",
+		homePath + "/.local/share",
+		"/usr/local/share",
+		"/usr/share",
+	};
+
+	for (QString s : paths) {
+		QFileInfo path(s + "/vulkan/icd.d/amd_pro_icd64.json");
+		if (path.exists() && path.isFile())
+			return path;
+	}
+
+	// Default to the one used by a standard proprietary driver installation.
+	return QFileInfo("/opt/amdgpu-pro/etc/vulkan/icd.d/amd_icd64.json");
+}
+
+static void ActivateAMF()
+{
+	const char *value = getenv("OBS_ACTIVATE_AMF");
+	if (!(value ? QVariant(value).toBool() : true)) {
+		blog(LOG_INFO,
+		     "AMD HW encoder activation was disabled (OBS_ACTIVATE_AMF=false)");
+		return;
+	}
+
+	QFileInfo file_info = GetAMDGPUProICDPath();
+	if (!(file_info.exists() && file_info.isFile()))
+		return;
+
+	QString path = file_info.filePath();
+	QFile file(path);
+	if (!file.open(QFile::ReadOnly | QFile::Text))
+		return;
+
+	QTextStream in(&file);
+	std::string error;
+	Json json = Json::parse(in.readAll().toStdString(), error);
+	if (!error.empty())
+		return;
+
+	Json icd = json["ICD"];
+	if (!icd.is_object())
+		return;
+
+	Json version = icd["api_version"];
+	Json library_path = icd["library_path"];
+	if (!(version.is_string() && library_path.is_string()))
+		return;
+
+	QDir dir(QFileInfo(library_path.string_value().c_str()).path());
+	blog(LOG_INFO,
+	     "Using AMDGPU Pro Vulkan ICD"
+	     "\n      Path: %s"
+	     "\n      Version: %s"
+	     "\n      Library Path: %s",
+	     path.toStdString().c_str(), version.string_value().c_str(),
+	     dir.path().toStdString().c_str());
+
+	QStringList stringList =
+		dir.entryList(QStringList("libamfrt64.so.*.*.*"));
+	if (!stringList.empty()) {
+		QString amfLibrary = stringList.first();
+		blog(LOG_INFO, "Found AMD HW encoder: %s",
+		     amfLibrary.toStdString().c_str());
+	}
+
+	QStringList fileNames(path);
+	const char *s = getenv("VK_ICD_FILENAMES");
+	if (s)
+		fileNames << QString(s).split(':', Qt::SkipEmptyParts);
+
+	qputenv("AMD_VULKAN_ICD", "AMDVLK-PRO");
+	qputenv("VK_ICD_FILENAMES", fileNames.join(':').toUtf8());
+}
+#endif
+
 static const char *run_program_init = "run_program_init";
 static int run_program(fstream &logFile, int argc, char *argv[])
 {
@@ -2515,10 +2602,10 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 		if (value ? QVariant(value).toBool() : true) {
 			if (!setenv("QT_QPA_PLATFORM", "xcb", false))
 				blog(LOG_INFO,
-				     "Using QT_QPA_PLATFORM=xcb for compatibility on Wayland.");
+				     "Using QT_QPA_PLATFORM=xcb for compatibility on Wayland");
 		} else {
 			blog(LOG_INFO,
-			     "Wayland compatibility was disabled (OBS_WAYLAND_COMPATIBILITY=false).");
+			     "Wayland compatibility was disabled (OBS_WAYLAND_COMPATIBILITY=false)");
 			/* NOTE: Qt doesn't use the Wayland platform on GNOME, so we have to
 			* force it using the QT_QPA_PLATFORM env var. It's still possible to
 			* use other QPA platforms using this env var, or the -platform command
@@ -2528,6 +2615,8 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 		}
 	}
 #endif
+
+	ActivateAMF();
 
 	QFileInfo vulkan_layer_d("/opt/share/vulkan/implicit_layer.d");
 	if (vulkan_layer_d.exists() && vulkan_layer_d.isDir()) {
@@ -2539,16 +2628,16 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 		QStringList path(vulkan_layer_d.filePath());
 		s = getenv("VK_ADD_LAYER_PATH");
 		if (s)
-			path << QString(s).split(';', Qt::SkipEmptyParts);
+			path << QString(s).split(':', Qt::SkipEmptyParts);
+		qputenv("VK_ADD_LAYER_PATH", path.join(':').toUtf8());
 
 		QStringList enable("VK_LAYER_OBS_vkcapture_*");
 		s = getenv("VK_LOADER_LAYERS_ENABLE");
 		if (s)
-			enable << QString(s).split(';', Qt::SkipEmptyParts);
+			enable << QString(s).split(',', Qt::SkipEmptyParts);
+		qputenv("VK_LOADER_LAYERS_ENABLE", enable.join(',').toUtf8());
 
-		qputenv("VK_ADD_LAYER_PATH", path.join(';').toUtf8());
-		qputenv("VK_LOADER_LAYERS_ENABLE", enable.join(';').toUtf8());
-		blog(LOG_INFO, "Activated vkcapture Vulkan layer.");
+		blog(LOG_INFO, "Activated vkcapture Vulkan layer");
 	}
 #endif
 
