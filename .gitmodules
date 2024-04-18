@@ -12,4 +12,4 @@
 	url = https://github.com/obsproject/obs-websocket.git
 [submodule "UI/frontend-plugins/streamfx"]
 	path = UI/frontend-plugins/streamfx
-	url = https://github.com/Xaymar/obs-StreamFX.git
+	url = https://github.com/jmickelonis/obs-StreamFX
