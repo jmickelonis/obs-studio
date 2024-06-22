@@ -2428,19 +2428,46 @@ try {
 	/* Check for supported codecs          */
 
 	BPtr<char> test_exe = os_get_executable_path_ptr(OBS_AMF_TEST);
-	std::stringstream path;
-	path << test_exe;
+	std::stringstream cmd;
+	std::string caps_str;
+
+#ifdef _WIN32
+	cmd << '"';
+	cmd << test_exe;
+	cmd << '"';
+	enum_graphics_device_luids(enum_luids, &cmd);
+
+	os_process_pipe_t *pp = os_process_pipe_create(cmd.str().c_str(), "r");
+	if (!pp)
+		throw "Failed to launch the AMF test process I guess";
+
+	for (;;) {
+		char data[2048];
+		size_t len =
+			os_process_pipe_read(pp, (uint8_t *)data, sizeof(data));
+		if (!len)
+			break;
+
+		caps_str.append(data, len);
+	}
+
+	os_process_pipe_destroy(pp);
+#else
+	/* os_process_pipe_create() wasn't working on Linux (OBS 30.2),
+	 * but pipe() seems to work just fine
+	 */
+	cmd << test_exe;
 	std::unique_ptr<FILE, decltype(&pclose)> pipe(
-		popen(path.str().c_str(), "r"), pclose);
+		popen(cmd.str().c_str(), "r"), pclose);
 
 	if (!pipe)
 		throw "Failed to launch the AMF test process I guess";
 
-	std::string caps_str;
 	std::array<char, 2048> buffer;
 	while (fgets(buffer.data(), static_cast<int>(buffer.size()),
 		     pipe.get()) != nullptr)
 		caps_str += buffer.data();
+#endif
 
 	if (caps_str.empty())
 		throw "Seems the AMF test subprocess crashed. "
