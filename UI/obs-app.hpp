@@ -39,6 +39,8 @@
 #include <vector>
 #include <deque>
 
+#include <QSplashScreen>
+
 #include "window-main.hpp"
 #include "obs-app-theming.hpp"
 
@@ -122,6 +124,8 @@ private:
 	QHash<QString, OBSTheme> themes;
 	QPointer<QFileSystemWatcher> themeWatcher;
 
+	QSplashScreen *splash = nullptr;
+
 	void FindThemes();
 
 	bool notify(QObject *receiver, QEvent *e) override;
@@ -149,6 +153,9 @@ public:
 
 	OBSApp(int &argc, char **argv, profiler_name_store_t *store);
 	~OBSApp();
+
+	void ShowSplash();
+	void HideSplash();
 
 	void AppInit();
 	bool OBSInit();

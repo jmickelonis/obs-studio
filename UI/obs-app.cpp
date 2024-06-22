@@ -1174,6 +1174,57 @@ static void move_basic_to_scene_collections(void)
 	os_rename(path, new_path);
 }
 
+static bool shouldShowSplash()
+{
+	const char *value = getenv("OBS_SHOW_SPLASH");
+	return value ? QVariant(value).toBool() : false;
+}
+
+void OBSApp::ShowSplash()
+{
+	if (splash || !shouldShowSplash())
+		return;
+
+	std::string path;
+	GetDataFilePath("images/splash.png", path);
+
+	QPixmap pixmap(path.c_str());
+	splash = new QSplashScreen(pixmap, Qt::X11BypassWindowManagerHint |
+						   Qt::WindowStaysOnTopHint);
+
+	const char *geometry =
+		config_get_string(GlobalConfig(), "BasicWindow", "geometry");
+	if (geometry != NULL) {
+		QByteArray byteArray =
+			QByteArray::fromBase64(QByteArray(geometry));
+		QWidget widget;
+		widget.restoreGeometry(byteArray);
+
+		QRect bounds = widget.normalGeometry();
+		for (QScreen *screen : QGuiApplication::screens()) {
+			if (screen->availableGeometry().intersects(bounds)) {
+				splash->move(bounds.center() -
+					     splash->rect().center());
+				break;
+			}
+		}
+	}
+
+	splash->show();
+	processEvents();
+
+	QTimer::singleShot(2000, this, &OBSApp::HideSplash);
+}
+
+void OBSApp::HideSplash()
+{
+	if (!splash)
+		return;
+	splash->close();
+	delete splash;
+	splash = nullptr;
+}
+
 void OBSApp::AppInit()
 {
 	ProfileScope("OBSApp::AppInit");
@@ -1182,6 +1233,8 @@ void OBSApp::AppInit()
 		throw "Failed to create required user directories";
 	if (!InitGlobalConfig())
 		throw "Failed to initialize global config";
+	if (!unclean_shutdown || safe_mode)
+		ShowSplash();
 	if (!InitLocale())
 		throw "Failed to load locale";
 	if (!InitTheme())
@@ -2056,6 +2109,8 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 		}
 
 		if (!multi) {
+			program.HideSplash();
+
 			QMessageBox mb(QMessageBox::Question,
 				       QTStr("AlreadyRunning.Title"),
 				       QTStr("AlreadyRunning.Text"));
@@ -2133,6 +2188,7 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 			mb.exec();
 
 			safe_mode = mb.clickedButton() == launchSafeButton;
+			program.ShowSplash();
 			if (safe_mode) {
 				blog(LOG_INFO,
 				     "[Safe Mode] User has launched in Safe Mode.");
