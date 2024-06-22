@@ -138,6 +138,15 @@ private slots:
 	void themeFileChanged(const QString &);
 
 public:
+	static inline bool IsWayland()
+	{
+#ifdef ENABLE_WAYLAND
+		return QApplication::platformName().contains("wayland");
+#else
+		return false;
+#endif
+	}
+
 	OBSApp(int &argc, char **argv, profiler_name_store_t *store);
 	~OBSApp();
 
