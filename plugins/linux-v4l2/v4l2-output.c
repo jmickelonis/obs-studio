@@ -26,7 +26,8 @@ static const char *virtualcam_name(void *unused)
 static void virtualcam_destroy(void *data)
 {
 	struct virtualcam_data *vcam = (struct virtualcam_data *)data;
-	close(vcam->device);
+	if (vcam->device > 0)
+		close(vcam->device);
 	bfree(data);
 }
 
