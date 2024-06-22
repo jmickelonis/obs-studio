@@ -109,10 +109,11 @@ if(OS_WINDOWS)
             obs-ffmpeg.rc)
 
 elseif(OS_POSIX AND NOT OS_MACOS)
+  add_subdirectory(obs-amf-test)
   find_package(Libva REQUIRED)
   find_package(Libpci REQUIRED)
   find_package(Libdrm REQUIRED)
-  target_sources(obs-ffmpeg PRIVATE obs-ffmpeg-vaapi.c vaapi-utils.c vaapi-utils.h)
+  target_sources(obs-ffmpeg PRIVATE obs-ffmpeg-vaapi.c vaapi-utils.c vaapi-utils.h texture-amf.cpp)
   target_link_libraries(obs-ffmpeg PRIVATE Libva::va Libva::drm LIBPCI::LIBPCI Libdrm::Libdrm)
 
   if(ENABLE_NATIVE_NVENC)
