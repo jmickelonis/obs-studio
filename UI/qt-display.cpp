@@ -7,6 +7,7 @@
 #include <QShowEvent>
 
 #include <obs-config.h>
+#include <obs-app.hpp>
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -69,7 +70,8 @@ OBSQTDisplay::OBSQTDisplay(QWidget *parent, Qt::WindowFlags flags)
 	setAttribute(Qt::WA_StaticContents);
 	setAttribute(Qt::WA_NoSystemBackground);
 	setAttribute(Qt::WA_OpaquePaintEvent);
-	setAttribute(Qt::WA_DontCreateNativeAncestors);
+	if (OBSApp::IsWayland())
+		setAttribute(Qt::WA_DontCreateNativeAncestors);
 	setAttribute(Qt::WA_NativeWindow);
 
 	auto windowVisible = [this](bool visible) {
