@@ -106,34 +106,33 @@ void DuplicateCurrentCookieProfile(ConfigFile &config)
 		std::string cookie_id =
 			config_get_string(main->Config(), "Panels", "CookieId");
 
-		std::string src_path;
-		src_path += "obs_profile_cookies/";
-		src_path += cookie_id;
-
 		std::string new_id = GenId();
 
-		std::string dst_path;
-		dst_path += "obs_profile_cookies/";
-		dst_path += new_id;
+		/* jmick:
+		 * Stock OBS has a bug in this code,
+		 * where the destination directory never gets created/copied to.
+		 * This is fixed and tested.
+		 */
+		BPtr<char> root = cef->get_cookie_path("");
+		QDir rootDir(root.Get());
+		rootDir.setPath(rootDir.filePath("obs_profile_cookies"));
 
-		BPtr<char> src_path_full = cef->get_cookie_path(src_path);
-		BPtr<char> dst_path_full = cef->get_cookie_path(dst_path);
-
-		QDir srcDir(src_path_full.Get());
-		QDir dstDir(dst_path_full.Get());
+		QString srcPath =
+			rootDir.filePath(QString::fromStdString(cookie_id));
+		QDir srcDir(srcPath);
 
 		if (srcDir.exists()) {
+			QString newID = QString::fromStdString(new_id);
+			QString dstPath = rootDir.filePath(newID);
+			QDir dstDir(dstPath);
+
 			if (!dstDir.exists())
-				dstDir.mkdir(dst_path_full.Get());
+				rootDir.mkdir(newID);
 
 			QStringList files = srcDir.entryList(QDir::Files);
-			for (const QString &file : files) {
-				QString src = QString(src_path_full);
-				QString dst = QString(dst_path_full);
-				src += QDir::separator() + file;
-				dst += QDir::separator() + file;
-				QFile::copy(src, dst);
-			}
+			for (const QString &file : files)
+				QFile::copy(srcPath + QDir::separator() + file,
+					    dstPath + QDir::separator() + file);
 		}
 
 		config_set_string(config, "Panels", "CookieId",
