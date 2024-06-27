@@ -272,12 +272,12 @@ VolControl::VolControl(OBSSource source_, bool showConfig, bool vertical)
 
 	QVBoxLayout *mainLayout = new QVBoxLayout;
 	mainLayout->setContentsMargins(0, 0, 0, 0);
-	mainLayout->setSpacing(0);
+	mainLayout->setSpacing(2);
 
 	if (vertical) {
-		QHBoxLayout *nameLayout = new QHBoxLayout;
-		QHBoxLayout *controlLayout = new QHBoxLayout;
-		QHBoxLayout *volLayout = new QHBoxLayout;
+		QVBoxLayout *controlLayout = new QVBoxLayout;
+		QVBoxLayout *buttonLayout = new QVBoxLayout;
+		QHBoxLayout *hLayout = new QHBoxLayout;
 		QFrame *meterFrame = new QFrame;
 		QHBoxLayout *meterLayout = new QHBoxLayout;
 
@@ -286,45 +286,39 @@ VolControl::VolControl(OBSSource source_, bool showConfig, bool vertical)
 		slider->setLayoutDirection(Qt::LeftToRight);
 		slider->setDisplayTicks(true);
 
-		nameLayout->setAlignment(Qt::AlignCenter);
-		meterLayout->setAlignment(Qt::AlignCenter);
-		controlLayout->setAlignment(Qt::AlignCenter);
-		volLayout->setAlignment(Qt::AlignCenter);
-
 		meterFrame->setObjectName("volMeterFrame");
 
-		nameLayout->setContentsMargins(0, 0, 0, 0);
-		nameLayout->setSpacing(0);
-		nameLayout->addWidget(nameLabel);
+		buttonLayout->setContentsMargins(0, 0, 0, 0);
+		buttonLayout->setSpacing(0);
+		buttonLayout->addWidget(mute);
+		buttonLayout->setAlignment(mute, Qt::AlignHCenter);
+		if (showConfig) {
+			buttonLayout->addWidget(config);
+			buttonLayout->setAlignment(config, Qt::AlignHCenter);
+		}
 
 		controlLayout->setContentsMargins(0, 0, 0, 0);
-		controlLayout->setSpacing(0);
-
-		// Add Headphone (audio monitoring) widget here
-		controlLayout->addWidget(mute);
-
-		if (showConfig) {
-			controlLayout->addWidget(config);
-		}
+		controlLayout->setSpacing(4);
+		controlLayout->addWidget(slider);
+		controlLayout->setAlignment(slider, Qt::AlignHCenter);
+		controlLayout->addItem(buttonLayout);
+		controlLayout->setAlignment(buttonLayout, Qt::AlignHCenter);
 
 		meterLayout->setContentsMargins(0, 0, 0, 0);
 		meterLayout->setSpacing(0);
-		meterLayout->addWidget(slider);
 		meterLayout->addWidget(volMeter);
 
 		meterFrame->setLayout(meterLayout);
 
-		volLayout->setContentsMargins(0, 0, 0, 0);
-		volLayout->setSpacing(0);
-		volLayout->addWidget(volLabel);
-		volLayout->addItem(
-			new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding,
-					QSizePolicy::Minimum));
+		hLayout->setContentsMargins(0, 0, 0, 0);
+		hLayout->setSpacing(2);
+		hLayout->addWidget(meterFrame);
+		hLayout->addItem(controlLayout);
 
-		mainLayout->addItem(nameLayout);
-		mainLayout->addItem(volLayout);
-		mainLayout->addWidget(meterFrame);
-		mainLayout->addItem(controlLayout);
+		mainLayout->addWidget(nameLabel);
+		mainLayout->addWidget(volLabel);
+		mainLayout->addItem(hLayout);
+		mainLayout->setAlignment(hLayout, Qt::AlignHCenter);
 
 		volMeter->setFocusProxy(slider);
 
@@ -339,7 +333,7 @@ VolControl::VolControl(OBSSource source_, bool showConfig, bool vertical)
 		QHBoxLayout *controlLayout = new QHBoxLayout;
 		QFrame *meterFrame = new QFrame;
 		QVBoxLayout *meterLayout = new QVBoxLayout;
-		QVBoxLayout *buttonLayout = new QVBoxLayout;
+		QHBoxLayout *buttonLayout = new QHBoxLayout;
 
 		volMeter = new VolumeMeter(nullptr, obs_volmeter, false);
 		volMeter->setSizePolicy(QSizePolicy::MinimumExpanding,
@@ -360,25 +354,21 @@ VolControl::VolControl(OBSSource source_, bool showConfig, bool vertical)
 
 		meterLayout->setContentsMargins(0, 0, 0, 0);
 		meterLayout->setSpacing(0);
-
 		meterLayout->addWidget(volMeter);
-		meterLayout->addWidget(slider);
 
 		buttonLayout->setContentsMargins(0, 0, 0, 0);
 		buttonLayout->setSpacing(0);
-
-		if (showConfig) {
-			buttonLayout->addWidget(config);
-		}
-		buttonLayout->addItem(
-			new QSpacerItem(0, 0, QSizePolicy::Minimum,
-					QSizePolicy::MinimumExpanding));
 		buttonLayout->addWidget(mute);
+		if (showConfig)
+			buttonLayout->addWidget(config);
 
+		controlLayout->setContentsMargins(0, 0, 0, 0);
+		controlLayout->setSpacing(4);
+		controlLayout->addWidget(slider);
 		controlLayout->addItem(buttonLayout);
-		controlLayout->addWidget(meterFrame);
 
 		mainLayout->addItem(textLayout);
+		mainLayout->addWidget(meterFrame);
 		mainLayout->addItem(controlLayout);
 
 		volMeter->setFocusProxy(slider);
@@ -957,10 +947,11 @@ inline void VolumeMeter::doLayout()
 {
 	QMutexLocker locker(&dataMutex);
 
-	if (displayNrAudioChannels) {
-		int meterSize = std::floor(22 / displayNrAudioChannels);
-		setMeterThickness(std::clamp(meterSize, 3, 7));
-	}
+	// This code prevents setting meterThickness from themes!
+	// if (displayNrAudioChannels) {
+	// 	int meterSize = std::floor(22 / displayNrAudioChannels);
+	// 	setMeterThickness(std::clamp(meterSize, 3, 7));
+	// }
 	recalculateLayout = false;
 
 	tickFont = font();
@@ -968,23 +959,31 @@ inline void VolumeMeter::doLayout()
 	tickFont.setPointSizeF(
 		showTickValues ? info.pointSizeF() * meterFontScaling : 1);
 	QFontMetrics metrics(tickFont);
+
+	int thickness = displayNrAudioChannels * (meterThickness + 1) - 1 + 2;
+	int minLength = 100;
+	int maxLength = 0xFFFFFF;
+
 	if (vertical) {
 		// Each meter channel is meterThickness pixels wide, plus one pixel
 		// between channels, but not after the last.
 		// Add 4 pixels for ticks, space to hold our longest label in this font,
 		// and a few pixels before the fader.
-		QRect scaleBounds = metrics.boundingRect("-88");
-		setMinimumSize(displayNrAudioChannels * (meterThickness + 1) -
-				       1 + 10 + scaleBounds.width() + 2,
-			       100);
+		if (showTickValues) {
+			QRect scaleBounds = metrics.boundingRect("-88");
+			thickness += 8 + scaleBounds.width() + 2;
+		}
+		setMinimumSize(thickness, minLength);
+		setMaximumSize(thickness, maxLength);
 	} else {
 		// Each meter channel is meterThickness pixels high, plus one pixel
 		// between channels, but not after the last.
 		// Add 4 pixels for ticks, and space high enough to hold our label in
 		// this font, presuming that digits don't have descenders.
-		setMinimumSize(100,
-			       displayNrAudioChannels * (meterThickness + 1) -
-				       1 + 4 + metrics.capHeight());
+		if (showTickValues)
+			thickness += 2 + metrics.capHeight();
+		setMinimumSize(minLength, thickness);
+		setMaximumSize(maxLength, thickness);
 	}
 
 	resetLevels();
