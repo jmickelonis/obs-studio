@@ -37,6 +37,7 @@
 #include <QScreen>
 #include <QProcess>
 #include <QAccessible>
+#include <QVersionNumber>
 
 #include "qt-wrappers.hpp"
 #include "obs-app.hpp"
@@ -2084,7 +2085,7 @@ static void ActivateAMF()
 
 	QDir dir(QFileInfo(library_path.string_value().c_str()).path());
 	blog(LOG_INFO,
-	     "Using AMDGPU Pro Vulkan ICD"
+	     "Found AMDGPU Pro Vulkan ICD"
 	     "\n      Path: %s"
 	     "\n      Version: %s"
 	     "\n      Library Path: %s",
@@ -2095,8 +2096,18 @@ static void ActivateAMF()
 		dir.entryList(QStringList("libamfrt64.so.*.*.*"));
 	if (!stringList.empty()) {
 		QString amfLibrary = stringList.first();
-		blog(LOG_INFO, "Found AMD HW encoder: %s",
-		     amfLibrary.toStdString().c_str());
+		QString amfVersion = amfLibrary.sliced(14);
+		blog(LOG_INFO, "Found AMD HW encoder: libamfrt64.so v%s",
+		     amfVersion.toStdString().c_str());
+
+		if (QVersionNumber::fromString(amfVersion) >=
+			    QVersionNumber(1, 4, 34) &&
+		    !(value && !strcmp(value, "AMDVLK-PRO"))) {
+			// AMF 1.4.34 introduced stable support for Mesa/RADV
+			blog(LOG_INFO,
+			     "Not using AMDVLK-PRO with AMF (set OBS_ACTIVATE_AMF=AMDVLK-PRO to force)");
+			return;
+		}
 	}
 
 	QStringList fileNames(path);
@@ -2106,6 +2117,7 @@ static void ActivateAMF()
 
 	qputenv("AMD_VULKAN_ICD", "AMDVLK-PRO");
 	qputenv("VK_ICD_FILENAMES", fileNames.join(':').toUtf8());
+	blog(LOG_INFO, "Using AMDVLK-PRO with AMF");
 }
 #endif
 
