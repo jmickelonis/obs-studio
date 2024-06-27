@@ -178,6 +178,8 @@ public:
 	QList<OBSTheme> GetThemes() const { return themes.values(); }
 	OBSTheme *GetTheme(const QString &name);
 	bool SetTheme(const QString &name);
+	std::string GetThemeCSSPath(std::string id);
+	void PrepareThemeCSS(std::string id);
 	bool IsThemeDark() const
 	{
 		return currentTheme ? currentTheme->isDark : false;
