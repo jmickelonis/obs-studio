@@ -6325,9 +6325,9 @@ void OBSBasicSettings::UpdateMultitrackVideo()
 			ui->enableMultitrackVideo->setChecked(false);
 	}
 
-#ifndef _WIN32
-	available = available && MultitrackVideoDeveloperModeEnabled();
-#endif
+// #ifndef _WIN32
+// 	available = available && MultitrackVideoDeveloperModeEnabled();
+// #endif
 
 	if (IsCustomService())
 		available = available && MultitrackVideoDeveloperModeEnabled();
