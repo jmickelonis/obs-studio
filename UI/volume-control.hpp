@@ -341,6 +341,8 @@ public:
 
 class VolumeSlider : public AbsoluteSlider {
 	Q_OBJECT
+	Q_PROPERTY(bool displayTicks READ getDisplayTicks WRITE setDisplayTicks
+			   DESIGNABLE true)
 
 public:
 	obs_fader_t *fad;
