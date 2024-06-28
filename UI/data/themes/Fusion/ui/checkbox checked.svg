@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="16"
+   height="16"
+   version="1.1"
+   id="svg4"
+   sodipodi:docname="checkbox checked.svg"
+   inkscape:version="1.1.2 (0a00cf5339, 2022-02-04)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs8" />
+  <sodipodi:namedview
+     id="namedview6"
+     pagecolor="#505050"
+     bordercolor="#ffffff"
+     borderopacity="1"
+     inkscape:pageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="1"
+     showgrid="false"
+     inkscape:zoom="53.9375"
+     inkscape:cx="5.9976825"
+     inkscape:cy="3.0405562"
+     inkscape:window-width="1687"
+     inkscape:window-height="1020"
+     inkscape:window-x="2061"
+     inkscape:window-y="29"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg4"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0" />
+  <path
+     style="fill:#e8e8e8;stroke-width:0.75;fill-opacity:1"
+     d="M 13.25,4.25 A 0.75,0.75 0 0 0 12.719727,4.4697266 L 8.0820313,9.1074219 6.3505859,6.8002929 A 0.75,0.75 0 0 0 5.3002929,6.6494141 0.75,0.75 0 0 0 5.1494141,7.6997071 l 2.25,2.9999999 a 0.750075,0.750075 0 0 0 1.1308593,0.08057 L 13.780273,5.5302734 a 0.75,0.75 0 0 0 0,-1.0605468 A 0.75,0.75 0 0 0 13.25,4.25 Z"
+     id="path827"
+     inkscape:label="check" />
+  <path
+     style="opacity:0.29999468;fill:#e8e8e8;stroke-width:0.75;fill-opacity:1"
+     d="M 3.9995117,2 C 2.8895117,2 2,2.8895117 2,3.9995117 V 12.000488 C 2,13.110488 2.8895117,14 3.9995117,14 H 12.000488 C 13.110488,14 14,13.110488 14,12.000488 V 6.3710937 l -1.5,1.5 V 11.600586 C 12.5,12.095587 12.095586,12.5 11.600586,12.5 H 4.3994141 C 3.904414,12.5 3.5,12.095587 3.5,11.600586 V 4.3994141 C 3.5,3.904414 3.904414,3.5 4.3994141,3.5 h 7.2011719 c 0.282905,0 0.53359,0.134234 0.698731,0.3398438 C 12.566149,3.6212228 12.902176,3.5000527 13.25,3.5 c 0.255349,3.86e-5 0.503737,0.066267 0.723633,0.1875 C 13.824778,2.7279491 13.003897,2 12.000488,2 Z"
+     id="path2"
+     inkscape:label="outline" />
+</svg>
