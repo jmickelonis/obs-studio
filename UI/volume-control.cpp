@@ -10,6 +10,7 @@
 #include <QPushButton>
 #include <QLabel>
 #include <QPainter>
+#include <QStylePainter>
 
 using namespace std;
 
@@ -233,6 +234,46 @@ void VolControl::setPeakMeterType(enum obs_peak_meter_type peakMeterType)
 	volMeter->setPeakMeterType(peakMeterType);
 }
 
+void VerticalLabel::paintEvent(QPaintEvent *)
+{
+	QStylePainter painter(this);
+	painter.translate(sizeHint().width(), sizeHint().height());
+	painter.rotate(270);
+	painter.drawText(0, -painter.fontMetrics().descent(), text());
+}
+
+QSize VerticalLabel::minimumSizeHint() const
+{
+	QSize s = QLabel::minimumSizeHint();
+	return QSize(s.height(), s.width());
+}
+
+QSize VerticalLabel::sizeHint() const
+{
+	QSize s = QLabel::sizeHint();
+	return QSize(s.height(), s.width());
+}
+
+void VerticalSourceLabel::paintEvent(QPaintEvent *)
+{
+	QStylePainter painter(this);
+	painter.translate(sizeHint().width(), sizeHint().height());
+	painter.rotate(270);
+	painter.drawText(0, -painter.fontMetrics().descent(), text());
+}
+
+QSize VerticalSourceLabel::minimumSizeHint() const
+{
+	QSize s = QLabel::minimumSizeHint();
+	return QSize(s.height(), s.width());
+}
+
+QSize VerticalSourceLabel::sizeHint() const
+{
+	QSize s = QLabel::sizeHint();
+	return QSize(s.height(), s.width());
+}
+
 VolControl::VolControl(OBSSource source_, bool showConfig, bool vertical)
 	: source(std::move(source_)),
 	  levelTotal(0.0f),
@@ -242,8 +283,9 @@ VolControl::VolControl(OBSSource source_, bool showConfig, bool vertical)
 	  vertical(vertical),
 	  contextMenu(nullptr)
 {
-	nameLabel = new OBSSourceLabel(source);
-	volLabel = new QLabel();
+	nameLabel = vertical ? new VerticalSourceLabel(source)
+			     : new OBSSourceLabel(source);
+	volLabel = vertical ? new VerticalLabel() : new QLabel();
 	mute = new MuteCheckBox();
 
 	volLabel->setObjectName("volLabel");
@@ -275,6 +317,7 @@ VolControl::VolControl(OBSSource source_, bool showConfig, bool vertical)
 	mainLayout->setSpacing(2);
 
 	if (vertical) {
+		QVBoxLayout *textLayout = new QVBoxLayout;
 		QVBoxLayout *controlLayout = new QVBoxLayout;
 		QVBoxLayout *buttonLayout = new QVBoxLayout;
 		QHBoxLayout *hLayout = new QHBoxLayout;
@@ -287,6 +330,12 @@ VolControl::VolControl(OBSSource source_, bool showConfig, bool vertical)
 		slider->setDisplayTicks(true);
 
 		meterFrame->setObjectName("volMeterFrame");
+
+		textLayout->setContentsMargins(0, 0, 0, 0);
+		textLayout->addWidget(volLabel);
+		textLayout->addWidget(nameLabel);
+		textLayout->setAlignment(nameLabel, Qt::AlignBottom);
+		textLayout->setAlignment(volLabel, Qt::AlignTop);
 
 		buttonLayout->setContentsMargins(0, 0, 0, 0);
 		buttonLayout->setSpacing(0);
@@ -312,11 +361,10 @@ VolControl::VolControl(OBSSource source_, bool showConfig, bool vertical)
 
 		hLayout->setContentsMargins(0, 0, 0, 0);
 		hLayout->setSpacing(2);
+		hLayout->addItem(textLayout);
 		hLayout->addWidget(meterFrame);
 		hLayout->addItem(controlLayout);
 
-		mainLayout->addWidget(nameLabel);
-		mainLayout->addWidget(volLabel);
 		mainLayout->addItem(hLayout);
 		mainLayout->setAlignment(hLayout, Qt::AlignHCenter);
 

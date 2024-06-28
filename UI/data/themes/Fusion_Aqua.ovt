@@ -991,7 +991,6 @@ StatusBarWidget > QFrame {
 
 VolControl QLabel {
   font-size: 11px;
-  max-height: 15.4px;
 }
 VolControl VolumeMeter {
   qproperty-meterThickness: 3;
@@ -1017,13 +1016,15 @@ VolControl VolumeSlider::vertical {
 #hMixerScrollArea {
   qproperty-verticalScrollBarPolicy: ScrollBarAsNeeded;
 }
+#hMixerScrollArea QLabel {
+  max-height: 15.4px;
+}
 
 #vMixerScrollArea {
   qproperty-horizontalScrollBarPolicy: ScrollBarAsNeeded;
 }
-#vMixerScrollArea #volLabel {
-  font-size: 11px;
-  max-height: 15.4px;
+#vMixerScrollArea QLabel {
+  max-width: 15.4px;
 }
 
 *[frameShape="1"] {
