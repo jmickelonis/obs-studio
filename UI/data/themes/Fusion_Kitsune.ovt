@@ -530,12 +530,6 @@ QScrollBar::handle:disabled {
   background: rgba(104, 104, 104, 127);
 }
 
-QSlider::horizontal {
-  max-height: 8px;
-}
-QSlider::vertical {
-  max-width: 8px;
-}
 QSlider::groove {
   background: transparent;
 }
@@ -996,8 +990,8 @@ StatusBarWidget > QFrame {
 }
 
 VolControl QLabel {
-  font-size: 10px;
-  max-height: 14px;
+  font-size: 11px;
+  max-height: 15.4px;
 }
 VolControl VolumeMeter {
   qproperty-meterThickness: 3;
@@ -1007,6 +1001,12 @@ VolControl VolumeMeter {
 }
 VolControl VolumeSlider {
   qproperty-displayTicks: false;
+}
+VolControl VolumeSlider::horizontal {
+  max-height: 8px;
+}
+VolControl VolumeSlider::vertical {
+  max-width: 8px;
 }
 
 #mixerToolbar {
@@ -1020,6 +1020,10 @@ VolControl VolumeSlider {
 
 #vMixerScrollArea {
   qproperty-horizontalScrollBarPolicy: ScrollBarAsNeeded;
+}
+#vMixerScrollArea #volLabel {
+  font-size: 11px;
+  max-height: 15.4px;
 }
 
 *[frameShape="1"] {
