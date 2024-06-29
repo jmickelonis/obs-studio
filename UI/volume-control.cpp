@@ -204,8 +204,13 @@ void VolControl::updateText()
 
 	if (db < -96.0f)
 		text = "-inf dB";
-	else
-		text = QString::number(db, 'f', 1).append(" dB");
+	else {
+		text = QString::number(db, 'f', 1);
+		// Ignore .0
+		if (text.endsWith(".0"))
+			text.truncate(text.size() - 2);
+		text = text.append(" dB");
+	}
 
 	volLabel->setText(text);
 
