@@ -99,6 +99,7 @@ void SceneTree::resizeEvent(QResizeEvent *event)
 					QSize(itemWidth, itemHeight));
 		}
 	} else {
+		setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
 		setGridSize(QSize());
 		for (int i = 0; i < count; i++)
 			item(i)->setData(Qt::SizeHintRole, QVariant());
