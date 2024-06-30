@@ -66,32 +66,42 @@ bool SceneTree::eventFilter(QObject *obj, QEvent *event)
 
 void SceneTree::resizeEvent(QResizeEvent *event)
 {
+	int count = this->count();
+
 	if (gridMode) {
-		int scrollWid = verticalScrollBar()->sizeHint().width();
-		const QRect lastItem = visualItemRect(item(count() - 1));
-		const int h = lastItem.y() + lastItem.height();
-
-		if (h < height()) {
+		if (!count) {
+			setGridSize(QSize(1, 1));
 			setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-			scrollWid = 0;
 		} else {
-			setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
-		}
+			QRect rect = contentsRect();
+			int w = rect.width() -
+				1; // need to subtract 1 for some reason
+			columns = (int)std::ceil((float)w / maxWidth);
+			rows = (int)std::ceil((float)count / columns);
 
-		int wid = contentsRect().width() - scrollWid - 1;
-		int items = (int)std::ceil((float)wid / maxWidth);
-		int itemWidth = wid / items;
+			if ((rows * itemHeight) > rect.height()) {
+				setVerticalScrollBarPolicy(
+					Qt::ScrollBarAlwaysOn);
+				w -= verticalScrollBar()->sizeHint().width();
+				columns = (int)std::ceil((float)w / maxWidth);
+				rows = (int)std::ceil((float)count / columns);
+			} else {
+				setVerticalScrollBarPolicy(
+					Qt::ScrollBarAlwaysOff);
+			}
 
-		setGridSize(QSize(itemWidth, itemHeight));
+			columns = std::min(columns, count);
+			itemWidth = std::min(w / columns, maxWidth);
+			setGridSize(QSize(itemWidth, itemHeight));
 
-		for (int i = 0; i < count(); i++) {
-			item(i)->setSizeHint(QSize(itemWidth, itemHeight));
+			for (int i = 0; i < count; i++)
+				item(i)->setSizeHint(
+					QSize(itemWidth, itemHeight));
 		}
 	} else {
 		setGridSize(QSize());
-		for (int i = 0; i < count(); i++) {
+		for (int i = 0; i < count; i++)
 			item(i)->setData(Qt::SizeHintRole, QVariant());
-		}
 	}
 
 	QListWidget::resizeEvent(event);
@@ -110,105 +120,95 @@ void SceneTree::dropEvent(QDropEvent *event)
 	}
 
 	if (gridMode) {
-		int scrollWid = verticalScrollBar()->sizeHint().width();
-		const QRect firstItem = visualItemRect(item(0));
-		const QRect lastItem = visualItemRect(item(count() - 1));
-		const int h = lastItem.y() + lastItem.height();
-		const int firstItemY = abs(firstItem.y());
+		if (dropIndex < 0 || dropIndex >= count())
+			return;
 
-		if (h < height()) {
-			setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-			scrollWid = 0;
-		} else {
-			setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
-		}
-
-		float wid = contentsRect().width() - scrollWid - 1;
-
-		QPoint point = event->position().toPoint();
-
-		int x = (float)point.x() / wid * std::ceil(wid / maxWidth);
-		int y = (point.y() + firstItemY) / itemHeight;
-
-		int r = x + y * std::ceil(wid / maxWidth);
+		// The position has to correspond to a grid location,
+		// or Qt will not allow the move
+		int row = dropIndex / columns;
+		int column = dropIndex % columns;
+		QRect rect = contentsRect();
+		QPointF position(rect.x() + column * itemWidth,
+				 rect.y() + row * itemHeight);
+		event = new QDropEvent(position, event->possibleActions(),
+				       event->mimeData(), event->buttons(),
+				       event->modifiers());
 
 		QListWidgetItem *item = takeItem(selectedIndexes()[0].row());
-		insertItem(r, item);
+		insertItem(dropIndex, item);
 		setCurrentItem(item);
-		resize(size());
 	}
 
 	QListWidget::dropEvent(event);
 
-	// We must call resizeEvent to correctly place all grid items.
-	// We also do this in rowsInserted.
-	QResizeEvent resEvent(size(), size());
-	SceneTree::resizeEvent(&resEvent);
+	if (gridMode) {
+		// We must call resizeEvent to correctly place all grid items.
+		// We also do this in rowsInserted.
+		QResizeEvent resEvent(size(), size());
+		SceneTree::resizeEvent(&resEvent);
+	}
 
 	QTimer::singleShot(100, [this]() { emit scenesReordered(); });
 }
 
 void SceneTree::RepositionGrid(QDragMoveEvent *event)
 {
-	int scrollWid = verticalScrollBar()->sizeHint().width();
-	const QRect firstItem = visualItemRect(item(0));
-	const QRect lastItem = visualItemRect(item(count() - 1));
-	const int h = lastItem.y() + lastItem.height();
-	const int firstItemY = abs(firstItem.y());
-
-	if (h < height()) {
-		setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-		scrollWid = 0;
-	} else {
-		setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
-	}
-
-	float wid = contentsRect().width() - scrollWid - 1;
+	int count = this->count();
 
 	if (event) {
 		QPoint point = event->position().toPoint();
+		QRect rect = contentsRect();
+		int column = std::max(0, (point.x() - rect.x()) / itemWidth);
+		int row = std::max(0, (point.y() - rect.y()) / itemHeight);
 
-		int x = (float)point.x() / wid * std::ceil(wid / maxWidth);
-		int y = (point.y() + firstItemY) / itemHeight;
+		column = std::max(std::min(column, columns - 1), 0);
+		row = std::max(std::min(row, rows - 1), 0);
 
-		int r = x + y * std::ceil(wid / maxWidth);
-		int orig = selectedIndexes()[0].row();
-
-		for (int i = 0; i < count(); i++) {
-			auto *wItem = item(i);
-
-			if (wItem->isSelected())
-				continue;
-
-			QModelIndex index = indexFromItem(wItem);
-
-			int off = (i >= r ? 1 : 0) -
-				  (i > orig && i > r ? 1 : 0) -
-				  (i > orig && i == r ? 2 : 0);
-
-			int xPos = (i + off) % (int)std::ceil(wid / maxWidth);
-			int yPos = (i + off) / (int)std::ceil(wid / maxWidth);
-			QSize g = gridSize();
-
-			QPoint position(xPos * g.width(), yPos * g.height());
-			setPositionForIndex(position, index);
+		if (row >= 0 && row == rows - 1) {
+			// If out of bounds in the last row,
+			// move to the row above
+			int remainder = count % columns;
+			if (remainder && column >= remainder)
+				row--;
 		}
-	} else {
-		for (int i = 0; i < count(); i++) {
-			auto *wItem = item(i);
 
-			if (wItem->isSelected())
-				continue;
+		int src = selectedIndexes()[0].row();
+		int dst = (row * columns) + column;
 
-			QModelIndex index = indexFromItem(wItem);
+		if (dst != src) {
+			dropIndex = dst;
 
-			int xPos = i % (int)std::ceil(wid / maxWidth);
-			int yPos = i / (int)std::ceil(wid / maxWidth);
-			QSize g = gridSize();
+			// We have a drop spot
+			// Shift the other items to show the result
+			int offset = 0;
+			int incIndex = dst > src ? dst + 1 : dst;
+			for (int i = 0; i < count; i++) {
+				auto *wItem = item(i);
+				if (i == incIndex)
+					offset += 1;
+				else if (i == src)
+					offset -= 1;
+				int j = wItem->isSelected() ? dst : i + offset;
+				QPoint position =
+					QPoint((j % columns) * itemWidth,
+					       (j / columns) * itemHeight);
+				QModelIndex index = indexFromItem(wItem);
+				setPositionForIndex(position, index);
+			}
 
-			QPoint position(xPos * g.width(), yPos * g.height());
-			setPositionForIndex(position, index);
+			return;
 		}
+	}
+
+	dropIndex = -1;
+
+	// Move items back to their original positions
+	for (int i = 0; i < count; i++) {
+		auto *wItem = item(i);
+		QPoint position = QPoint((i % columns) * itemWidth,
+					 (i / columns) * itemHeight);
+		QModelIndex index = indexFromItem(wItem);
+		setPositionForIndex(position, index);
 	}
 }
 
