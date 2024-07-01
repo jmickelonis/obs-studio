@@ -26,6 +26,7 @@
 #include <QDirIterator>
 #include <QGuiApplication>
 #include <QRandomGenerator>
+#include <QLabel>
 
 #include "qt-wrappers.hpp"
 #include "obs-app.hpp"
@@ -934,6 +935,21 @@ bool OBSApp::SetTheme(const QString &name)
 	const QPalette palette = PreparePalette(vars, defaultPalette);
 	setPalette(palette);
 	setStyleSheet(stylesheet);
+
+	// QLabel links don't pick up the style change automatically
+	// Iterate over them and reload their text if needed
+	for (QWidget *widget : QApplication::topLevelWidgets()) {
+		QList<QLabel *> labels = widget->findChildren<QLabel *>();
+		foreach(QLabel * label, labels)
+		{
+			QString text = label->text();
+			if (!label->openExternalLinks() &&
+			    !Qt::mightBeRichText(text))
+				continue;
+			label->setText("");
+			label->setText(text);
+		}
+	}
 
 #ifdef _DEBUG
 	/* Write resulting QSS to file in config dir "themes" folder. */
