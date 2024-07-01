@@ -190,7 +190,7 @@ bool TwitchAuth::LoadInternal()
 
 static const char *ffz_script = "\
 var ffz = document.createElement('script');\
-ffz.setAttribute('src','https://cdn.frankerfacez.com/script/script.min.js');\
+ffz.setAttribute('src','https://cdn.frankerfacez.com/script/avalon.js');\
 document.head.appendChild(ffz);";
 
 static const char *bttv_script = "\
