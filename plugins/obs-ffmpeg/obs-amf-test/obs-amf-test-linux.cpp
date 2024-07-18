@@ -100,8 +100,8 @@ try {
 	device_props.pNext = &driver_props;
 	vkGetPhysicalDeviceProperties2(devices[0], &device_props);
 
-	if (strcmp(driver_props.driverName, "AMD proprietary driver"))
-		throw "Not running AMD proprietary driver";
+	bool is_proprietary =
+		!strcmp(driver_props.driverName, "AMD proprietary driver");
 
 	vkDestroyInstance(instance, nullptr);
 
@@ -119,6 +119,10 @@ try {
 	res = init(AMF_FULL_VERSION, &amf_factory);
 	if (res != AMF_OK)
 		throw "AMFInit failed";
+
+	if (AMF_FULL_VERSION < AMF_MAKE_FULL_VERSION(1, 4, 34, 0) &&
+	    !is_proprietary)
+		throw "Not running AMD proprietary driver";
 
 	uint32_t idx = 0;
 	while (get_adapter_caps(idx++))
