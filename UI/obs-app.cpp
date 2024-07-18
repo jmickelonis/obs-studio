@@ -23,6 +23,7 @@
 #include <string>
 #include <sstream>
 #include <mutex>
+#include <regex>
 #include <util/bmem.h>
 #include <util/dstr.hpp>
 #include <util/platform.h>
@@ -2059,6 +2060,38 @@ static void ActivateAMF()
 		return;
 	}
 
+	// Check for the encoder library
+	std::unique_ptr<FILE, decltype(&pclose)> pipe(
+		popen("ldconfig -v 2>/dev/null | grep libamfrt64", "r"),
+		pclose);
+
+	if (!pipe)
+		return;
+
+	std::string config;
+	std::array<char, 64> buffer;
+	while (fgets(buffer.data(), static_cast<int>(buffer.size()),
+		     pipe.get()) != nullptr)
+		config += buffer.data();
+
+	std::regex pattern(R"(libamfrt64\.so\.(\d+\.\d+\.\d+))");
+	std::smatch match;
+	if (!std::regex_search(config, match, pattern))
+		return;
+
+	QString amfVersion = match[1].str().c_str();
+	blog(LOG_INFO, "Found AMD HW encoder: libamfrt64.so v%s",
+	     amfVersion.toStdString().c_str());
+
+	if (QVersionNumber::fromString(amfVersion) >=
+		    QVersionNumber(1, 4, 34) &&
+	    !(value && !strcmp(value, "AMDVLK-PRO"))) {
+		// AMF 1.4.34 introduced stable support for Mesa/RADV
+		blog(LOG_INFO,
+		     "Not using AMDVLK-PRO with AMF >= 1.4.34 by default (set OBS_ACTIVATE_AMF=AMDVLK-PRO to force)");
+		return;
+	}
+
 	QFileInfo file_info = GetAMDGPUProICDPath();
 	if (!(file_info.exists() && file_info.isFile()))
 		return;
@@ -2091,24 +2124,6 @@ static void ActivateAMF()
 	     "\n      Library Path: %s",
 	     path.toStdString().c_str(), version.string_value().c_str(),
 	     dir.path().toStdString().c_str());
-
-	QStringList stringList =
-		dir.entryList(QStringList("libamfrt64.so.*.*.*"));
-	if (!stringList.empty()) {
-		QString amfLibrary = stringList.first();
-		QString amfVersion = amfLibrary.sliced(14);
-		blog(LOG_INFO, "Found AMD HW encoder: libamfrt64.so v%s",
-		     amfVersion.toStdString().c_str());
-
-		if (QVersionNumber::fromString(amfVersion) >=
-			    QVersionNumber(1, 4, 34) &&
-		    !(value && !strcmp(value, "AMDVLK-PRO"))) {
-			// AMF 1.4.34 introduced stable support for Mesa/RADV
-			blog(LOG_INFO,
-			     "Not using AMDVLK-PRO with AMF (set OBS_ACTIVATE_AMF=AMDVLK-PRO to force)");
-			return;
-		}
-	}
 
 	QStringList fileNames(path);
 	const char *s = getenv("VK_ICD_FILENAMES");
