@@ -10,6 +10,9 @@
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
+#include <filesystem>
+namespace fs = std::filesystem;
+
 #ifdef YOUTUBE_WEBAPP_PLACEHOLDER
 static constexpr const char *YOUTUBE_WEBAPP_PLACEHOLDER_URL =
 	YOUTUBE_WEBAPP_PLACEHOLDER;
@@ -135,9 +138,30 @@ void YouTubeAppDock::AddYouTubeAppDock()
 
 void YouTubeAppDock::CreateBrowserWidget(const std::string &url)
 {
-	std::string dir_name = std::string("obs_profile_cookies_youtube/") +
-			       config_get_string(OBSBasic::Get()->Config(),
-						 "Panels", "CookieId");
+	const char *cookie_id = config_get_string(OBSBasic::Get()->Config(),
+						  "Panels", "CookieId");
+
+	/* jmick:
+	 * Newer CEF doesn't allow profiles to exist in sub-directories of depth > 1.
+	 * Move the directory to a location that works.
+	 */
+
+	std::string dir_name;
+	dir_name += "obs_profile_cookies_youtube_";
+	dir_name += cookie_id;
+
+	BPtr<char> c_root = cef->get_cookie_path("");
+	std::string root = c_root.Get();
+	std::string old_path =
+		root + "/obs_profile_cookies_youtube/" + cookie_id;
+
+	if (fs::is_directory(old_path)) {
+		std::string path = root + "/" + dir_name;
+
+		if (!fs::is_directory(path))
+			fs::rename(old_path, path);
+	}
+
 	if (cookieManager)
 		delete cookieManager;
 	cookieManager = cef->create_cookie_manager(dir_name, true);

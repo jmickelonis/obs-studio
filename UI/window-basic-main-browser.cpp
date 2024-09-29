@@ -15,13 +15,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include <QDir>
 #include <QThread>
 #include <QMessageBox>
 #include "window-basic-main.hpp"
 #include "qt-wrappers.hpp"
 
 #include <random>
+
+#include <filesystem>
+namespace fs = std::filesystem;
 
 #ifdef BROWSER_AVAILABLE
 #include <browser-panel.hpp>
@@ -70,9 +72,24 @@ static void InitPanelCookieManager()
 	const char *cookie_id =
 		config_get_string(main->Config(), "Panels", "CookieId");
 
+	/* jmick:
+	 * Newer CEF doesn't allow profiles to exist in sub-directories of depth > 1.
+	 * Move the directory to a location that works.
+	 */
 	std::string sub_path;
-	sub_path += "obs_profile_cookies/";
+	sub_path += "obs_profile_cookies_";
 	sub_path += cookie_id;
+
+	BPtr<char> c_root = cef->get_cookie_path("");
+	std::string root = c_root.Get();
+	std::string old_path = root + "/obs_profile_cookies/" + cookie_id;
+
+	if (fs::is_directory(old_path)) {
+		std::string path = root + "/" + sub_path;
+
+		if (!fs::is_directory(path))
+			fs::rename(old_path, path);
+	}
 
 	panel_cookies = cef->create_cookie_manager(sub_path);
 }
@@ -111,29 +128,24 @@ void DuplicateCurrentCookieProfile(ConfigFile &config)
 		/* jmick:
 		 * Stock OBS has a bug in this code,
 		 * where the destination directory never gets created/copied to.
-		 * This is fixed and tested.
+		 * We fix that here, as well as handle YouTube.
 		 */
-		BPtr<char> root = cef->get_cookie_path("");
-		QDir rootDir(root.Get());
-		rootDir.setPath(rootDir.filePath("obs_profile_cookies"));
+		BPtr<char> c_root = cef->get_cookie_path("");
+		std::string root = c_root.Get();
 
-		QString srcPath =
-			rootDir.filePath(QString::fromStdString(cookie_id));
-		QDir srcDir(srcPath);
+		auto update = [&](std::string name) {
+			std::string src = root + "/" + name + "_" + cookie_id;
+			if (fs::is_directory(src)) {
+				std::string dst =
+					root + "/" + name + "_" + new_id;
+				if (!fs::is_directory(dst))
+					fs::copy(src, dst,
+						 fs::copy_options::recursive);
+			}
+		};
 
-		if (srcDir.exists()) {
-			QString newID = QString::fromStdString(new_id);
-			QString dstPath = rootDir.filePath(newID);
-			QDir dstDir(dstPath);
-
-			if (!dstDir.exists())
-				rootDir.mkdir(newID);
-
-			QStringList files = srcDir.entryList(QDir::Files);
-			for (const QString &file : files)
-				QFile::copy(srcPath + QDir::separator() + file,
-					    dstPath + QDir::separator() + file);
-		}
+		update("obs_profile_cookies");
+		update("obs_profile_cookies_youtube");
 
 		config_set_string(config, "Panels", "CookieId",
 				  cookie_id.c_str());
