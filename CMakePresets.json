@@ -88,6 +88,21 @@
       }
     },
     {
+      "name": "ubuntu-jmick",
+      "displayName": "Ubuntu/jmick",
+      "description": "obs-studio (JMick's Mod) for Ubuntu",
+      "inherits": ["ubuntu"],
+      "cacheVariables": {
+        "ENABLE_BROWSER": true,
+        "ENABLE_JACK": true,
+        "ENABLE_LIBFDK": true,
+        "ENABLE_NEW_MPEGTS_OUTPUT": true,
+        "ENABLE_SNDIO": true,
+        "ENABLE_WEBRTC": true,
+        "ENABLE_WHATSNEW": false
+      }
+    },
+    {
       "name": "windows-x64",
       "displayName": "Windows x64",
       "description": "Default Windows build (x64)",
