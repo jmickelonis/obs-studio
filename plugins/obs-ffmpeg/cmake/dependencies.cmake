@@ -24,11 +24,13 @@ if(NOT TARGET OBS::opts-parser)
   add_subdirectory("${CMAKE_SOURCE_DIR}/deps/opts-parser" "${CMAKE_BINARY_DIR}/deps/opts-parser")
 endif()
 
-if(OS_WINDOWS)
+if(OS_WINDOWS
+  OR OS_LINUX)
   find_package(AMF 1.4.29 REQUIRED)
   add_subdirectory(obs-amf-test)
-elseif(
-  OS_LINUX
+endif()
+
+if(OS_LINUX
   OR OS_FREEBSD
   OR OS_OPENBSD)
   find_package(Libva REQUIRED)
