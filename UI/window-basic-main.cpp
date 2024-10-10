@@ -268,6 +268,17 @@ void assignDockToggle(QDockWidget *dock, QAction *action)
 	dock->connect(action, &QAction::toggled, handleMenuToggle);
 }
 
+static QDockWidget::DockWidgetFeatures getDockWidgetFeatures(bool lock = false)
+{
+	if (lock)
+		return QDockWidget::NoDockWidgetFeatures;
+	QDockWidget::DockWidgetFeatures features = QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable;
+	if (!OBSApp::IsWayland())
+		// Wayland doesn't fully support floating docks yet.
+		features |= QDockWidget::DockWidgetFloatable;
+	return features;
+}
+
 void setupDockAction(QDockWidget *dock)
 {
 	QAction *action = dock->toggleViewAction();
@@ -390,8 +401,7 @@ OBSBasic::OBSBasic(QWidget *parent) : OBSMainWindow(parent), undo_s(ui), ui(new 
 
 	statsDock = new OBSDock();
 	statsDock->setObjectName(QStringLiteral("statsDock"));
-	statsDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable |
-			       QDockWidget::DockWidgetFloatable);
+	statsDock->setFeatures(getDockWidgetFeatures());
 	statsDock->setWindowTitle(QTStr("Basic.Stats"));
 	addDockWidget(Qt::BottomDockWidgetArea, statsDock);
 	statsDock->setVisible(false);
@@ -2095,7 +2105,7 @@ void OBSBasic::OBSInit()
 	}
 
 	/* Modules can access frontend information (i.e. profile and scene collection data) during their initialization, and some modules (e.g. obs-websockets) are known to use the filesystem location of the current profile in their own code.
-     
+
      Thus the profile and scene collection discovery needs to happen before any access to that information (but after intializing global settings) to ensure legacy code gets valid path information.
      */
 	RefreshSceneCollections(true);
@@ -8777,11 +8787,7 @@ void OBSBasic::on_resetDocks_triggered(bool force)
 
 void OBSBasic::on_lockDocks_toggled(bool lock)
 {
-	QDockWidget::DockWidgetFeatures features =
-		lock ? QDockWidget::NoDockWidgetFeatures
-		     : (QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable |
-			QDockWidget::DockWidgetFloatable);
-
+	QDockWidget::DockWidgetFeatures features = getDockWidgetFeatures(lock);
 	QDockWidget::DockWidgetFeatures mainFeatures = features;
 	mainFeatures &= ~QDockWidget::QDockWidget::DockWidgetClosable;
 
@@ -9562,10 +9568,7 @@ QAction *OBSBasic::AddDockWidget(QDockWidget *dock)
 	oldExtraDockNames.push_back(dock->objectName());
 
 	bool lock = ui->lockDocks->isChecked();
-	QDockWidget::DockWidgetFeatures features =
-		lock ? QDockWidget::NoDockWidgetFeatures
-		     : (QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable |
-			QDockWidget::DockWidgetFloatable);
+	QDockWidget::DockWidgetFeatures features = getDockWidgetFeatures(lock);
 
 	dock->setFeatures(features);
 
@@ -9602,10 +9605,7 @@ void OBSBasic::AddDockWidget(QDockWidget *dock, Qt::DockWidgetArea area, bool ex
 		return;
 
 	bool lock = ui->lockDocks->isChecked();
-	QDockWidget::DockWidgetFeatures features =
-		lock ? QDockWidget::NoDockWidgetFeatures
-		     : (QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable |
-			QDockWidget::DockWidgetFloatable);
+	QDockWidget::DockWidgetFeatures features = getDockWidgetFeatures(lock);
 
 	setupDockAction(dock);
 	dock->setFeatures(features);
@@ -9669,10 +9669,7 @@ void OBSBasic::AddCustomDockWidget(QDockWidget *dock)
 	connect(dock, &QObject::objectNameChanged, this, &OBSBasic::RepairCustomExtraDockName);
 
 	bool lock = ui->lockDocks->isChecked();
-	QDockWidget::DockWidgetFeatures features =
-		lock ? QDockWidget::NoDockWidgetFeatures
-		     : (QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable |
-			QDockWidget::DockWidgetFloatable);
+	QDockWidget::DockWidgetFeatures features = getDockWidgetFeatures(lock);
 
 	dock->setFeatures(features);
 	addDockWidget(Qt::RightDockWidgetArea, dock);
