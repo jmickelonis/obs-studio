@@ -1495,6 +1495,11 @@ void OBSBasic::SetPreviewProgramMode(bool enabled)
 		programLayout->addWidget(programLabel);
 		programLayout->addWidget(program);
 
+		programSpacerLabel = new QLabel();
+		programSpacerLabel->setProperty("class", "preview-program-spacer");
+		programSpacerLabel->setStyleSheet("max-height: 0px;");
+		programLayout->addWidget(programSpacerLabel);
+
 		programWidget->setLayout(programLayout);
 
 		ui->previewLayout->addWidget(programOptions);
@@ -1518,6 +1523,7 @@ void OBSBasic::SetPreviewProgramMode(bool enabled)
 		delete program;
 		delete programLabel;
 		delete programWidget;
+		delete programSpacerLabel;
 
 		if (lastScene) {
 			OBSSource actualLastScene = OBSGetStrongRef(lastScene);

@@ -364,6 +364,7 @@ private:
 	QPointer<QWidget> programWidget;
 	QPointer<QVBoxLayout> programLayout;
 	QPointer<QLabel> programLabel;
+	QPointer<QLabel> programSpacerLabel;
 
 	QScopedPointer<QThread> patronJsonThread;
 	std::string patronJson;
