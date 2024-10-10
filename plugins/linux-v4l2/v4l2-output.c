@@ -26,7 +26,8 @@ static const char *virtualcam_name(void *unused)
 static void virtualcam_destroy(void *data)
 {
 	struct virtualcam_data *vcam = (struct virtualcam_data *)data;
-	close(vcam->device);
+	if (vcam->device > 0)
+		close(vcam->device);
 	bfree(data);
 }
 
@@ -176,7 +177,8 @@ static bool try_connect(void *data, const char *device)
 	return true;
 
 fail_close_device:
-	close(vcam->device);
+	if (vcam->device > 0)
+		close(vcam->device);
 	return false;
 }
 
@@ -245,7 +247,8 @@ static void virtualcam_stop(void *data, uint64_t ts)
 		blog(LOG_WARNING, "Failed to stop streaming on video device %d (%s)", vcam->device, strerror(errno));
 	}
 
-	close(vcam->device);
+	if (vcam->device > 0)
+		close(vcam->device);
 	blog(LOG_INFO, "Virtual camera stopped");
 
 	UNUSED_PARAMETER(ts);
