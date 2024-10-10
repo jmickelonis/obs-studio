@@ -27,6 +27,9 @@
 #include <browser-panel.hpp>
 #endif
 
+#include <filesystem>
+namespace fs = std::filesystem;
+
 struct QCef;
 struct QCefCookieManager;
 
@@ -68,9 +71,24 @@ static void InitPanelCookieManager()
 	OBSBasic *main = OBSBasic::Get();
 	const char *cookie_id = config_get_string(main->Config(), "Panels", "CookieId");
 
+	/* jmick:
+	 * Newer CEF doesn't allow profiles to exist in sub-directories of depth > 1.
+	 * Move the directory to a location that works.
+	 */
 	std::string sub_path;
-	sub_path += "obs_profile_cookies/";
+	sub_path += "obs_profile_cookies_";
 	sub_path += cookie_id;
+
+	BPtr<char> c_root = cef->get_cookie_path("");
+	std::string root = c_root.Get();
+	std::string old_path = root + "/obs_profile_cookies/" + cookie_id;
+
+	if (fs::is_directory(old_path)) {
+		std::string path = root + "/" + sub_path;
+
+		if (!fs::is_directory(path))
+			fs::rename(old_path, path);
+	}
 
 	panel_cookies = cef->create_cookie_manager(sub_path);
 }
@@ -102,35 +120,21 @@ void DuplicateCurrentCookieProfile(ConfigFile &config)
 	if (cef) {
 		OBSBasic *main = OBSBasic::Get();
 		std::string cookie_id = config_get_string(main->Config(), "Panels", "CookieId");
-
-		std::string src_path;
-		src_path += "obs_profile_cookies/";
-		src_path += cookie_id;
-
 		std::string new_id = GenId();
 
-		std::string dst_path;
-		dst_path += "obs_profile_cookies/";
-		dst_path += new_id;
+		/* jmick:
+		 * Stock OBS has a bug in this code,
+		 * where the destination directory never gets created/copied to.
+		 * We fix that here.
+		 */
+		BPtr<char> c_root = cef->get_cookie_path("");
+		std::string root = c_root.Get();
 
-		BPtr<char> src_path_full = cef->get_cookie_path(src_path);
-		BPtr<char> dst_path_full = cef->get_cookie_path(dst_path);
-
-		QDir srcDir(src_path_full.Get());
-		QDir dstDir(dst_path_full.Get());
-
-		if (srcDir.exists()) {
-			if (!dstDir.exists())
-				dstDir.mkdir(dst_path_full.Get());
-
-			QStringList files = srcDir.entryList(QDir::Files);
-			for (const QString &file : files) {
-				QString src = QString(src_path_full);
-				QString dst = QString(dst_path_full);
-				src += QDir::separator() + file;
-				dst += QDir::separator() + file;
-				QFile::copy(src, dst);
-			}
+		std::string src = root + "/obs_profile_cookies_" + cookie_id;
+		if (fs::is_directory(src)) {
+			std::string dst = root + "/obs_profile_cookies_" + new_id;
+			if (!fs::is_directory(dst))
+				fs::copy(src, dst, fs::copy_options::recursive);
 		}
 
 		config_set_string(config, "Panels", "CookieId", cookie_id.c_str());
