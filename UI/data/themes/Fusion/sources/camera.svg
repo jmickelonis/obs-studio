@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="16"
+   height="16"
+   version="1.1"
+   id="svg4"
+   sodipodi:docname="camera.svg"
+   inkscape:label="inner"
+   inkscape:version="1.1.2 (0a00cf5339, 2022-02-04)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview6"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     showgrid="false"
+     inkscape:zoom="38.139572"
+     inkscape:cx="8.0756019"
+     inkscape:cy="6.7515178"
+     inkscape:window-width="1390"
+     inkscape:window-height="869"
+     inkscape:window-x="293"
+     inkscape:window-y="180"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg4" />
+  <path
+     style="display:inline;opacity:0.6;fill:#e8e8e8;stroke-width:0.875;fill-opacity:1"
+     d="m 7.9572755,5.3750688 a 1.75,1.75 0 0 0 -1.7072755,1.75 1.75,1.75 0 0 0 1.75,1.75 1.75,1.75 0 0 0 1.75,-1.75 1.75,1.75 0 0 0 -1.75,-1.75 1.75,1.75 0 0 0 -0.042725,0 z"
+     id="path3203"
+     inkscape:label="lens" />
+  <path
+     id="path2-6"
+     style="display:inline;fill:#e8e8e8;stroke-width:0.875;fill-opacity:1"
+     d="M 7.9179687,1.0000688 A 6.125,6.125 0 0 0 1.875,7.1250688 6.125,6.125 0 0 0 5.4006349,12.670723 C 4.46276,12.983957 3.625,13.343059 3.625,13.639716 v 0.680176 c 0,0.377028 0.3257783,0.680176 0.729736,0.680176 h 7.290528 c 0.403959,0 0.729736,-0.303148 0.729736,-0.680176 v -0.680176 c 0,-0.296657 -0.83776,-0.655759 -1.775635,-0.968993 A 6.125,6.125 0 0 0 14.125,7.1250688 6.125,6.125 0 0 0 8,1.0000688 a 6.125,6.125 0 0 0 -0.082031,0 z m 0.02905,2.625 a 3.5,3.5 0 0 1 0.052981,0 3.5,3.5 0 0 1 3.5000003,3.5 A 3.5,3.5 0 0 1 8,10.625069 3.5,3.5 0 0 1 4.5,7.1250688 a 3.5,3.5 0 0 1 3.4470214,-3.5 z"
+     inkscape:label="body" />
+</svg>
