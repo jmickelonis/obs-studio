@@ -10,6 +10,9 @@
 #include <QAccessibleWidget>
 #include "absolute-slider.hpp"
 
+#include <QLabel>
+#include "source-label.hpp"
+
 class QPushButton;
 class VolumeMeterTimer;
 class VolumeSlider;
@@ -46,6 +49,7 @@ class VolumeMeter : public QWidget {
 	Q_PROPERTY(QColor magnitudeColor READ getMagnitudeColor WRITE setMagnitudeColor DESIGNABLE true)
 	Q_PROPERTY(QColor majorTickColor READ getMajorTickColor WRITE setMajorTickColor DESIGNABLE true)
 	Q_PROPERTY(QColor minorTickColor READ getMinorTickColor WRITE setMinorTickColor DESIGNABLE true)
+	Q_PROPERTY(bool showTickValues READ getShowTickValues WRITE setShowTickValues DESIGNABLE true)
 	Q_PROPERTY(int meterThickness READ getMeterThickness WRITE setMeterThickness DESIGNABLE true)
 	Q_PROPERTY(qreal meterFontScaling READ getMeterFontScaling WRITE setMeterFontScaling DESIGNABLE true)
 
@@ -125,6 +129,7 @@ private:
 	QColor magnitudeColor;
 	QColor majorTickColor;
 	QColor minorTickColor;
+	bool showTickValues;
 
 	int meterThickness;
 	qreal meterFontScaling;
@@ -195,6 +200,8 @@ public:
 	void setMajorTickColor(QColor c);
 	QColor getMinorTickColor() const;
 	void setMinorTickColor(QColor c);
+	bool getShowTickValues() const;
+	void setShowTickValues(bool b);
 	int getMeterThickness() const;
 	void setMeterThickness(int v);
 	qreal getMeterFontScaling() const;
@@ -244,6 +251,35 @@ class QLabel;
 class VolumeSlider;
 class MuteCheckBox;
 class OBSSourceLabel;
+
+class VerticalLabel : public QLabel {
+	Q_OBJECT
+
+public:
+	explicit VerticalLabel(QWidget *parent = 0) : QLabel(parent) {}
+	explicit VerticalLabel(const QString &text, QWidget *parent = 0) : QLabel(text, parent) {}
+
+protected:
+	void paintEvent(QPaintEvent *) override;
+	QSize sizeHint() const override;
+	QSize minimumSizeHint() const override;
+};
+
+class VerticalSourceLabel : public OBSSourceLabel {
+	Q_OBJECT
+
+public:
+	explicit VerticalSourceLabel(const obs_source_t *source, QWidget *parent = nullptr,
+				     Qt::WindowFlags f = Qt::WindowFlags())
+		: OBSSourceLabel(source, parent, f)
+	{
+	}
+
+protected:
+	void paintEvent(QPaintEvent *) override;
+	QSize sizeHint() const override;
+	QSize minimumSizeHint() const override;
+};
 
 class VolControl : public QFrame {
 	Q_OBJECT
