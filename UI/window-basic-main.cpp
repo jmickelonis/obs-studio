@@ -270,13 +270,9 @@ void assignDockToggle(QDockWidget *dock, QAction *action)
 
 static QDockWidget::DockWidgetFeatures getDockWidgetFeatures(bool lock = false)
 {
-	if (lock)
-		return QDockWidget::NoDockWidgetFeatures;
-	QDockWidget::DockWidgetFeatures features = QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable;
-	if (!OBSApp::IsWayland())
-		// Wayland doesn't fully support floating docks yet.
-		features |= QDockWidget::DockWidgetFloatable;
-	return features;
+	return lock ? QDockWidget::NoDockWidgetFeatures
+		    : QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable |
+			       QDockWidget::DockWidgetFloatable;
 }
 
 void setupDockAction(QDockWidget *dock)

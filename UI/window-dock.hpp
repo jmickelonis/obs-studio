@@ -102,6 +102,7 @@ public:
 	void toggleFloating();
 
 protected:
+	bool eventFilter(QObject *obj, QEvent *ev) override;
 	virtual bool event(QEvent *event) override;
 	virtual void paintEvent(QPaintEvent *event) override;
 	virtual void closeEvent(QCloseEvent *event) override;
@@ -127,7 +128,7 @@ private:
 
 	bool onMouseButtonDoubleClicked(QMouseEvent *event);
 	bool onMouseButtonPressed(QMouseEvent *event);
-	bool onMouseButtonReleased(QMouseEvent *event);
+	bool onMouseButtonReleased(QMouseEvent *event = nullptr);
 	bool onMouseMoved(QMouseEvent *event);
 	bool onKeyPressed(QKeyEvent *event);
 
