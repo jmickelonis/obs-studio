@@ -54,108 +54,108 @@ OBSBasicSettings {
   qproperty-videoIcon: url(theme:Fusion/settings/video.svg);
 }
 
-*[themeID=cogsIcon] {
-  qproperty-icon: url(theme:Fusion/settings/advanced.svg);
-  qproperty-iconSize: 14px 14px;
-}
-
-*[themeID=filtersIcon] {
-  qproperty-icon: url(theme:Fusion/filter.svg);
-  qproperty-iconSize: 14px 14px;
-}
-
-*[themeID=nextIcon] {
-  qproperty-icon: url(theme:Fusion/media/media_next.svg);
-  qproperty-iconSize: 14px 14px;
-}
-
-*[themeID=pauseIcon] {
-  qproperty-icon: url(theme:Fusion/media/media_pause.svg);
-  qproperty-iconSize: 14px 14px;
-}
-
-*[themeID=playIcon] {
-  qproperty-icon: url(theme:Fusion/media/media_play.svg);
-  qproperty-iconSize: 14px 14px;
-}
-
-*[themeID=previousIcon] {
-  qproperty-icon: url(theme:Fusion/media/media_previous.svg);
-  qproperty-iconSize: 14px 14px;
-}
-
-*[themeID=restartIcon] {
-  qproperty-icon: url(theme:Fusion/media/media_restart.svg);
-  qproperty-iconSize: 14px 14px;
-}
-
-*[themeID=revertIcon] {
-  qproperty-icon: url(theme:Fusion/revert.svg);
-  qproperty-iconSize: 14px 14px;
-}
-
-*[themeID=stopIcon] {
-  qproperty-icon: url(theme:Fusion/media/media_stop.svg);
-  qproperty-iconSize: 14px 14px;
-}
-
-*[themeID=trashIcon] {
-  qproperty-icon: url(theme:Fusion/trash.svg);
-  qproperty-iconSize: 14px 14px;
-}
-
-*[themeID=addIconSmall] {
-  qproperty-icon: url(theme:Fusion/plus.svg);
-  qproperty-iconSize: 14px 14px;
-}
-
-*[themeID=clearIconSmall] {
+.icon-clear {
   qproperty-icon: url(theme:Fusion/entry-clear.svg);
   qproperty-iconSize: 14px 14px;
 }
 
-*[themeID=configIconSmall] {
+.icon-cogs {
+  qproperty-icon: url(theme:Fusion/settings/advanced.svg);
+  qproperty-iconSize: 14px 14px;
+}
+
+.icon-dots-vert {
   qproperty-icon: url(theme:Fusion/settings/general.svg);
   qproperty-iconSize: 14px 14px;
 }
 
-*[themeID=downArrowIconSmall] {
+.icon-down {
   qproperty-icon: url(theme:Fusion/down.svg);
   qproperty-iconSize: 14px 14px;
 }
 
-*[themeID=menuIconSmall] {
+.icon-filter {
+  qproperty-icon: url(theme:Fusion/filter.svg);
+  qproperty-iconSize: 14px 14px;
+}
+
+.icon-gear {
   qproperty-icon: url(theme:Fusion/settings/general.svg);
   qproperty-iconSize: 14px 14px;
 }
 
-*[themeID=pauseIconSmall] {
-  qproperty-icon: url(theme:Fusion/media-pause.svg);
-  qproperty-iconSize: 14px 14px;
-}
-
-*[themeID=propertiesIconSmall] {
-  qproperty-icon: url(theme:Fusion/settings/general.svg);
-  qproperty-iconSize: 14px 14px;
-}
-
-*[themeID=refreshIconSmall] {
-  qproperty-icon: url(theme:Fusion/refresh.svg);
-  qproperty-iconSize: 14px 14px;
-}
-
-*[themeID=removeIconSmall] {
+.icon-minus {
   qproperty-icon: url(theme:Fusion/minus.svg);
   qproperty-iconSize: 14px 14px;
 }
 
-*[themeID=replayIconSmall] {
+.icon-pause {
+  qproperty-icon: url(theme:Fusion/media/media_pause.svg);
+  qproperty-iconSize: 14px 14px;
+}
+
+.icon-plus {
+  qproperty-icon: url(theme:Fusion/plus.svg);
+  qproperty-iconSize: 14px 14px;
+}
+
+.icon-refresh {
+  qproperty-icon: url(theme:Fusion/refresh.svg);
+  qproperty-iconSize: 14px 14px;
+}
+
+.icon-revert {
+  qproperty-icon: url(theme:Fusion/revert.svg);
+  qproperty-iconSize: 14px 14px;
+}
+
+.icon-save {
   qproperty-icon: url(theme:Fusion/save.svg);
   qproperty-iconSize: 14px 14px;
 }
 
-*[themeID=upArrowIconSmall] {
+.icon-touch {
+  qproperty-icon: url(theme:Fusion/interact.svg);
+  qproperty-iconSize: 14px 14px;
+}
+
+.icon-trash {
+  qproperty-icon: url(theme:Fusion/minus.svg);
+  qproperty-iconSize: 14px 14px;
+}
+
+.icon-up {
   qproperty-icon: url(theme:Fusion/up.svg);
+  qproperty-iconSize: 14px 14px;
+}
+
+.icon-media-next {
+  qproperty-icon: url(theme:Fusion/media/media_next.svg);
+  qproperty-iconSize: 14px 14px;
+}
+
+.icon-media-pause {
+  qproperty-icon: url(theme:Fusion/media/media_pause.svg);
+  qproperty-iconSize: 14px 14px;
+}
+
+.icon-media-play {
+  qproperty-icon: url(theme:Fusion/media/media_play.svg);
+  qproperty-iconSize: 14px 14px;
+}
+
+.icon-media-prev {
+  qproperty-icon: url(theme:Fusion/media/media_previous.svg);
+  qproperty-iconSize: 14px 14px;
+}
+
+.icon-media-restart {
+  qproperty-icon: url(theme:Fusion/media/media_restart.svg);
+  qproperty-iconSize: 14px 14px;
+}
+
+.icon-media-stop {
+  qproperty-icon: url(theme:Fusion/media/media_stop.svg);
   qproperty-iconSize: 14px 14px;
 }
 
@@ -232,84 +232,89 @@ QRadioButton::indicator:disabled:checked {
   image: url(theme:Fusion/ui/radiobutton checked disabled.svg);
 }
 
-QCheckBox[lockCheckBox=true] {
+.indicator-lock {
   background: transparent;
 }
-QCheckBox[lockCheckBox=true]::indicator {
+.indicator-lock::indicator {
   width: 14px;
   height: 14px;
 }
-QCheckBox[lockCheckBox=true]::indicator:unchecked, QCheckBox[lockCheckBox=true]::indicator:hover:checked {
+.indicator-lock::indicator:unchecked, .indicator-lock::indicator:hover:checked {
   image: url(theme:Fusion/unlocked.svg);
 }
-QCheckBox[lockCheckBox=true]::indicator:checked, QCheckBox[lockCheckBox=true]::indicator:hover:checked {
+.indicator-lock::indicator:checked, .indicator-lock::indicator:hover:checked {
   image: url(theme:Fusion/locked.svg);
 }
-QCheckBox[lockCheckBox=true]::indicator:hover:!pressed:unchecked {
+.indicator-lock::indicator:hover:!pressed:unchecked {
   image: url(theme:Fusion/unlocked.svg);
 }
-QCheckBox[lockCheckBox=true]::indicator:hover:!pressed:checked {
+.indicator-lock::indicator:hover:!pressed:checked {
   image: url(theme:Fusion/locked.svg);
 }
 
-MuteCheckBox {
+.indicator-mute {
   background: transparent;
 }
-MuteCheckBox::indicator {
+.indicator-mute::indicator {
   width: 14px;
   height: 14px;
 }
-MuteCheckBox::indicator:unchecked, MuteCheckBox::indicator:hover:checked {
+.indicator-mute::indicator:unchecked, .indicator-mute::indicator:hover:checked {
   image: url(theme:Fusion/settings/audio.svg);
 }
-MuteCheckBox::indicator:checked, MuteCheckBox::indicator:hover:checked {
+.indicator-mute::indicator:checked, .indicator-mute::indicator:hover:checked {
   image: url(theme:Fusion/mute.svg);
 }
-MuteCheckBox::indicator:hover:!pressed:unchecked {
+.indicator-mute::indicator:hover:!pressed:unchecked {
   image: url(theme:Fusion/settings/audio.svg);
 }
-MuteCheckBox::indicator:hover:!pressed:checked {
+.indicator-mute::indicator:hover:!pressed:checked {
   image: url(theme:Fusion/mute.svg);
 }
 
-QCheckBox[sourceTreeSubItem=true] {
+.indicator-expand {
   background: transparent;
 }
-QCheckBox[sourceTreeSubItem=true]::indicator {
+.indicator-expand::indicator {
   width: 14px;
   height: 14px;
 }
-QCheckBox[sourceTreeSubItem=true]::indicator:unchecked, QCheckBox[sourceTreeSubItem=true]::indicator:hover:checked {
+.indicator-expand::indicator:unchecked, .indicator-expand::indicator:hover:checked {
   image: url(theme:Fusion/collapse.svg);
 }
-QCheckBox[sourceTreeSubItem=true]::indicator:checked, QCheckBox[sourceTreeSubItem=true]::indicator:hover:checked {
+.indicator-expand::indicator:checked, .indicator-expand::indicator:hover:checked {
   image: url(theme:Fusion/expand.svg);
 }
-QCheckBox[sourceTreeSubItem=true]::indicator:hover:!pressed:unchecked {
+.indicator-expand::indicator:hover:!pressed:unchecked {
   image: url(theme:Fusion/collapse.svg);
 }
-QCheckBox[sourceTreeSubItem=true]::indicator:hover:!pressed:checked {
+.indicator-expand::indicator:hover:!pressed:checked {
   image: url(theme:Fusion/expand.svg);
 }
 
-QCheckBox[visibilityCheckBox=true] {
+.indicator-visibility {
   background: transparent;
 }
-QCheckBox[visibilityCheckBox=true]::indicator {
+.indicator-visibility::indicator {
   width: 14px;
   height: 14px;
 }
-QCheckBox[visibilityCheckBox=true]::indicator:unchecked, QCheckBox[visibilityCheckBox=true]::indicator:hover:checked {
+.indicator-visibility::indicator:unchecked, .indicator-visibility::indicator:hover:checked {
   image: url(theme:Fusion/invisible.svg);
 }
-QCheckBox[visibilityCheckBox=true]::indicator:checked, QCheckBox[visibilityCheckBox=true]::indicator:hover:checked {
+.indicator-visibility::indicator:checked, .indicator-visibility::indicator:hover:checked {
   image: url(theme:Fusion/visible.svg);
 }
-QCheckBox[visibilityCheckBox=true]::indicator:hover:!pressed:unchecked {
+.indicator-visibility::indicator:hover:!pressed:unchecked {
   image: url(theme:Fusion/invisible.svg);
 }
-QCheckBox[visibilityCheckBox=true]::indicator:hover:!pressed:checked {
+.indicator-visibility::indicator:hover:!pressed:checked {
   image: url(theme:Fusion/visible.svg);
+}
+
+.indicator-expand::indicator {
+  width: 8px;
+  height: 8px;
 }
 
 QDockWidget {
@@ -842,10 +847,9 @@ QPlainTextEdit, QTextEdit {
 QToolButton,
 QPushButton::flat,
 QPushButton[toolButton=true],
-QPushButton[themeID=addIconSmall],
-QPushButton[themeID=menuIconSmall],
-#contextContainer QPushButton#sourcePropertiesButton,
-#contextContainer QPushButton[themeID2=contextBarButton],
+#centralwidget .icon-dots-vert,
+#centralwidget .icon-plus,
+#contextContainer QPushButton,
 VolControl QPushButton,
 OBSHotkeyWidget QPushButton,
 QTableView QPushButton {
@@ -857,10 +861,9 @@ QTableView QPushButton {
 QToolButton:on,
 QPushButton::flat:on,
 QPushButton[toolButton=true]:on,
-QPushButton[themeID=addIconSmall]:on,
-QPushButton[themeID=menuIconSmall]:on,
-#contextContainer QPushButton#sourcePropertiesButton:on,
-#contextContainer QPushButton[themeID2=contextBarButton]:on,
+#centralwidget .icon-dots-vert:on,
+#centralwidget .icon-plus:on,
+#contextContainer QPushButton:on,
 VolControl QPushButton:on,
 OBSHotkeyWidget QPushButton:on,
 QTableView QPushButton:on {
@@ -869,10 +872,9 @@ QTableView QPushButton:on {
 QToolButton:hover,
 QPushButton::flat:hover,
 QPushButton[toolButton=true]:hover,
-QPushButton[themeID=addIconSmall]:hover,
-QPushButton[themeID=menuIconSmall]:hover,
-#contextContainer QPushButton#sourcePropertiesButton:hover,
-#contextContainer QPushButton[themeID2=contextBarButton]:hover,
+#centralwidget .icon-dots-vert:hover,
+#centralwidget .icon-plus:hover,
+#contextContainer QPushButton:hover,
 VolControl QPushButton:hover,
 OBSHotkeyWidget QPushButton:hover,
 QTableView QPushButton:hover {
@@ -881,10 +883,9 @@ QTableView QPushButton:hover {
 QToolButton:pressed,
 QPushButton::flat:pressed,
 QPushButton[toolButton=true]:pressed,
-QPushButton[themeID=addIconSmall]:pressed,
-QPushButton[themeID=menuIconSmall]:pressed,
-#contextContainer QPushButton#sourcePropertiesButton:pressed,
-#contextContainer QPushButton[themeID2=contextBarButton]:pressed,
+#centralwidget .icon-dots-vert:pressed,
+#centralwidget .icon-plus:pressed,
+#contextContainer QPushButton:pressed,
 VolControl QPushButton:pressed,
 OBSHotkeyWidget QPushButton:pressed,
 QTableView QPushButton:pressed {
@@ -893,10 +894,9 @@ QTableView QPushButton:pressed {
 QToolButton:disabled,
 QPushButton::flat:disabled,
 QPushButton[toolButton=true]:disabled,
-QPushButton[themeID=addIconSmall]:disabled,
-QPushButton[themeID=menuIconSmall]:disabled,
-#contextContainer QPushButton#sourcePropertiesButton:disabled,
-#contextContainer QPushButton[themeID2=contextBarButton]:disabled,
+#centralwidget .icon-dots-vert:disabled,
+#centralwidget .icon-plus:disabled,
+#contextContainer QPushButton:disabled,
 VolControl QPushButton:disabled,
 OBSHotkeyWidget QPushButton:disabled,
 QTableView QPushButton:disabled {
@@ -955,11 +955,7 @@ OBSHotkeyWidget QPushButton[themeID=revertIcon] {
 }
 
 OBSQTDisplay {
-  qproperty-displayBackgroundColor: #1a1a1a;
-}
-
-QDialog OBSQTDisplay {
-  qproperty-displayBackgroundColor: #2e2e2e;
+  qproperty-displayBackgroundColor: black;
 }
 
 SceneTree {
@@ -981,7 +977,7 @@ SceneTree {
   qproperty-gridItemWidth: 150;
 }
 
-*[gridMode=true] SceneTree::item {
+.list-grid SceneTree::item {
   border-radius: 2px;
 }
 
@@ -1051,7 +1047,44 @@ VolControl VolumeSlider::vertical {
   border: none;
 }
 
-[themeID=previewProgramLabels] {
+.label-preview-title {
   font-weight: bold;
-  padding: 1px;
+  padding: 0px;
+  margin-bottom: 3px;
+}
+
+#previewXContainer {
+  max-height: 20px;
+  min-height: 20px;
+}
+
+#previewXScrollBar::handle, #previewYScrollBar::handle {
+  background: #383838;
+  border-radius: 3px;
+  margin: 1px;
+}
+#previewXScrollBar::handle:hover, #previewYScrollBar::handle:hover {
+  background: #424242;
+}
+#previewXScrollBar::handle:disabled, #previewYScrollBar::handle:disabled {
+  background: transparent;
+}
+
+#previewXScrollBar {
+  height: 20px;
+}
+#previewXScrollBar::handle {
+  margin-bottom: 13px;
+}
+
+#previewYScrollBar {
+  width: 8px;
+}
+
+#previewScalePercent {
+  padding-left: 5px;
+}
+
+.preview-program-spacer {
+  min-height: 20px;
 }
