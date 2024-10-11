@@ -454,14 +454,13 @@ bool OBSDock::eventFilter(QObject *o, QEvent *event)
 
 	case QEvent::MouseButtonRelease:
 		if (onMouseButtonReleased(static_cast<QMouseEvent *>(event)))
-		 	return true;
+			return true;
 		break;
 
 	case QEvent::KeyPress:
 		if (onKeyPressed(static_cast<QKeyEvent *>(event)))
 			return true;
 		break;
-
 	}
 
 	return false;
@@ -810,9 +809,8 @@ bool OBSDock::onMouseButtonPressed(QMouseEvent *event)
 	initialCursorPosition = QCursor::pos(initialScreen);
 	initialFloating = isFloating();
 
-	if ((event->modifiers() & Qt::ControlModifier)
-			&& (isFloating() || !OBSApp::IsWayland()
-			&& hasFeature(QDockWidget::DockWidgetFloatable))) {
+	if ((event->modifiers() & Qt::ControlModifier) &&
+	    (isFloating() || !OBSApp::IsWayland() && hasFeature(QDockWidget::DockWidgetFloatable))) {
 		mouseState = MouseState::CtrlPressed;
 		return true;
 	}
@@ -858,8 +856,7 @@ bool OBSDock::onMouseButtonReleased(QMouseEvent *event)
 	if (event) {
 		QPoint position = event->pos();
 		updateCursor(&position);
-	}
-	else {
+	} else {
 		updateCursor();
 	}
 
@@ -880,8 +877,8 @@ bool OBSDock::onMouseMoved(QMouseEvent *event)
 	}
 #endif
 
-	if (mouseState == MouseState::CtrlPressed
-			|| OBSApp::IsWayland() && mouseState == MouseState::Pressed && isFloating()) {
+	if (mouseState == MouseState::CtrlPressed ||
+	    OBSApp::IsWayland() && mouseState == MouseState::Pressed && isFloating()) {
 		qreal dragDistance = (event->pos() - pressPosition).manhattanLength();
 		if (dragDistance < QApplication::startDragDistance())
 			return true;
@@ -907,8 +904,7 @@ bool OBSDock::onMouseMoved(QMouseEvent *event)
 
 			// Position the window properly
 			// (it might still have a previous float location)
-			bounds.moveTo(event->globalPosition().toPoint() -
-				      pressPosition);
+			bounds.moveTo(event->globalPosition().toPoint() - pressPosition);
 			setGeometry(bounds);
 		}
 
@@ -926,8 +922,7 @@ bool OBSDock::onMouseMoved(QMouseEvent *event)
 			qreal dragDistance = (event->pos() - pressPosition).manhattanLength();
 			if (dragDistance < QApplication::startDragDistance())
 				return false;
-		}
-		else {
+		} else {
 			QDockWidget::event(event);
 			if (!mouseGrabber())
 				// The grabber was not set yet
