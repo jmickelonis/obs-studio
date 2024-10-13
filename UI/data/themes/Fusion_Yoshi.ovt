@@ -369,6 +369,10 @@ QDialog QAbstractItemView::item:selected:!active:!hover {
   background: #2e2e2e;
 }
 
+QAbstractScrollArea::corner {
+  background: transparent;
+}
+
 QCheckBox[sourceTreeSubItem=true]::indicator {
   height: 7px;
   width: 7px;
