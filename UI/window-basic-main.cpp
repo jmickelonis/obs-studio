@@ -6649,7 +6649,7 @@ void OBSBasic::SetupBroadcast()
 #endif
 }
 
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__linux__)
 static inline void UpdateProcessPriority()
 {
 	const char *priority = config_get_string(App()->GetAppConfig(), "General", "ProcessPriority");

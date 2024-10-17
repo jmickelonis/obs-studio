@@ -609,12 +609,7 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 		ui->monitoringDevice = nullptr;
 	}
 
-#ifdef _WIN32
-	if (!SetDisplayAffinitySupported()) {
-		delete ui->hideOBSFromCapture;
-		ui->hideOBSFromCapture = nullptr;
-	}
-
+#if defined(_WIN32) || defined(__linux__)
 	static struct ProcessPriority {
 		const char *name;
 		const char *val;
@@ -628,14 +623,23 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 
 	for (ProcessPriority pri : processPriorities)
 		ui->processPriority->addItem(QTStr(pri.name), pri.val);
+#else
+	delete ui->processPriorityLabel;
+	delete ui->processPriority;
+	ui->processPriorityLabel = nullptr;
+	ui->processPriority = nullptr;
+#endif
 
+#ifdef _WIN32
+	if (!SetDisplayAffinitySupported()) {
+		delete ui->hideOBSFromCapture;
+		ui->hideOBSFromCapture = nullptr;
+	}
 #else
 	delete ui->rendererLabel;
 	delete ui->renderer;
 	delete ui->adapterLabel;
 	delete ui->adapter;
-	delete ui->processPriorityLabel;
-	delete ui->processPriority;
 	delete ui->enableNewSocketLoop;
 	delete ui->enableLowLatencyMode;
 	delete ui->hideOBSFromCapture;
@@ -649,8 +653,6 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 	ui->renderer = nullptr;
 	ui->adapterLabel = nullptr;
 	ui->adapter = nullptr;
-	ui->processPriorityLabel = nullptr;
-	ui->processPriority = nullptr;
 	ui->enableNewSocketLoop = nullptr;
 	ui->enableLowLatencyMode = nullptr;
 	ui->hideOBSFromCapture = nullptr;
@@ -2591,6 +2593,14 @@ void OBSBasicSettings::LoadAdvancedSettings()
 		ui->advancedVideoContainer->setEnabled(false);
 	}
 
+#if defined(_WIN32) || defined(__linux__)
+	const char *processPriority = config_get_string(App()->GetAppConfig(), "General", "ProcessPriority");
+	int idx = ui->processPriority->findData(processPriority);
+	if (idx == -1)
+		idx = ui->processPriority->findData("Normal");
+	ui->processPriority->setCurrentIndex(idx);
+#endif
+
 #ifdef __APPLE__
 	bool disableOSXVSync = config_get_bool(App()->GetAppConfig(), "Video", "DisableOSXVSync");
 	bool resetOSXVSync = config_get_bool(App()->GetAppConfig(), "Video", "ResetOSXVSyncOnExit");
@@ -2601,14 +2611,8 @@ void OBSBasicSettings::LoadAdvancedSettings()
 	bool disableAudioDucking = config_get_bool(App()->GetAppConfig(), "Audio", "DisableAudioDucking");
 	ui->disableAudioDucking->setChecked(disableAudioDucking);
 
-	const char *processPriority = config_get_string(App()->GetAppConfig(), "General", "ProcessPriority");
 	bool enableNewSocketLoop = config_get_bool(main->Config(), "Output", "NewSocketLoopEnable");
 	bool enableLowLatencyMode = config_get_bool(main->Config(), "Output", "LowLatencyEnable");
-
-	int idx = ui->processPriority->findData(processPriority);
-	if (idx == -1)
-		idx = ui->processPriority->findData("Normal");
-	ui->processPriority->setCurrentIndex(idx);
 
 	ui->enableNewSocketLoop->setChecked(enableNewSocketLoop);
 	ui->enableLowLatencyMode->setChecked(enableLowLatencyMode);
@@ -3149,14 +3153,16 @@ void OBSBasicSettings::SaveAdvancedSettings()
 {
 	QString lastMonitoringDevice = config_get_string(main->Config(), "Audio", "MonitoringDeviceId");
 
-#ifdef _WIN32
-	if (WidgetChanged(ui->renderer))
-		config_set_string(App()->GetAppConfig(), "Video", "Renderer", QT_TO_UTF8(ui->renderer->currentText()));
-
+#if defined(_WIN32) || defined(__linux__)
 	std::string priority = QT_TO_UTF8(ui->processPriority->currentData().toString());
 	config_set_string(App()->GetAppConfig(), "General", "ProcessPriority", priority.c_str());
 	if (main->Active())
 		SetProcessPriority(priority.c_str());
+#endif
+
+#ifdef _WIN32
+	if (WidgetChanged(ui->renderer))
+		config_set_string(App()->GetAppConfig(), "Video", "Renderer", QT_TO_UTF8(ui->renderer->currentText()));
 
 	SaveCheckBox(ui->enableNewSocketLoop, "Output", "NewSocketLoopEnable");
 	SaveCheckBox(ui->enableLowLatencyMode, "Output", "LowLatencyEnable");

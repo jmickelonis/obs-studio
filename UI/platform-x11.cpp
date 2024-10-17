@@ -37,6 +37,7 @@
 #include <sys/types.h>
 #include <stdio.h>
 #include <sys/un.h>
+#include <sys/resource.h>
 #endif
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/param.h>
@@ -99,6 +100,19 @@ void CheckIfAlreadyRunning(bool &already_running)
 	already_running = obsCnt == 1 ? 0 : 1;
 	free(line);
 	fclose(fp);
+}
+
+void SetProcessPriority(const char *priority)
+{
+	if (!priority)
+		return;
+
+	int p = !strcmp(priority, "High")          ? -20
+		: !strcmp(priority, "AboveNormal") ? -5
+		: !strcmp(priority, "BelowNormal") ? 5
+		: !strcmp(priority, "Idle")        ? 19
+						   : 0;
+	setpriority(PRIO_PROCESS, 0, p);
 }
 #endif
 #if defined(__FreeBSD__) || defined(__DragonFly__)
