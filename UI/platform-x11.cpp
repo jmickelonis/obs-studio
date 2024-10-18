@@ -123,7 +123,7 @@ void SetProcessPriority(const char *priority)
 	// Try to use the helper binary
 	BPtr<char> cmd = os_get_executable_path_ptr("obs-process-priority");
 	std::ostringstream ss;
-	ss << "\"" << cmd << "\" " << getpid() << " " << p << "&";
+	ss << "\"" << cmd << "\" " << p << " " << getpid() << "&";
 	std::string s = ss.str();
 	system(s.c_str());
 }
