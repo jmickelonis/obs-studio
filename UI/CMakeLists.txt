@@ -55,6 +55,10 @@ include(cmake/feature-whatsnew.cmake)
 
 add_subdirectory(frontend-plugins)
 
+if(OS_LINUX)
+  add_subdirectory(obs-process-priority)
+endif()
+
 configure_file(ui-config.h.in ui-config.h)
 
 target_sources(

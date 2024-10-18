@@ -107,12 +107,25 @@ void SetProcessPriority(const char *priority)
 	if (!priority)
 		return;
 
+	int pid = getpid();
 	int p = !strcmp(priority, "High")          ? -20
 		: !strcmp(priority, "AboveNormal") ? -5
 		: !strcmp(priority, "BelowNormal") ? 5
 		: !strcmp(priority, "Idle")        ? 19
 						   : 0;
-	setpriority(PRIO_PROCESS, 0, p);
+
+	// First, try directly
+	int res = setpriority(PRIO_PROCESS, pid, p);
+	if (!res)
+		return;
+
+	// Failed (can only lower priority without root, not raise)
+	// Try to use the helper binary
+	BPtr<char> cmd = os_get_executable_path_ptr("obs-process-priority");
+	std::ostringstream ss;
+	ss << "\"" << cmd << "\" " << getpid() << " " << p << "&";
+	std::string s = ss.str();
+	system(s.c_str());
 }
 #endif
 #if defined(__FreeBSD__) || defined(__DragonFly__)
