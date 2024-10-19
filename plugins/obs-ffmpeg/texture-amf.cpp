@@ -2288,14 +2288,15 @@ try {
 	 * but pipe() seems to work just fine
 	 */
 	cmd << test_exe;
-	std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.str().c_str(), "r"), pclose);
+	FILE *pipe = popen(cmd.str().c_str(), "r");
 
 	if (!pipe)
 		throw "Failed to launch the AMF test process I guess";
 
-	std::array<char, 2048> buffer;
-	while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe.get()) != nullptr)
-		caps_str += buffer.data();
+	char buffer[2048];
+	while (fgets(buffer, sizeof buffer, pipe) != nullptr)
+		caps_str += buffer;
+	pclose(pipe);
 #endif
 
 	if (caps_str.empty())
