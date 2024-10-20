@@ -14,6 +14,10 @@
 #include <array>
 #include <inttypes.h>
 
+#ifndef OBS_AMF_DISABLE_PROPERTIES
+#include "amf-properties.h"
+#endif
+
 #include <AMF/components/VideoEncoderHEVC.h>
 #include <AMF/components/VideoEncoderVCE.h>
 #include <AMF/components/VideoEncoderAV1.h>
@@ -1394,6 +1398,19 @@ static bool amf_avc_init(void *data, obs_data_t *settings)
 		obs_free_options(opts);
 	}
 
+#ifndef OBS_AMF_DISABLE_PROPERTIES
+	bool show_properties = !getenv("OBS_AMF_DISABLE_PROPERTIES");
+	if (show_properties) {
+		AMFCapsPtr caps;
+		if (!enc->amf_encoder->GetCaps(&caps)) {
+			std::ostringstream ss;
+			ss << "capabilities:";
+			amf_print_properties(ss, caps, amf_avc_capability_types);
+			info("%s", ss.str().c_str());
+		}
+	}
+#endif
+
 	if (!ffmpeg_opts || !*ffmpeg_opts)
 		ffmpeg_opts = "(none)";
 
@@ -1409,6 +1426,22 @@ static bool amf_avc_init(void *data, obs_data_t *settings)
 	     "\theight:       %d\n"
 	     "\tparams:       %s",
 	     rc_str, bitrate, qp, gop_size, preset, profile, bf, enc->cx, enc->cy, ffmpeg_opts);
+
+#ifndef OBS_AMF_DISABLE_PROPERTIES
+	if (show_properties) {
+		AMFPropertyStorage *props = enc->amf_encoder;
+		std::ostringstream ss;
+		ss << "active properties:";
+		amf_print_properties(ss, props, amf_avc_property_types.at("Static"));
+		for (const char *category : {"Output", "Rate Control", "Picture Control", "Misc"})
+			amf_print_property_category(ss, props, category, amf_avc_property_types.at(category));
+		bool pa_enabled;
+		props->GetProperty<bool>(AMF_VIDEO_ENCODER_PRE_ANALYSIS_ENABLE, &pa_enabled);
+		if (pa_enabled)
+			amf_print_property_category(ss, props, "Pre-Analysis", amf_pa_property_types);
+		info("%s", ss.str().c_str());
+	}
+#endif
 
 	return true;
 }
