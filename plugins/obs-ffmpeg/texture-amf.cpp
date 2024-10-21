@@ -449,6 +449,9 @@ static inline void refresh_throughput_caps(amf_base *enc, const char *&preset)
 
 static inline void check_preset_compatibility(amf_base *enc, const char *&preset)
 {
+	// Does this code really do anything?
+	// Max/requested throughput in caps is all zeros on my system.
+#if 0
 	/* The throughput depends on the current preset and the other static
 	 * encoder properties. If the throughput is lower than the max
 	 * throughput, switch to a lower preset. */
@@ -483,6 +486,7 @@ static inline void check_preset_compatibility(amf_base *enc, const char *&preset
 			refresh_throughput_caps(enc, preset);
 		}
 	}
+#endif
 }
 
 static inline int64_t convert_to_amf_ts(amf_base *enc, int64_t ts)
