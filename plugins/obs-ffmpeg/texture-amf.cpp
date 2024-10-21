@@ -1398,19 +1398,6 @@ static bool amf_avc_init(void *data, obs_data_t *settings)
 		obs_free_options(opts);
 	}
 
-#ifndef OBS_AMF_DISABLE_PROPERTIES
-	bool show_properties = !getenv("OBS_AMF_DISABLE_PROPERTIES");
-	if (show_properties) {
-		AMFCapsPtr caps;
-		if (!enc->amf_encoder->GetCaps(&caps)) {
-			std::ostringstream ss;
-			ss << "capabilities:";
-			amf_print_properties(ss, caps, amf_avc_capability_types);
-			info("%s", ss.str().c_str());
-		}
-	}
-#endif
-
 	if (!ffmpeg_opts || !*ffmpeg_opts)
 		ffmpeg_opts = "(none)";
 
@@ -1427,21 +1414,6 @@ static bool amf_avc_init(void *data, obs_data_t *settings)
 	     "\tparams:       %s",
 	     rc_str, bitrate, qp, gop_size, preset, profile, bf, enc->cx, enc->cy, ffmpeg_opts);
 
-#ifndef OBS_AMF_DISABLE_PROPERTIES
-	if (show_properties) {
-		AMFPropertyStorage *props = enc->amf_encoder;
-		std::ostringstream ss;
-		ss << "active properties:";
-		for (const char *category : amf_avc_property_categories)
-			amf_print_property_category(ss, props, category, amf_avc_property_types.at(category));
-		bool pa_enabled;
-		props->GetProperty<bool>(AMF_VIDEO_ENCODER_PRE_ANALYSIS_ENABLE, &pa_enabled);
-		if (pa_enabled)
-			amf_print_property_category(ss, props, "Pre-Analysis", amf_pa_property_types);
-		info("%s", ss.str().c_str());
-	}
-#endif
-
 	return true;
 }
 
@@ -1455,9 +1427,21 @@ static void amf_avc_create_internal(amf_base *enc, obs_data_t *settings)
 	if (!amf_create_encoder(enc))
 		throw "Failed to create encoder";
 
+#ifndef OBS_AMF_DISABLE_PROPERTIES
+	bool show_properties = !getenv("OBS_AMF_DISABLE_PROPERTIES");
+#endif
 	AMFCapsPtr caps;
 	res = enc->amf_encoder->GetCaps(&caps);
 	if (res == AMF_OK) {
+#ifndef OBS_AMF_DISABLE_PROPERTIES
+		if (show_properties) {
+			std::ostringstream ss;
+			ss << "capabilities:";
+			amf_print_properties(ss, caps, amf_avc_capability_types);
+			info("%s", ss.str().c_str());
+		}
+#endif
+
 		caps->GetProperty(AMF_VIDEO_ENCODER_CAP_BFRAMES, &enc->bframes_supported);
 		caps->GetProperty(AMF_VIDEO_ENCODER_CAP_MAX_THROUGHPUT, &enc->max_throughput);
 		caps->GetProperty(AMF_VIDEO_ENCODER_CAP_REQUESTED_THROUGHPUT, &enc->requested_throughput);
@@ -1484,6 +1468,21 @@ static void amf_avc_create_internal(amf_base *enc, obs_data_t *settings)
 	res = enc->amf_encoder->Init(enc->amf_format, enc->cx, enc->cy);
 	if (res != AMF_OK)
 		throw amf_error("AMFComponent::Init failed", res);
+
+#ifndef OBS_AMF_DISABLE_PROPERTIES
+	if (show_properties) {
+		AMFPropertyStorage *props = enc->amf_encoder;
+		std::ostringstream ss;
+		ss << "active properties:";
+		for (const char *category : amf_avc_property_categories)
+			amf_print_property_category(ss, props, category, amf_avc_property_types.at(category));
+		bool pa_enabled;
+		props->GetProperty<bool>(AMF_VIDEO_ENCODER_PRE_ANALYSIS_ENABLE, &pa_enabled);
+		if (pa_enabled)
+			amf_print_property_category(ss, props, "Pre-Analysis", amf_pa_property_types);
+		info("%s", ss.str().c_str());
+	}
+#endif
 
 	res = enc->amf_encoder->GetProperty(AMF_VIDEO_ENCODER_EXTRADATA, &p);
 	if (res == AMF_OK && p.type == AMF_VARIANT_INTERFACE)
@@ -1781,9 +1780,20 @@ static void amf_hevc_create_internal(amf_base *enc, obs_data_t *settings)
 	if (!amf_create_encoder(enc))
 		throw "Failed to create encoder";
 
+#ifndef OBS_AMF_DISABLE_PROPERTIES
+	bool show_properties = !getenv("OBS_AMF_DISABLE_PROPERTIES");
+#endif
 	AMFCapsPtr caps;
 	res = enc->amf_encoder->GetCaps(&caps);
 	if (res == AMF_OK) {
+#ifndef OBS_AMF_DISABLE_PROPERTIES
+		if (show_properties) {
+			std::ostringstream ss;
+			ss << "capabilities:";
+			amf_print_properties(ss, caps, amf_hevc_capability_types);
+			info("%s", ss.str().c_str());
+		}
+#endif
 		caps->GetProperty(AMF_VIDEO_ENCODER_HEVC_CAP_MAX_THROUGHPUT, &enc->max_throughput);
 		caps->GetProperty(AMF_VIDEO_ENCODER_HEVC_CAP_REQUESTED_THROUGHPUT, &enc->requested_throughput);
 		caps->GetProperty(AMF_VIDEO_ENCODER_HEVC_CAP_ROI, &enc->roi_supported);
@@ -1834,6 +1844,21 @@ static void amf_hevc_create_internal(amf_base *enc, obs_data_t *settings)
 	res = enc->amf_encoder->Init(enc->amf_format, enc->cx, enc->cy);
 	if (res != AMF_OK)
 		throw amf_error("AMFComponent::Init failed", res);
+
+#ifndef OBS_AMF_DISABLE_PROPERTIES
+	if (show_properties) {
+		AMFPropertyStorage *props = enc->amf_encoder;
+		std::ostringstream ss;
+		ss << "active properties:";
+		for (const char *category : amf_hevc_property_categories)
+			amf_print_property_category(ss, props, category, amf_hevc_property_types.at(category));
+		bool pa_enabled;
+		props->GetProperty<bool>(AMF_VIDEO_ENCODER_HEVC_PRE_ANALYSIS_ENABLE, &pa_enabled);
+		if (pa_enabled)
+			amf_print_property_category(ss, props, "Pre-Analysis", amf_pa_property_types);
+		info("%s", ss.str().c_str());
+	}
+#endif
 
 	res = enc->amf_encoder->GetProperty(AMF_VIDEO_ENCODER_HEVC_EXTRADATA, &p);
 	if (res == AMF_OK && p.type == AMF_VARIANT_INTERFACE)
