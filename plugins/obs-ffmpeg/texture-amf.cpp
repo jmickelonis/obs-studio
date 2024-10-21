@@ -1432,8 +1432,7 @@ static bool amf_avc_init(void *data, obs_data_t *settings)
 		AMFPropertyStorage *props = enc->amf_encoder;
 		std::ostringstream ss;
 		ss << "active properties:";
-		amf_print_properties(ss, props, amf_avc_property_types.at("Static"));
-		for (const char *category : {"Output", "Rate Control", "Picture Control", "Misc"})
+		for (const char *category : amf_avc_property_categories)
 			amf_print_property_category(ss, props, category, amf_avc_property_types.at(category));
 		bool pa_enabled;
 		props->GetProperty<bool>(AMF_VIDEO_ENCODER_PRE_ANALYSIS_ENABLE, &pa_enabled);
