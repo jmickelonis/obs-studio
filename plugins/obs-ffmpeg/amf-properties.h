@@ -181,8 +181,6 @@ static const std::map<const char *, std::map<const wchar_t *, AMF_PROPERTY_TYPE>
 		 _ITEM(QUERY_TIMEOUT, INT),
 		 _ITEM(INPUT_QUEUE_SIZE, INT),
 		 _ITEM(OUTPUT_MODE, AVC_OUTPUT_MODE),
-		 _ITEM(PSNR_FEEDBACK, BOOL),
-		 _ITEM(SSIM_FEEDBACK, BOOL),
 		 _ITEM(MEMORY_TYPE, MEMORY_TYPE),
 	 }},
 #undef _ITEM
