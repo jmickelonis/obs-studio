@@ -10,7 +10,7 @@
 #include <AMF/components/VideoEncoderHEVC.h>
 using namespace amf;
 
-static enum AMF_PROPERTY_TYPE {
+enum AMF_PROPERTY_TYPE {
 #define _ITEM(NAME) AMF_PROPERTY_TYPE_##NAME
 	// Primitives
 	_ITEM(BOOL),
