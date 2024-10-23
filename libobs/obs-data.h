@@ -293,6 +293,8 @@ EXPORT bool obs_data_item_get_default_frames_per_second(obs_data_item_t *item, s
 EXPORT bool obs_data_item_get_autoselect_frames_per_second(obs_data_item_t *item, struct media_frames_per_second *fps,
 							   const char **option);
 
+EXPORT void obs_data_condense_whitespace(const char *in, char *out);
+
 /* ------------------------------------------------------------------------- */
 /* OBS-specific functions */
 
