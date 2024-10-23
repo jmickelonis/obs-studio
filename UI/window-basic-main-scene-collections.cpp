@@ -34,6 +34,30 @@
 
 constexpr std::string_view OBSSceneCollectionPath = "/obs-studio/basic/scenes/";
 
+// MARK: - Anonymous Namespace
+namespace {
+QList<QString> sortedSceneCollections{};
+
+void updateSortedSceneCollections(const OBSSceneCollectionCache &collections)
+{
+	const QLocale locale = QLocale::system();
+	QList<QString> newList{};
+
+	for (auto [collectionName, _] : collections) {
+		QString entry = QString::fromStdString(collectionName);
+		newList.append(entry);
+	}
+
+	std::sort(newList.begin(), newList.end(), [&locale](const QString &lhs, const QString &rhs) -> bool {
+		int result = QString::localeAwareCompare(locale.toLower(lhs), locale.toLower(rhs));
+
+		return (result < 0);
+	});
+
+	sortedSceneCollections.swap(newList);
+}
+} // namespace
+
 // MARK: - Main Scene Collection Management Functions
 
 void OBSBasic::SetupNewSceneCollection(const std::string &collectionName)
@@ -165,12 +189,8 @@ const OBSSceneCollection &OBSBasic::CreateSceneCollection(const std::string &col
 
 void OBSBasic::RemoveSceneCollection(OBSSceneCollection collection)
 {
-	std::filesystem::path collectionBackupFile{collection.collectionFile};
-	collectionBackupFile.replace_extension("json.bak");
-
 	try {
 		std::filesystem::remove(collection.collectionFile);
-		std::filesystem::remove(collectionBackupFile);
 	} catch (const std::filesystem::filesystem_error &error) {
 		blog(LOG_DEBUG, "%s", error.what());
 		throw std::logic_error("Failed to remove scene collection file: " + collection.fileName);
@@ -241,7 +261,8 @@ void OBSBasic::ChangeSceneCollection()
 
 	const std::string_view currentCollectionName{
 		config_get_string(App()->GetUserConfig(), "Basic", "SceneCollection")};
-	const std::string selectedCollectionName{action->text().toStdString()};
+	const QVariant qCollectionName = action->property("collection_name");
+	const std::string selectedCollectionName{qCollectionName.toString().toStdString()};
 
 	if (currentCollectionName == selectedCollectionName) {
 		action->setChecked(true);
@@ -284,17 +305,29 @@ void OBSBasic::RefreshSceneCollections(bool refreshCache)
 		RefreshSceneCollectionCache();
 	}
 
+	updateSortedSceneCollections(collections);
+
 	size_t numAddedCollections = 0;
-	for (auto &[collectionName, collection] : collections) {
-		QAction *action = new QAction(QString().fromStdString(collectionName), this);
-		action->setProperty("file_name", QString().fromStdString(collection.fileName));
-		connect(action, &QAction::triggered, this, &OBSBasic::ChangeSceneCollection);
-		action->setCheckable(true);
-		action->setChecked(collectionName == currentCollectionName);
+	for (auto &name : sortedSceneCollections) {
+		const std::string collectionName = name.toStdString();
+		try {
+			const OBSSceneCollection &collection = collections.at(collectionName);
+			const QString qCollectionName = QString().fromStdString(collectionName);
 
-		ui->sceneCollectionMenu->addAction(action);
+			QAction *action = new QAction(qCollectionName, this);
+			action->setProperty("collection_name", qCollectionName);
+			action->setProperty("file_name", QString().fromStdString(collection.fileName));
+			connect(action, &QAction::triggered, this, &OBSBasic::ChangeSceneCollection);
+			action->setCheckable(true);
+			action->setChecked(collectionName == currentCollectionName);
 
-		numAddedCollections += 1;
+			ui->sceneCollectionMenu->addAction(action);
+
+			numAddedCollections += 1;
+		} catch (const std::out_of_range &error) {
+			blog(LOG_ERROR, "No scene collection with name %s found in scene collection cache.\n%s",
+			     collectionName.c_str(), error.what());
+		}
 	}
 
 	ui->actionRemoveSceneCollection->setEnabled(numAddedCollections > 1);
@@ -507,7 +540,7 @@ void OBSBasic::on_actionRemoveSceneCollection_triggered(bool skipConfirmation)
 		blog(LOG_ERROR, "%s", error.what());
 	}
 
-	const OBSSceneCollection &newCollection = collections.rbegin()->second;
+	const OBSSceneCollection &newCollection = collections.begin()->second;
 
 	ActivateSceneCollection(newCollection);
 	RemoveSceneCollection(currentCollection);
