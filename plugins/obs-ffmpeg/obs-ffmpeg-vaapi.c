@@ -341,7 +341,14 @@ static bool vaapi_update(void *data, obs_data_t *settings)
 
 	enc->height = enc->context->height;
 
+	char *opts_str = NULL;
 	const char *ffmpeg_opts = obs_data_get_string(settings, "ffmpeg_opts");
+	if (ffmpeg_opts && *ffmpeg_opts) {
+		opts_str = (char *)malloc(strlen(ffmpeg_opts) + 1);
+		obs_data_condense_whitespace(ffmpeg_opts, opts_str);
+		ffmpeg_opts = opts_str;
+	}
+
 	struct obs_options opts = obs_parse_options(ffmpeg_opts);
 	for (size_t i = 0; i < opts.count; i++) {
 		struct obs_option *opt = &opts.options[i];
@@ -365,6 +372,7 @@ static bool vaapi_update(void *data, obs_data_t *settings)
 	     device, rate_control, profile, level, qp, bitrate, maxrate, enc->context->gop_size, enc->context->width,
 	     enc->context->height, enc->context->max_b_frames, ffmpeg_opts);
 
+	free(opts_str);
 	return vaapi_init_codec(enc, device);
 }
 
@@ -1156,7 +1164,7 @@ static obs_properties_t *vaapi_properties_internal(enum codec_type codec)
 
 	obs_properties_add_int(props, "bf", obs_module_text("BFrames"), 0, 4, 1);
 
-	obs_properties_add_text(props, "ffmpeg_opts", obs_module_text("FFmpegOpts"), OBS_TEXT_DEFAULT);
+	obs_properties_add_text(props, "ffmpeg_opts", obs_module_text("FFmpegOpts"), OBS_TEXT_MULTILINE);
 
 	return props;
 }

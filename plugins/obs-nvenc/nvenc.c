@@ -975,6 +975,7 @@ static void nvenc_destroy(void *data)
 #endif
 	da_free(enc->packet_data);
 
+	free(enc->props.opts_str);
 	obs_free_options(enc->props.opts);
 	obs_data_release(enc->props.data);
 

@@ -128,7 +128,14 @@ static bool av1_update(struct av1_encoder *enc, obs_data_t *settings)
 		av_opt_set_dict_val(enc->ffve.context->priv_data, "svtav1_opts", svtav1_opts, 0);
 	}
 
+	char *opts_str = NULL;
 	const char *ffmpeg_opts = obs_data_get_string(settings, "ffmpeg_opts");
+	if (ffmpeg_opts && *ffmpeg_opts) {
+		opts_str = (char *)malloc(strlen(ffmpeg_opts) + 1);
+		obs_data_condense_whitespace(ffmpeg_opts, opts_str);
+		ffmpeg_opts = opts_str;
+	}
+
 	ffmpeg_video_encoder_update(&enc->ffve, bitrate, keyint_sec, voi, &info, ffmpeg_opts);
 	av_dict_free(&svtav1_opts);
 
@@ -146,6 +153,7 @@ static bool av1_update(struct av1_encoder *enc, obs_data_t *settings)
 	     enc->ffve.height, ffmpeg_opts);
 
 	enc->ffve.context->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+	free(opts_str);
 	return ffmpeg_video_encoder_init_codec(&enc->ffve);
 }
 
@@ -291,7 +299,7 @@ obs_properties_t *av1_properties(enum av1_encoder_type type)
 		obs_property_list_add_int(p, "Fastest (10)", 10);
 	}
 
-	obs_properties_add_text(props, "ffmpeg_opts", obs_module_text("FFmpegOpts"), OBS_TEXT_DEFAULT);
+	obs_properties_add_text(props, "ffmpeg_opts", obs_module_text("FFmpegOpts"), OBS_TEXT_MULTILINE);
 
 	return props;
 }

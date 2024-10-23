@@ -25,8 +25,15 @@ void nvenc_properties_read(struct nvenc_properties *props, obs_data_t *settings)
 	props->force_cuda_tex = obs_data_get_bool(settings, "force_cuda_tex");
 
 	if (obs_data_has_user_value(settings, "opts")) {
-		props->opts_str = obs_data_get_string(settings, "opts");
-		props->opts = obs_parse_options(props->opts_str);
+		char *opts_str = NULL;
+		const char *opts = obs_data_get_string(settings, "opts");
+		if (opts && *opts) {
+			opts_str = (char *)malloc(strlen(opts) + 1);
+			obs_data_condense_whitespace(opts, opts_str);
+		}
+
+		props->opts_str = opts_str;
+		props->opts = obs_parse_options(opts_str);
 	}
 
 	/* Retain settings object until destroyed since we use its strings. */
@@ -246,7 +253,7 @@ obs_properties_t *nvenc_properties_internal(enum codec_type codec)
 	}
 #endif
 
-	p = obs_properties_add_text(props, "opts", obs_module_text("Opts"), OBS_TEXT_DEFAULT);
+	p = obs_properties_add_text(props, "opts", obs_module_text("Opts"), OBS_TEXT_MULTILINE);
 	obs_property_set_long_description(p, obs_module_text("Opts.TT"));
 
 	/* Invisible properties */
