@@ -514,17 +514,17 @@ QScrollBar {
   border: none;
 }
 QScrollBar:horizontal {
-  height: 8px;
+  height: 6px;
 }
 QScrollBar:vertical {
-  width: 8px;
+  width: 6px;
 }
 QScrollBar:add-line, QScrollBar:sub-line {
   background: transparent;
 }
 QScrollBar::handle {
   background: #686868;
-  border-radius: 4px;
+  border-radius: 3px;
 }
 QScrollBar::handle:horizontal {
   min-width: 20px;
@@ -845,7 +845,7 @@ QAbstractSpinBox:!read-only:focus, QComboBox:!read-only:focus, QLineEdit:!read-o
 }
 
 QPlainTextEdit, QTextEdit {
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 QToolButton,
