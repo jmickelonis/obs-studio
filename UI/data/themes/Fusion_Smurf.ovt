@@ -971,9 +971,11 @@ SceneTree {
   font-size: 11px;
 }
 
-#sources::item {
-  padding-left: 3px;
-  padding-right: 6px;
+#sources .source-icon {
+  margin-right: 3px;
+}
+#sources .checkbox-icon {
+  margin-right: -1px;
 }
 #sources QLabel {
   min-height: 22px;
