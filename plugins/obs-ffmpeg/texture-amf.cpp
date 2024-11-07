@@ -183,16 +183,29 @@ struct amf_fallback : amf_base, public AMFSurfaceObserver {
 	std::vector<buf_t> available_buffers;
 	std::unordered_map<AMFSurface *, buf_t> active_buffers;
 
+#ifdef __linux__
+	AMFComputePtr amfCompute = nullptr;
+#endif
+
 	inline amf_fallback() : amf_base(true) {}
-	~amf_fallback() { os_atomic_set_bool(&destroying, true); }
+	~amf_fallback()
+	{
+		os_atomic_set_bool(&destroying, true);
+#ifdef __linux__
+		amfCompute = nullptr;
+#endif
+	}
 
 	void AMF_STD_CALL OnSurfaceDataRelease(amf::AMFSurface *surf) override
 	{
+#ifdef __linux
+		if (amfCompute)
+			return;
+#endif
 		if (os_atomic_load_bool(&destroying))
 			return;
 
 		std::scoped_lock lock(buffers_mutex);
-
 		auto it = active_buffers.find(surf);
 		if (it != active_buffers.end()) {
 			available_buffers.push_back(std::move(it->second));
@@ -215,6 +228,12 @@ struct amf_fallback : amf_base, public AMFSurfaceObserver {
 		context1->Release();
 		if (res != AMF_OK)
 			throw amf_error("InitVulkan failed", res);
+
+		if (amf_context->InitOpenCL() == AMF_OK &&
+		    amf_context->GetCompute(amf::AMF_MEMORY_OPENCL, &amfCompute) == AMF_OK)
+			blog(LOG_INFO, "Initialized OpenCL");
+		else
+			blog(LOG_WARNING, "Could not initialize OpenCL");
 #endif
 	}
 };
@@ -542,7 +561,7 @@ static void convert_to_encoder_packet(amf_base *enc, AMFDataPtr &data, encoder_p
 			packet->priority = OBS_NAL_PRIORITY_LOW;
 			break;
 		case AMF_VIDEO_ENCODER_OUTPUT_DATA_TYPE_B:
-			packet->priority = OBS_NAL_PRIORITY_DISPOSABLE;
+			packet->priority = OBS_NAL_PRIORITY_LOW;
 			break;
 		}
 	} else if (enc->codec == amf_codec_type::AV1) {
@@ -873,12 +892,44 @@ try {
 	amf_fallback *enc = (amf_fallback *)data;
 	AMFSurfacePtr amf_surf;
 	AMF_RESULT res;
-	buf_t buf;
 
 	if (!enc->linesize)
 		enc->linesize = frame->linesize[0];
 
-	buf = get_buf(enc);
+	if (enc->amfCompute) {
+		// Copy the frame to an OpenCL surface (instead of host memory),
+		// then convert it to Vulkan
+
+		res = enc->amf_context->AllocSurface(amf::AMF_MEMORY_OPENCL, enc->amf_format, enc->cx, enc->cy,
+						     &amf_surf);
+		if (res != AMF_OK)
+			throw amf_error("AllocSurface failed", res);
+
+		amf_size planesCount = amf_surf->GetPlanesCount();
+		for (uint8_t i = 0; i < planesCount; i++) {
+			amf::AMFPlanePtr plane = amf_surf->GetPlaneAt(i);
+			static const amf_size l_origin[] = {0, 0, 0};
+			const amf_size l_size[] = {(amf_size)plane->GetWidth(), (amf_size)plane->GetHeight(), 1};
+
+			res = enc->amfCompute->CopyPlaneFromHost(frame->data[i], l_origin, l_size, frame->linesize[i],
+								 plane, false);
+			if (res != AMF_OK)
+				throw amf_error("CopyPlaneFromHost failed", res);
+		}
+
+		res = amf_surf->Convert(amf::AMF_MEMORY_VULKAN);
+		if (res != AMF_OK)
+			throw amf_error("Convert(AMF_MEMORY_VULKAN) failed", res);
+
+		int64_t last_ts = convert_to_amf_ts(enc, frame->pts - 1);
+		int64_t cur_ts = convert_to_amf_ts(enc, frame->pts);
+		amf_surf->SetPts(cur_ts);
+		amf_surf->SetProperty(L"PTS", frame->pts);
+		amf_encode_base(enc, amf_surf, packet, received_packet);
+		return true;
+	}
+
+	buf_t buf = get_buf(enc);
 
 	copy_frame_data(enc, buf, frame);
 
@@ -1311,10 +1362,12 @@ static bool amf_avc_update(void *data, obs_data_t *settings)
 try {
 	amf_base *enc = (amf_base *)data;
 
-	if (enc->first_update) {
-		enc->first_update = false;
-		return true;
-	}
+	// Is this needed for anything?
+	// It ignores the first settings change after start, every time.
+	// if (enc->first_update) {
+	// 	enc->first_update = false;
+	// 	return true;
+	// }
 
 	int64_t bitrate = obs_data_get_int(settings, "bitrate");
 	int64_t qp = obs_data_get_int(settings, "cqp");
