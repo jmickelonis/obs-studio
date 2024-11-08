@@ -917,10 +917,6 @@ try {
 				throw amf_error("CopyPlaneFromHost failed", res);
 		}
 
-		res = amf_surf->Convert(amf::AMF_MEMORY_VULKAN);
-		if (res != AMF_OK)
-			throw amf_error("Convert(AMF_MEMORY_VULKAN) failed", res);
-
 		int64_t last_ts = convert_to_amf_ts(enc, frame->pts - 1);
 		int64_t cur_ts = convert_to_amf_ts(enc, frame->pts);
 		amf_surf->SetPts(cur_ts);
