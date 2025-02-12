@@ -167,6 +167,7 @@ function(set_target_properties_obs target)
         if(imported_location)
           cmake_path(GET imported_location PARENT_PATH cef_location)
           cmake_path(GET cef_location PARENT_PATH cef_root_location)
+          file(GLOB CEF_BINS "${cef_location}/*.bin")
           add_custom_command(
             TARGET ${target}
             POST_BUILD
@@ -174,8 +175,9 @@ function(set_target_properties_obs target)
             COMMAND
               "${CMAKE_COMMAND}" -E copy_if_different "${imported_location}" "${cef_location}/chrome-sandbox"
               "${cef_location}/libEGL.so" "${cef_location}/libGLESv2.so" "${cef_location}/libvk_swiftshader.so"
-              "${cef_location}/libvulkan.so.1" "${cef_location}/*.bin"
+              "${cef_location}/libvulkan.so.1"
               "${cef_location}/vk_swiftshader_icd.json"
+              ${CEF_BINS}
               "${OBS_OUTPUT_DIR}/$<CONFIG>/${OBS_PLUGIN_DESTINATION}/"
             COMMAND
               "${CMAKE_COMMAND}" -E copy_if_different "${cef_root_location}/Resources/chrome_100_percent.pak"
@@ -195,8 +197,8 @@ function(set_target_properties_obs target)
               "${cef_location}/libGLESv2.so"
               "${cef_location}/libvk_swiftshader.so"
               "${cef_location}/libvulkan.so.1"
-              "${cef_location}/*.bin"
               "${cef_location}/vk_swiftshader_icd.json"
+              ${CEF_BINS}
               "${cef_root_location}/Resources/chrome_100_percent.pak"
               "${cef_root_location}/Resources/chrome_200_percent.pak"
               "${cef_root_location}/Resources/icudtl.dat"
