@@ -1895,11 +1895,17 @@ QAccessibleInterface *accessibleFactory(const QString &classname, QObject *objec
 	return nullptr;
 }
 
+static bool shouldForceFusionStyle()
+{
+	const char *value = getenv("OBS_FORCE_FUSION_STYLE");
+	return value ? QVariant(value).toBool() : true;
+}
+
 #if _WIN32
 static bool UseWindowsDarkMode()
 {
 	const char *value = getenv("OBS_WINDOWS_DARK_MODE");
-	return value ? QVariant(darkMode).toBool() : true;
+	return value ? QVariant(value).toBool() : true;
 }
 #endif
 
@@ -2080,6 +2086,10 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 		blog(LOG_INFO, "Activated vkcapture Vulkan layer");
 	}
 #endif
+
+	if (shouldForceFusionStyle())
+		// Use Fusion to improve cross-platform looks
+		qputenv("QT_STYLE_OVERRIDE", "Fusion");
 
 	/* NOTE: This disables an optimisation in Qt that attempts to determine if
 	 * any "siblings" intersect with a widget when determining the approximate
