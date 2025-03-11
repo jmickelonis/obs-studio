@@ -107,7 +107,7 @@ protected:
 	virtual void paintEvent(QPaintEvent *event) override;
 	virtual void closeEvent(QCloseEvent *event) override;
 #ifdef _WIN32
-	virtual bool nativeEvent(const QByteArray &eventType, void *message, long *result) override;
+	virtual bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override;
 #endif
 
 	void initStyleOption(QStyleOptionDockWidget *option) const override;

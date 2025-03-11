@@ -531,10 +531,10 @@ void OBSDock::closeEvent(QCloseEvent *event)
 }
 
 #ifdef _WIN32
-bool OBSDock::nativeEvent(const QByteArray &eventType, void *message, long *result)
+bool OBSDock::nativeEvent(const QByteArray &eventType, void *message, qintptr *result)
 {
 	if (!isFloating())
-		goto END;
+		return false;
 
 	MSG *msg = reinterpret_cast<MSG *>(message);
 
@@ -599,8 +599,7 @@ bool OBSDock::nativeEvent(const QByteArray &eventType, void *message, long *resu
 		break;
 	}
 
-END:
-	return QDockWidget::nativeEvent(eventType, message, result);
+	return false;
 }
 #endif
 
