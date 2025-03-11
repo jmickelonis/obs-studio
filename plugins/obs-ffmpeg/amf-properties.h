@@ -300,7 +300,9 @@ static const std::map<const char *, std::map<const wchar_t *, AMF_PROPERTY_TYPE>
 		 _ITEM(INPUT_QUEUE_SIZE, INT),
 		 _ITEM(OUTPUT_MODE, HEVC_OUTPUT_MODE),
 		 _ITEM(MEMORY_TYPE, MEMORY_TYPE),
+#if AMF_VERSION_MAJOR >= 1 && AMF_VERSION_MINOR >= 4 && AMF_VERSION_RELEASE >= 35
 		 _ITEM(MULTI_HW_INSTANCE_ENCODE, BOOL),
+#endif
 	 }},
 #undef _ITEM
 };
@@ -327,7 +329,7 @@ static const std::map<const wchar_t *, AMF_PROPERTY_TYPE> amf_pa_property_types{
 
 static void amf_property_value_string_enum(std::ostringstream &ss, const AMFPropertyStorage *storage,
 					   const wchar_t *name, const std::string prefix,
-					   const std::map<int, std::string> strings)
+					   const std::map<amf_int64, std::string> strings)
 {
 	amf_int64 value;
 	storage->GetProperty<amf_int64>(name, &value);
@@ -357,6 +359,7 @@ static void amf_property_value_string(std::ostringstream &ss, const AMFPropertyS
 			      _ITEM(HARDWARE),
 			      _ITEM(GPU),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_COLOR_BIT_DEPTH_##NAME, #NAME}
 		_ENUM(COLOR_BIT_DEPTH, AMF_COLOR_BIT_DEPTH,
 		      {
@@ -364,6 +367,7 @@ static void amf_property_value_string(std::ostringstream &ss, const AMFPropertyS
 			      _ITEM(8),
 			      _ITEM(10),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_COLOR_PRIMARIES_##NAME, #NAME}
 		_ENUM(COLOR_PRIMARIES, AMF_COLOR_PRIMARIES,
 		      {
@@ -383,6 +387,7 @@ static void amf_property_value_string(std::ostringstream &ss, const AMFPropertyS
 			      _ITEM(JEDEC_P22),
 			      _ITEM(CCCS),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_VIDEO_CONVERTER_COLOR_PROFILE_##NAME, #NAME}
 		_ENUM(COLOR_PROFILE, AMF_VIDEO_CONVERTER_COLOR_PROFILE,
 		      {
@@ -394,6 +399,7 @@ static void amf_property_value_string(std::ostringstream &ss, const AMFPropertyS
 			      _ITEM(FULL_709),
 			      _ITEM(FULL_2020),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_COLOR_TRANSFER_CHARACTERISTIC_##NAME, #NAME}
 		_ENUM(COLOR_TRANSFER_CHARACTERISTIC, AMF_COLOR_TRANSFER_CHARACTERISTIC,
 		      {
@@ -403,6 +409,7 @@ static void amf_property_value_string(std::ostringstream &ss, const AMFPropertyS
 			      _ITEM(BT1361_ECG), _ITEM(IEC61966_2_1), _ITEM(BT2020_10),    _ITEM(BT2020_12),
 			      _ITEM(SMPTE2084),  _ITEM(SMPTE428),     _ITEM(ARIB_STD_B67),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_MEMORY_##NAME, #NAME}
 		_ENUM(MEMORY_TYPE, AMF_MEMORY,
 		      {
@@ -418,10 +425,11 @@ static void amf_property_value_string(std::ostringstream &ss, const AMFPropertyS
 			      _ITEM(COMPUTE_FOR_DX11),
 			      _ITEM(VULKAN),
 			      _ITEM(DX12),
-			      _ITEM(LAST),
+			      // _ITEM(LAST),
 		      })
 
 // AVC
+#undef _ITEM
 #define _ITEM(NAME) {AMF_VIDEO_ENCODER_##NAME, #NAME}
 		_ENUM(AVC_CODING, AMF_VIDEO_ENCODER,
 		      {
@@ -429,6 +437,7 @@ static void amf_property_value_string(std::ostringstream &ss, const AMFPropertyS
 			      _ITEM(CABAC),
 			      _ITEM(CALV),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_H264_LEVEL__##NAME, #NAME}
 		_ENUM(AVC_H264_LEVEL, AMF_H264_LEVEL_,
 		      {
@@ -436,30 +445,35 @@ static void amf_property_value_string(std::ostringstream &ss, const AMFPropertyS
 			      _ITEM(3),   _ITEM(3_1), _ITEM(3_2), _ITEM(4),   _ITEM(4_1), _ITEM(4_2), _ITEM(5),
 			      _ITEM(5_1), _ITEM(5_2), _ITEM(6),   _ITEM(6_1), _ITEM(6_2),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_VIDEO_ENCODER_LTR_MODE_##NAME, #NAME}
 		_ENUM(AVC_LTR_MODE, AMF_VIDEO_ENCODER_LTR_MODE,
 		      {
 			      _ITEM(RESET_UNUSED),
 			      _ITEM(KEEP_UNUSED),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_VIDEO_ENCODER_OUTPUT_MODE_##NAME, #NAME}
 		_ENUM(AVC_OUTPUT_MODE, AMF_VIDEO_ENCODER_OUTPUT_MODE,
 		      {
 			      _ITEM(FRAME),
 			      _ITEM(SLICE),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_VIDEO_ENCODER_PICTURE_TRANSFER_MODE_##NAME, #NAME}
 		_ENUM(AVC_PICTURE_TRANSFER_MODE, AMF_VIDEO_ENCODER_PICTURE_TRANSFER_MODE,
 		      {
 			      _ITEM(OFF),
 			      _ITEM(ON),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_VIDEO_ENCODER_PREENCODE_##NAME, #NAME}
 		_ENUM(AVC_PREENCODE_MODE, AMF_VIDEO_ENCODER_PREENCODE,
 		      {
 			      _ITEM(DISABLED),
 			      _ITEM(ENABLED),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_VIDEO_ENCODER_PROFILE_##NAME, #NAME}
 		_ENUM(AVC_PROFILE, AMF_VIDEO_ENCODER_PROFILE,
 		      {
@@ -469,6 +483,7 @@ static void amf_property_value_string(std::ostringstream &ss, const AMFPropertyS
 			      _ITEM(CONSTRAINED_BASELINE),
 			      _ITEM(CONSTRAINED_HIGH),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_VIDEO_ENCODER_QUALITY_PRESET_##NAME, #NAME}
 		_ENUM(AVC_QUALITY_PRESET, AMF_VIDEO_ENCODER_QUALITY_PRESET,
 		      {
@@ -476,6 +491,7 @@ static void amf_property_value_string(std::ostringstream &ss, const AMFPropertyS
 			      _ITEM(SPEED),
 			      _ITEM(QUALITY),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD_##NAME, #NAME}
 		_ENUM(AVC_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD,
 		      {
@@ -488,12 +504,14 @@ static void amf_property_value_string(std::ostringstream &ss, const AMFPropertyS
 			      _ITEM(HIGH_QUALITY_VBR),
 			      _ITEM(HIGH_QUALITY_CBR),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_VIDEO_ENCODER_SCANTYPE_##NAME, #NAME}
 		_ENUM(AVC_SCANTYPE, AMF_VIDEO_ENCODER_SCANTYPE,
 		      {
 			      _ITEM(PROGRESSIVE),
 			      _ITEM(INTERLACED),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_VIDEO_ENCODER_USAGE_##NAME, #NAME}
 		_ENUM(AVC_USAGE, AMF_VIDEO_ENCODER_USAGE,
 		      {
@@ -506,6 +524,7 @@ static void amf_property_value_string(std::ostringstream &ss, const AMFPropertyS
 		      })
 
 // HEVC
+#undef _ITEM
 #define _ITEM(NAME) {AMF_VIDEO_ENCODER_HEVC_HEADER_INSERTION_MODE_##NAME, #NAME}
 		_ENUM(HEVC_HEADER_INSERTION_MODE, AMF_VIDEO_ENCODER_HEVC_HEADER_INSERTION_MODE,
 		      {
@@ -514,6 +533,7 @@ static void amf_property_value_string(std::ostringstream &ss, const AMFPropertyS
 			      _ITEM(IDR_ALIGNED),
 			      _ITEM(SUPPRESSED),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_LEVEL_##NAME, #NAME}
 		_ENUM(HEVC_LEVEL, AMF_LEVEL,
 		      {
@@ -531,36 +551,42 @@ static void amf_property_value_string(std::ostringstream &ss, const AMFPropertyS
 			      _ITEM(6_1),
 			      _ITEM(6_2),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_VIDEO_ENCODER_HEVC_LTR_MODE_##NAME, #NAME}
 		_ENUM(HEVC_LTR_MODE, AMF_VIDEO_ENCODER_HEVC_LTR_MODE,
 		      {
 			      _ITEM(RESET_UNUSED),
 			      _ITEM(KEEP_UNUSED),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_VIDEO_ENCODER_HEVC_NOMINAL_RANGE_##NAME, #NAME}
 		_ENUM(HEVC_NOMINAL_RANGE, AMF_VIDEO_ENCODER_HEVC_NOMINAL_RANGE,
 		      {
 			      _ITEM(STUDIO),
 			      _ITEM(FULL),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_VIDEO_ENCODER_HEVC_OUTPUT_MODE_##NAME, #NAME}
 		_ENUM(HEVC_OUTPUT_MODE, AMF_VIDEO_ENCODER_HEVC_OUTPUT_MODE,
 		      {
 			      _ITEM(FRAME),
 			      _ITEM(SLICE),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_VIDEO_ENCODER_HEVC_PICTURE_TRANSFER_MODE_##NAME, #NAME}
 		_ENUM(HEVC_PICTURE_TRANSFER_MODE, AMF_VIDEO_ENCODER_HEVC_PICTURE_TRANSFER_MODE,
 		      {
 			      _ITEM(OFF),
 			      _ITEM(ON),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_VIDEO_ENCODER_HEVC_PROFILE_##NAME, #NAME}
 		_ENUM(HEVC_PROFILE, AMF_VIDEO_ENCODER_HEVC_PROFILE,
 		      {
 			      _ITEM(MAIN),
 			      _ITEM(MAIN_10),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET_##NAME, #NAME}
 		_ENUM(HEVC_QUALITY_PRESET, AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET,
 		      {
@@ -568,6 +594,7 @@ static void amf_property_value_string(std::ostringstream &ss, const AMFPropertyS
 			      _ITEM(BALANCED),
 			      _ITEM(SPEED),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD_##NAME, #NAME}
 		_ENUM(HEVC_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD,
 		      {
@@ -580,12 +607,14 @@ static void amf_property_value_string(std::ostringstream &ss, const AMFPropertyS
 			      _ITEM(HIGH_QUALITY_VBR),
 			      _ITEM(HIGH_QUALITY_CBR),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_VIDEO_ENCODER_HEVC_TIER_##NAME, #NAME}
 		_ENUM(HEVC_TIER, AMF_VIDEO_ENCODER_HEVC_TIER,
 		      {
 			      _ITEM(MAIN),
 			      _ITEM(HIGH),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_VIDEO_ENCODER_HEVC_USAGE_##NAME, #NAME}
 		_ENUM(HEVC_USAGE, AMF_VIDEO_ENCODER_HEVC_USAGE,
 		      {
@@ -598,12 +627,14 @@ static void amf_property_value_string(std::ostringstream &ss, const AMFPropertyS
 		      })
 
 // Pre-Analysis
+#undef _ITEM
 #define _ITEM(NAME) {AMF_PA_ACTIVITY_##NAME, #NAME}
 		_ENUM(PA_ACTIVITY_TYPE, AMF_PA_ACTIVITY,
 		      {
 			      _ITEM(Y),
 			      _ITEM(YUV),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_PA_CAQ_STRENGTH_##NAME, #NAME}
 		_ENUM(PA_CAQ_STRENGTH, AMF_PA_CAQ_STRENGTH,
 		      {
@@ -611,18 +642,21 @@ static void amf_property_value_string(std::ostringstream &ss, const AMFPropertyS
 			      _ITEM(MEDIUM),
 			      _ITEM(HIGH),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_PA_HIGH_MOTION_QUALITY_BOOST_MODE_##NAME, #NAME}
 		_ENUM(PA_HIGH_MOTION_QUALITY_BOOST_MODE, AMF_PA_HIGH_MOTION_QUALITY_BOOST_MODE,
 		      {
 			      _ITEM(NONE),
 			      _ITEM(AUTO),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_PA_PAQ_MODE_##NAME, #NAME}
 		_ENUM(PA_PAQ_MODE, AMF_PA_PAQ_MODE,
 		      {
 			      _ITEM(NONE),
 			      _ITEM(CAQ),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_PA_SCENE_CHANGE_DETECTION_SENSITIVITY_##NAME, #NAME}
 		_ENUM(PA_SCENE_CHANGE_DETECTION_SENSITIVITY, AMF_PA_SCENE_CHANGE_DETECTION_SENSITIVITY,
 		      {
@@ -630,6 +664,7 @@ static void amf_property_value_string(std::ostringstream &ss, const AMFPropertyS
 			      _ITEM(MEDIUM),
 			      _ITEM(HIGH),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_PA_STATIC_SCENE_DETECTION_SENSITIVITY_##NAME, #NAME}
 		_ENUM(PA_STATIC_SCENE_DETECTION_SENSITIVITY, AMF_PA_STATIC_SCENE_DETECTION_SENSITIVITY,
 		      {
@@ -637,6 +672,7 @@ static void amf_property_value_string(std::ostringstream &ss, const AMFPropertyS
 			      _ITEM(MEDIUM),
 			      _ITEM(HIGH),
 		      })
+#undef _ITEM
 #define _ITEM(NAME) {AMF_PA_TAQ_MODE_##NAME, #NAME}
 		_ENUM(PA_TAQ_MODE, AMF_PA_TAQ_MODE,
 		      {
@@ -707,24 +743,25 @@ static std::list<std::string> amf_property_strings(const AMFPropertyStorage *sto
 }
 
 static void amf_print_properties(std::ostringstream &ss, const AMFPropertyStorage *storage,
-				 const std::map<const wchar_t *, AMF_PROPERTY_TYPE> properties, uint indent = 1)
+				 const std::map<const wchar_t *, AMF_PROPERTY_TYPE> properties, unsigned int indent = 1)
 {
 	std::list<std::string> strings = amf_property_strings(storage, properties);
 	for (std::string s : strings) {
 		if (ss.tellp())
 			ss << std::endl;
-		for (int i = 0; i < indent; i++)
+		for (unsigned int i = 0; i < indent; i++)
 			ss << "\t";
 		ss << s;
 	}
 }
 
 static void amf_print_property_category(std::ostringstream &ss, const AMFPropertyStorage *storage, const char *category,
-					const std::map<const wchar_t *, AMF_PROPERTY_TYPE> properties, uint indent = 1)
+					const std::map<const wchar_t *, AMF_PROPERTY_TYPE> properties,
+					unsigned int indent = 1)
 {
 	if (ss.tellp())
 		ss << std::endl;
-	for (int i = 0; i < indent; i++)
+	for (unsigned int i = 0; i < indent; i++)
 		ss << "\t";
 	ss << category << ":";
 	amf_print_properties(ss, storage, properties, indent + 1);
