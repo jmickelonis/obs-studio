@@ -896,6 +896,7 @@ try {
 	if (!enc->linesize)
 		enc->linesize = frame->linesize[0];
 
+#ifdef __linux__
 	if (enc->amfCompute) {
 		// Copy the frame to an OpenCL surface (instead of host memory),
 		// then convert it to Vulkan
@@ -924,6 +925,7 @@ try {
 		amf_encode_base(enc, amf_surf, packet, received_packet);
 		return true;
 	}
+#endif
 
 	buf_t buf = get_buf(enc);
 
