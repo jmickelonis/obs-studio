@@ -40,6 +40,7 @@
 #include <QScreen>
 #include <QProcess>
 #include <QAccessible>
+#include <QStyleHints>
 
 #include "obs-app.hpp"
 #include "obs-proxy-style.hpp"
@@ -1901,13 +1902,11 @@ static bool shouldForceFusionStyle()
 	return value ? QVariant(value).toBool() : true;
 }
 
-#if _WIN32
-static bool UseWindowsDarkMode()
+static bool shouldForceDarkScheme()
 {
-	const char *value = getenv("OBS_WINDOWS_DARK_MODE");
+	const char *value = getenv("OBS_FORCE_DARK_SCHEME");
 	return value ? QVariant(value).toBool() : true;
 }
-#endif
 
 #if !defined(_WIN32) && !defined(__APPLE__)
 static QFileInfo GetAMDGPUProICDPath()
@@ -2098,19 +2097,11 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 	 * elements (e.g. Hotkeys) and it is actually faster to disable it. */
 	qputenv("QT_NO_SUBTRACTOPAQUESIBLINGS", "1");
 
-#ifdef _WIN32
-	// Rather than use private APIs, enable dark mode with a command-line switch
-	std::vector<const char *> *newArgv = nullptr;
-	if (UseWindowsDarkMode()) {
-		newArgv = new std::vector<const char *>(argv, argv + argc);
-		newArgv->push_back("-platform");
-		newArgv->push_back("windows:darkmode=1");
-		argc = (int)newArgv->size();
-		argv = (char **)newArgv->data();
-	}
-#endif
-
 	OBSApp program(argc, argv, profilerNameStore.get());
+
+	if (shouldForceDarkScheme())
+		QGuiApplication::styleHints()->setColorScheme(Qt::ColorScheme::Dark);
+
 	try {
 		QAccessible::installFactory(accessibleFactory);
 		QFontDatabase::addApplicationFont(":/fonts/OpenSans-Regular.ttf");
@@ -2298,12 +2289,6 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 			arguments.removeAll("--safe-mode");
 		}
 	}
-
-#ifdef _WIN32
-	if (newArgv)
-		// Free the vector after enabling dark mode
-		delete newArgv;
-#endif
 
 	return ret;
 }
