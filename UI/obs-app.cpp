@@ -2649,6 +2649,12 @@ int main(int argc, char *argv[])
 #endif
 
 #ifdef _WIN32
+	if (getenv("OBS_ALLOC_CONSOLE")) {
+		AllocConsole();
+		freopen("CONOUT$", "w", stdout);
+		freopen("CONOUT$", "w", stderr);
+	}
+
 	// Abort as early as possible if MSVC runtime is outdated
 	if (vc_runtime_outdated())
 		return 1;
