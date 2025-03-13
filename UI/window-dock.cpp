@@ -542,10 +542,13 @@ bool OBSDock::nativeEvent(const QByteArray &eventType, void *message, qintptr *r
 
 	case WM_SHOWWINDOW:
 		if (msg->wParam) {
+			HWND handle = (HWND)winId();
 			// Don't allow rounded corners on Windows 11
-			DWM_WINDOW_CORNER_PREFERENCE preference = DWMWCP_DONOTROUND;
-			DwmSetWindowAttribute(HWND(winId()), DWMWA_WINDOW_CORNER_PREFERENCE, &preference,
-					      sizeof(preference));
+			DWM_WINDOW_CORNER_PREFERENCE corner = DWMWCP_DONOTROUND;
+			DwmSetWindowAttribute(handle, DWMWA_WINDOW_CORNER_PREFERENCE, &corner, sizeof(corner));
+			// Don't draw a native border over ours
+			COLORREF color = DWMWA_COLOR_NONE;
+			DwmSetWindowAttribute(handle, DWMWA_BORDER_COLOR, &color, sizeof(color));
 		}
 		break;
 
