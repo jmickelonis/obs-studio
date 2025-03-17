@@ -354,12 +354,6 @@ OBSDock::OBSDock(const QString &title, QWidget *parent) : QDockWidget(title, par
 	setTitleBarWidget(titleBar);
 
 	connect(this, &QDockWidget::visibilityChanged, this, &OBSDock::onVisibilityChanged);
-
-	// This doesn't currently work on Qt6?
-	// #ifdef __linux__
-	// 	// Set the type to Dialog to always keep the windows showing
-	// 	setAttribute(Qt::WA_X11NetWmWindowTypeDialog);
-	// #endif
 }
 
 void OBSDock::setVisible(bool visible)
@@ -397,20 +391,6 @@ void OBSDock::toggleFloating()
 
 	if (!floating)
 		raise();
-}
-
-static void enableAnimationsLater()
-{
-	static QTimer *timer;
-
-	if (!timer) {
-		timer = new QTimer();
-		QMainWindow *mainWindow = App()->GetMainWindow();
-		QObject::connect(timer, &QTimer::timeout, [mainWindow]() { mainWindow->setAnimated(true); });
-	}
-
-	timer->stop();
-	timer->start(1);
 }
 
 bool OBSDock::eventFilter(QObject *o, QEvent *event)
@@ -850,9 +830,14 @@ bool OBSDock::onMouseButtonReleased(QMouseEvent *event)
 		updateCursor();
 	}
 
-	QTimer::singleShot(1, this, [this]() {
+	QMainWindow *mainWindow = App()->GetMainWindow();
+	mainWindow->setAnimated(false);
+
+	QTimer::singleShot(1, this, [this, mainWindow]() {
 		if (hasMouseTracking())
 			releaseMouse();
+
+		mainWindow->setAnimated(true);
 	});
 
 	return false;
