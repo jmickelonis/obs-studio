@@ -118,7 +118,7 @@ int OBSProxyStyle::styleHint(StyleHint hint, const QStyleOption *option, const Q
 
 	// Make widget animations a little faster
 	if (hint == SH_Widget_Animation_Duration)
-		return 150;
+		return 125;
 
 	return QProxyStyle::styleHint(hint, option, widget, returnData);
 }
