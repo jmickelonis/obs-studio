@@ -12,11 +12,12 @@ class OBSQTDisplay : public QWidget {
 
 	OBSDisplay display;
 	bool destroying = false;
+	QWindow *window;
+	QWidget *container;
 
-	virtual void paintEvent(QPaintEvent *event) override;
-	virtual void moveEvent(QMoveEvent *event) override;
 	virtual void resizeEvent(QResizeEvent *event) override;
 	virtual bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override;
+	virtual bool event(QEvent *event) override;
 
 signals:
 	void DisplayCreated(OBSQTDisplay *window);
@@ -42,6 +43,5 @@ public:
 		destroying = true;
 	};
 
-	void OnMove();
 	void OnDisplayChange();
 };

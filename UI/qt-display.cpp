@@ -4,6 +4,7 @@
 #include <QScreen>
 #include <QResizeEvent>
 #include <QShowEvent>
+#include <QGridLayout>
 
 #include <qt-wrappers.hpp>
 #include <obs-config.h>
@@ -101,13 +102,19 @@ static bool QTToGSWindow(QWindow *window, gs_window &gswindow)
 
 OBSQTDisplay::OBSQTDisplay(QWidget *parent, Qt::WindowFlags flags) : QWidget(parent, flags)
 {
-	setAttribute(Qt::WA_PaintOnScreen);
 	setAttribute(Qt::WA_StaticContents);
 	setAttribute(Qt::WA_NoSystemBackground);
 	setAttribute(Qt::WA_OpaquePaintEvent);
-	if (OBSApp::IsWayland())
-		setAttribute(Qt::WA_DontCreateNativeAncestors);
-	setAttribute(Qt::WA_NativeWindow);
+
+	window = new QWindow();
+	window->setFlags(Qt::FramelessWindowHint | Qt::WindowTransparentForInput);
+	container = QWidget::createWindowContainer(window);
+	container->setAttribute(Qt::WA_TransparentForMouseEvents);
+
+	QGridLayout *layout = new QGridLayout();
+	layout->setContentsMargins(0, 0, 0, 0);
+	setLayout(layout);
+	layout->addWidget(container, 0, 0);
 
 	auto windowVisible = [this](bool visible) {
 		if (!visible) {
@@ -132,10 +139,10 @@ OBSQTDisplay::OBSQTDisplay(QWidget *parent, Qt::WindowFlags flags) : QWidget(par
 		obs_display_resize(display, size.width(), size.height());
 	};
 
-	connect(windowHandle(), &QWindow::visibleChanged, windowVisible);
-	connect(windowHandle(), &QWindow::screenChanged, screenChanged);
+	connect(window, &QWindow::visibleChanged, windowVisible);
+	connect(window, &QWindow::screenChanged, screenChanged);
 
-	windowHandle()->installEventFilter(new SurfaceEventFilter(this));
+	window->installEventFilter(new SurfaceEventFilter(this));
 }
 
 QColor OBSQTDisplay::GetDisplayBackgroundColor() const
@@ -166,8 +173,8 @@ void OBSQTDisplay::CreateDisplay()
 	if (destroying)
 		return;
 
-	if (!windowHandle()->isExposed())
-		return;
+	// if (!window->isExposed())
+	// 	return;
 
 	QSize size = GetPixelSize(this);
 
@@ -177,26 +184,12 @@ void OBSQTDisplay::CreateDisplay()
 	info.format = GS_BGRA;
 	info.zsformat = GS_ZS_NONE;
 
-	if (!QTToGSWindow(windowHandle(), info.window))
+	if (!QTToGSWindow(window, info.window))
 		return;
 
 	display = obs_display_create(&info, backgroundColor);
 
 	emit DisplayCreated(this);
-}
-
-void OBSQTDisplay::paintEvent(QPaintEvent *event)
-{
-	CreateDisplay();
-
-	QWidget::paintEvent(event);
-}
-
-void OBSQTDisplay::moveEvent(QMoveEvent *event)
-{
-	QWidget::moveEvent(event);
-
-	OnMove();
 }
 
 bool OBSQTDisplay::nativeEvent(const QByteArray &, void *message, qintptr *)
@@ -233,10 +226,12 @@ QPaintEngine *OBSQTDisplay::paintEngine() const
 	return nullptr;
 }
 
-void OBSQTDisplay::OnMove()
+bool OBSQTDisplay::event(QEvent *event)
 {
-	if (display)
-		obs_display_update_color_space(display);
+	if (event->type() == QEvent::Show)
+		CreateDisplay();
+
+	return QWidget::event(event);
 }
 
 void OBSQTDisplay::OnDisplayChange()
