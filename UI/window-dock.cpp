@@ -456,11 +456,6 @@ bool OBSDock::eventFilter(QObject *o, QEvent *event)
 		if (onMouseButtonReleased(static_cast<QMouseEvent *>(event)))
 			return true;
 		break;
-
-	case QEvent::KeyPress:
-		if (onKeyPressed(static_cast<QKeyEvent *>(event)))
-			return true;
-		break;
 	}
 
 	return false;
@@ -807,10 +802,6 @@ bool OBSDock::onMouseButtonPressed(QMouseEvent *event)
 		// Didn't press on the title bar
 		return false;
 
-	initialScreen = screen();
-	initialCursorPosition = QCursor::pos(initialScreen);
-	initialFloating = isFloating();
-
 	if ((event->modifiers() & Qt::ControlModifier) &&
 	    (isFloating() || !OBSApp::IsWayland() && hasFeature(QDockWidget::DockWidgetFloatable))) {
 		mouseState = MouseState::CtrlPressed;
@@ -837,12 +828,9 @@ bool OBSDock::onMouseButtonReleased(QMouseEvent *event)
 		fixBounds();
 #endif
 
-		// if (hasFeature(QDockWidget::DockWidgetMovable)) {
-		// 	// Disabling animations then re-enabling after we're docked
-		// 	// improves the UI experience
-		// 	App()->GetMainWindow()->setAnimated(false);
-		// 	enableAnimationsLater();
-		// }
+		// No idea why this is happening,
+		// but sometimes the cursor gets set on the main window after a drag to floating
+		App()->GetMainWindow()->unsetCursor();
 	}
 #ifndef _WIN32
 	else if (mouseState == MouseState::CtrlDragging) {
@@ -862,6 +850,11 @@ bool OBSDock::onMouseButtonReleased(QMouseEvent *event)
 		updateCursor();
 	}
 
+	QTimer::singleShot(1, this, [this]() {
+		if (hasMouseTracking())
+			releaseMouse();
+	});
+
 	return false;
 }
 
@@ -879,8 +872,7 @@ bool OBSDock::onMouseMoved(QMouseEvent *event)
 	}
 #endif
 
-	if (mouseState == MouseState::CtrlPressed ||
-	    OBSApp::IsWayland() && mouseState == MouseState::Pressed && isFloating()) {
+	if (mouseState == MouseState::CtrlPressed) {
 		qreal dragDistance = (event->pos() - pressPosition).manhattanLength();
 		if (dragDistance < QApplication::startDragDistance())
 			return true;
@@ -947,43 +939,6 @@ bool OBSDock::onMouseMoved(QMouseEvent *event)
 	}
 
 	return mouseState != MouseState::Dragging;
-}
-
-bool OBSDock::onKeyPressed(QKeyEvent *event)
-{
-	if (event->key() != Qt::Key_Escape)
-		return false;
-
-	// Try to cancel drag operations when hitting Esc
-
-	if (mouseState == MouseState::Dragging) {
-		// Just force the mouse cursor back to its original position
-		// Faking move events and such doesn't seem to work
-		QCursor::setPos(initialScreen, initialCursorPosition);
-
-		setTranslucent(false);
-
-		QTimer::singleShot(1, this, [this]() {
-			// This method aborts the drag operation in the base class
-			setFloating(initialFloating);
-
-#ifdef _WIN32
-			if (initialFloating)
-				// Re-enable the drop shadow
-				setDropShadow(true);
-#endif
-
-			mouseState = MouseState::NotPressed;
-			updateCursor();
-		});
-	} else if (mouseState == MouseState::CtrlDragging) {
-		// Fortunately, this is a lot cleaner than the default drags
-		mouseState = MouseState::NotPressed;
-		if (!initialFloating)
-			toggleFloating();
-	}
-
-	return true;
 }
 
 void OBSDock::onVisibilityChanged(bool visible)

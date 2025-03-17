@@ -130,11 +130,7 @@ private:
 	bool onMouseButtonPressed(QMouseEvent *event);
 	bool onMouseButtonReleased(QMouseEvent *event = nullptr);
 	bool onMouseMoved(QMouseEvent *event);
-	bool onKeyPressed(QKeyEvent *event);
 
-	QPoint initialCursorPosition;
-	bool initialFloating;
-	QScreen *initialScreen;
 	MouseState mouseState = MouseState::NotPressed;
 	QPoint pressPosition;
 #if defined(_WIN32) || defined(__linux__)
