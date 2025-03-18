@@ -23,14 +23,14 @@ void OBSProxyStyle::drawControl(ControlElement element, const QStyleOption *opti
 		path.addRoundedRect(rect, 2, 2);
 
 		const QPalette *palette = &option->palette;
-		QColor highlightColor = palette->color(QPalette::Highlight);
+		QColor highlightColor = palette->color(QPalette::ColorGroup::Active, QPalette::Highlight);
 
 #if true
 		// Translucent
 		QColor fillColor = QColor(highlightColor.red(), highlightColor.green(), highlightColor.blue(), 0x40);
 #else
 		// Opaque
-		QColor windowColor = palette->color(QPalette::Window);
+		QColor windowColor = palette->color(QPalette::ColorGroup::Active, QPalette::Window);
 		static float hcAmount = .25;
 		static float wcAmount = 1 - hcAmount;
 		QColor fillColor = QColor(windowColor.red() * wcAmount + highlightColor.red() * hcAmount,
