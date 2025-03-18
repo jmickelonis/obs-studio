@@ -48,6 +48,9 @@ protected:
 				break;
 			}
 			break;
+		case QEvent::Expose:
+			display->CreateDisplay();
+			break;
 		default:
 			break;
 		}
@@ -173,8 +176,8 @@ void OBSQTDisplay::CreateDisplay()
 	if (destroying)
 		return;
 
-	// if (!window->isExposed())
-	// 	return;
+	if (!window->isExposed())
+		return;
 
 	QSize size = GetPixelSize(this);
 
@@ -211,27 +214,21 @@ void OBSQTDisplay::resizeEvent(QResizeEvent *event)
 {
 	QWidget::resizeEvent(event);
 
+	if (!isVisible())
+		return;
+
 	CreateDisplay();
 
-	if (isVisible() && display) {
+	if (display) {
 		QSize size = GetPixelSize(this);
 		obs_display_resize(display, size.width(), size.height());
+		emit DisplayResized();
 	}
-
-	emit DisplayResized();
 }
 
 QPaintEngine *OBSQTDisplay::paintEngine() const
 {
 	return nullptr;
-}
-
-bool OBSQTDisplay::event(QEvent *event)
-{
-	if (event->type() == QEvent::Show)
-		CreateDisplay();
-
-	return QWidget::event(event);
 }
 
 void OBSQTDisplay::OnDisplayChange()

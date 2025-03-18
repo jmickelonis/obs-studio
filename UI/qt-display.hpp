@@ -17,7 +17,6 @@ class OBSQTDisplay : public QWidget {
 
 	virtual void resizeEvent(QResizeEvent *event) override;
 	virtual bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override;
-	virtual bool event(QEvent *event) override;
 
 signals:
 	void DisplayCreated(OBSQTDisplay *window);
