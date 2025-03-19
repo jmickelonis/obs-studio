@@ -279,23 +279,6 @@ bool TitleBarWidget::event(QEvent *event)
 		updateButtons();
 		break;
 
-	case QEvent::MouseButtonPress:
-	case QEvent::MouseButtonRelease:
-	case QEvent::MouseButtonDblClick:
-	case QEvent::MouseMove:
-		// Let OBSDock handle mouse events
-		event->ignore();
-		return false;
-
-	case QEvent::ContextMenu:
-		// Our custom title bar covers up the dock widget, which breaks context menus
-		// We'll trigger the docks menu directly
-		if (QMenu *menuDocks = App()->GetMainWindow()->findChild<QMenu *>("menuDocks")) {
-			menuDocks->exec(QCursor::pos());
-			return true;
-		}
-		break;
-
 	default:
 		break;
 	}
@@ -333,8 +316,6 @@ void TitleBarWidget::onFloatClicked()
 void TitleBarWidget::onFeaturesChanged(QDockWidget::DockWidgetFeatures)
 {
 	updateButtons();
-	OBSDock *dock = getDock();
-	dock->updateCursor();
 }
 
 void TitleBarWidget::onTopLevelChanged(bool)
@@ -346,6 +327,11 @@ void TitleBarWidget::onTopLevelChanged(bool)
 	if (dock->isFloating() && dock->mouseState == OBSDock::MouseState::NotPressed)
 		dock->setDropShadow(true);
 #endif
+
+	// Activate the window when [un]floating
+	QWindow *window = this->window()->windowHandle();
+	if (window)
+		window->requestActivate();
 }
 
 OBSDock::OBSDock(const QString &title, QWidget *parent) : QDockWidget(title, parent)
@@ -353,6 +339,7 @@ OBSDock::OBSDock(const QString &title, QWidget *parent) : QDockWidget(title, par
 	TitleBarWidget *titleBar = new TitleBarWidget(this);
 	setTitleBarWidget(titleBar);
 
+	installEventFilter(this);
 	connect(this, &QDockWidget::visibilityChanged, this, &OBSDock::onVisibilityChanged);
 }
 
@@ -393,68 +380,392 @@ void OBSDock::toggleFloating()
 		raise();
 }
 
-bool OBSDock::eventFilter(QObject *o, QEvent *event)
+bool OBSDock::eventFilter(QObject *o, QEvent *e)
 {
 	if (o != this)
 		return false;
 
-	switch (event->type()) {
+	switch (e->type()) {
+
+	case QEvent::ChildAdded:
+		return onChildAdded(static_cast<QChildEvent *>(e));
+
+	case QEvent::ContextMenu:
+		return onContextMenu(static_cast<QContextMenuEvent *>(e));
 
 	case QEvent::HoverEnter:
-		if (OBSApp::IsWayland() && mouseState == MouseState::Dragging) {
-			// Workaround for Wayland not giving a proper button release event after dragging
-			onMouseButtonReleased();
-			return false;
-		}
-	case QEvent::HoverMove: {
-		// Update the cursor as the mouse is moved in/out
-		QHoverEvent *hoverEvent = static_cast<QHoverEvent *>(event);
-		QPoint point = hoverEvent->position().toPoint();
-		updateCursor(&point);
-	} break;
+		return onHoverEnter(static_cast<QHoverEvent *>(e));
+	case QEvent::HoverMove:
+		return onHoverMove(static_cast<QHoverEvent *>(e));
 	case QEvent::HoverLeave:
-		updateCursor(nullptr);
-		break;
+		return onHoverLeave(static_cast<QHoverEvent *>(e));
+
+	case QEvent::MouseButtonDblClick:
+		return onMouseButtonDblClick(static_cast<QMouseEvent *>(e));
+	case QEvent::MouseButtonPress:
+		return onMouseButtonPress(static_cast<QMouseEvent *>(e));
+	case QEvent::MouseMove:
+		return onMouseMove(static_cast<QMouseEvent *>(e));
+	case QEvent::MouseButtonRelease:
+		return onMouseButtonRelease(static_cast<QMouseEvent *>(e));
 
 	case QEvent::WindowActivate:
 	case QEvent::WindowDeactivate:
 		// Update the window border
 		update();
 		break;
-
-	case QEvent::MouseButtonPress:
-		if (onMouseButtonPressed(static_cast<QMouseEvent *>(event)))
-			return true;
-		break;
-
-	case QEvent::MouseMove:
-		if (onMouseMoved(static_cast<QMouseEvent *>(event)))
-			return true;
-		break;
-
-	case QEvent::MouseButtonRelease:
-		if (onMouseButtonReleased(static_cast<QMouseEvent *>(event)))
-			return true;
-		break;
 	}
 
 	return false;
 }
 
-bool OBSDock::event(QEvent *event)
+bool OBSDock::onChildAdded(QChildEvent *event)
 {
+	QObject *child = event->child();
+
+	if (child != this && !qobject_cast<QWidget *>(child)) {
+		// Might be an event filter.
+		// Keep installing ourselves as the first filter to be called
+		// (this overrides the default resizer).
+		QTimer::singleShot(1, this, [this]() { installEventFilter(this); });
+	}
+
+	return false;
+}
+
+bool OBSDock::onContextMenu(QContextMenuEvent *event)
+{
+	if (mouseState != MouseState::NotPressed)
+		return true;
+
+	if (OBSApp::IsWayland() && isFloating())
+		// Global positioning doesn't work on Wayland
+		return false;
+
+	QPoint pos = event->pos();
+
+	Qt::Edges edges = getResizeEdges(pos);
+	if (edges)
+		return true;
+
+	QWidget *widget = childAt(pos);
+	if (!qobject_cast<TitleBarWidget *>(widget))
+		return false;
+
+	clearCursor();
+	QMenu *menuDocks = App()->GetMainWindow()->findChild<QMenu *>("menuDocks");
+	menuDocks->exec(event->globalPos());
+	return true;
+}
+
+Qt::Edges OBSDock::getResizeEdges(const QPoint &position)
+{
+	Qt::Edges edges;
+
+	if (!isFloating())
+		return edges;
+
+	const int x = position.x();
+	const int y = position.y();
+	const unsigned int w = width();
+	const unsigned int h = height();
+
+	if (x < 0 || x >= w || y < 0 || y >= h)
+		// Position is not within this window
+		return edges;
+
+	// Match the default implementation
+	// A little extra space is given inside the title bar
+	const QWidget *titleBar = titleBarWidget();
+	bool inTitleBar = y < titleBar->y() + titleBar->height();
+	unsigned int borderSize = inTitleBar ? 5 : 3;
+
+	if (x < borderSize)
+		edges |= Qt::LeftEdge;
+	else if (x >= w - (inTitleBar ? borderSize - 1 : borderSize))
+		edges |= Qt::RightEdge;
+
+	if (y < borderSize)
+		edges |= Qt::TopEdge;
+	else if (y >= h - borderSize)
+		edges |= Qt::BottomEdge;
+
+	return edges;
+}
+
+Qt::CursorShape OBSDock::getCursor(const QPoint &position)
+{
+	if (isFloating()) {
+		Qt::Edges edges = getResizeEdges(position);
+
+		if (edges & Qt::LeftEdge)
+			return edges & Qt::TopEdge      ? Qt::SizeFDiagCursor
+			       : edges & Qt::BottomEdge ? Qt::SizeBDiagCursor
+							: Qt::SizeHorCursor;
+		else if (edges & Qt::RightEdge)
+			return edges & Qt::TopEdge      ? Qt::SizeBDiagCursor
+			       : edges & Qt::BottomEdge ? Qt::SizeFDiagCursor
+							: Qt::SizeHorCursor;
+		else if (edges & (Qt::TopEdge | Qt::BottomEdge))
+			return Qt::SizeVerCursor;
+	}
+
+	switch (mouseState) {
+	case MouseState::Pressed:
+	case MouseState::CtrlPressed:
+		return Qt::ClosedHandCursor;
+	default:
+		if (isDraggable()) {
+			QWidget *widget = childAt(position);
+			if (qobject_cast<TitleBarWidget *>(widget))
+				return Qt::OpenHandCursor;
+		}
+		return Qt::BlankCursor;
+	}
+}
+
+void OBSDock::updateCursor(const QPoint &position)
+{
+	updateCursor(getCursor(position));
+}
+
+void OBSDock::updateCursor(Qt::CursorShape cursor)
+{
+	OBSApp *app = App();
+	if (cursor != Qt::BlankCursor) {
+		if (this->cursor != Qt::BlankCursor)
+			app->changeOverrideCursor(cursor);
+		else
+			app->setOverrideCursor(cursor);
+	} else if (this->cursor != Qt::BlankCursor) {
+		app->restoreOverrideCursor();
+	}
+	this->cursor = cursor;
+}
+
+void OBSDock::clearCursor()
+{
+	updateCursor(Qt::BlankCursor);
+}
+
+bool OBSDock::onHoverEnter(QHoverEvent *event)
+{
+	if (OBSApp::IsWayland())
+		// Workaround for Wayland not giving a proper button release event after dragging
+		onMouseButtonRelease(nullptr);
+
+	return onHoverMove(event);
+}
+
+bool OBSDock::onHoverMove(QHoverEvent *event)
+{
+	if (mouseState != MouseState::NotPressed)
+		return true;
+
+	updateCursor(event->pos());
+	return false;
+}
+
+bool OBSDock::onHoverLeave(QHoverEvent *)
+{
+	if (mouseState != MouseState::NotPressed)
+		return true;
+
+	clearCursor();
+	return false;
+}
+
+bool OBSDock::onMouseButtonDblClick(QMouseEvent *event)
+{
+	if (mouseState != MouseState::NotPressed)
+		return true;
+
+	QPoint pos = event->pos();
+
+	Qt::Edges edges = getResizeEdges(pos);
+	if (edges)
+		return true;
+
+	if (!hasFeature(QDockWidget::DockWidgetFloatable))
+		return false;
+
+	QWidget *widget = childAt(pos);
+	if (!qobject_cast<TitleBarWidget *>(widget))
+		return false;
+
+	if (event->button() != Qt::LeftButton)
+		return true;
+
+	// [Un]float on left double-click
+	clearCursor();
+	setFloating(!isFloating());
+	return true;
+}
+
+bool OBSDock::onMouseButtonPress(QMouseEvent *event)
+{
+	if (mouseState != MouseState::NotPressed)
+		return true;
+
+	if (event->button() != Qt::LeftButton)
+		return false;
+
+	pressPosition = event->pos();
+
 #ifdef __SUPPORTS_SYSTEM_RESIZE
-	if (event->type() == QEvent::ChildAdded) {
-		QChildEvent *childEvent = static_cast<QChildEvent *>(event);
-		QObject *child = childEvent->child();
-		if (child != this && !qobject_cast<QWidget *>(child))
-			// Might be an event filter.
-			// Keep installing ourselves as the first filter to be called
-			// (this overrides the default resizer).
-			QTimer::singleShot(1, this, [this]() { installEventFilter(this); });
+	pressEdges = getResizeEdges(pressPosition);
+	if (pressEdges) {
+		// Will do a system resize on drag
+		mouseState = MouseState::Pressed;
+		return true;
 	}
 #endif
-	return QDockWidget::event(event);
+
+	if (!isDraggable())
+		return false;
+
+	QWidget *widget = childAt(pressPosition);
+	if (!qobject_cast<TitleBarWidget *>(widget))
+		return false;
+
+	bool floating = isFloating();
+	bool floatable = hasFeature(QDockWidget::DockWidgetFloatable);
+
+	if (floating && !floatable ||
+	    (event->modifiers() & Qt::ControlModifier) && (floating || !OBSApp::IsWayland() && floatable)) {
+		// Will do a system move on drag
+		// Non-Wayland can use ctrl+drag to float into a system move
+		mouseState = MouseState::CtrlPressed;
+		updateCursor(pressPosition);
+		return true;
+	}
+
+	// Will do a non-system move on drag
+	mouseState = MouseState::Pressed;
+	updateCursor(pressPosition);
+	return false;
+}
+
+bool OBSDock::onMouseMove(QMouseEvent *event)
+{
+	if (mouseState == MouseState::Dragging)
+		return false;
+
+	if (mouseState == MouseState::CtrlPressed) {
+		qreal dragDistance = (event->pos() - pressPosition).manhattanLength();
+		if (dragDistance < QApplication::startDragDistance())
+			return true;
+
+		if (!isFloating()) {
+			QRect bounds = geometry();
+
+			// Float the dock widget
+			setFloating(true);
+
+			// Position the window properly
+			// (it might still have a previous float location)
+			bounds.moveTo(event->globalPosition().toPoint() - pressPosition);
+			setGeometry(bounds);
+		}
+
+		setTranslucent(true);
+#ifdef _WIN32
+		setDropShadow(false);
+#endif
+
+		mouseState = MouseState::CtrlDragging;
+		window()->windowHandle()->startSystemMove();
+		clearCursor();
+		return true;
+	}
+
+	if (mouseState != MouseState::Pressed)
+		return true;
+
+#ifdef __SUPPORTS_SYSTEM_RESIZE
+	if (pressEdges) {
+		qreal dragDistance = (event->pos() - pressPosition).manhattanLength();
+		if (dragDistance < QApplication::startDragDistance())
+			return true;
+
+		mouseState = MouseState::Resizing;
+		window()->windowHandle()->startSystemResize(pressEdges);
+		clearCursor();
+		return true;
+	}
+#endif
+
+	if (OBSApp::IsWayland()) {
+		qreal dragDistance = (event->pos() - pressPosition).manhattanLength();
+		if (dragDistance < QApplication::startDragDistance())
+			return false;
+	} else {
+		QDockWidget::event(event);
+		if (!mouseGrabber())
+			// The grabber was not set yet
+			return false;
+	}
+
+	mouseState = MouseState::Dragging;
+	setTranslucent(true);
+
+#ifdef _WIN32
+	// Disable the drop shadow when moving the dock around
+	// This prevents a lot of glitches (like when moving between screens)
+	setDropShadow(false);
+#endif
+
+	return false;
+}
+
+bool OBSDock::onMouseButtonRelease(QMouseEvent *event)
+{
+	if (mouseState == MouseState::NotPressed)
+		return false;
+
+	if (event && event->button() != Qt::LeftButton)
+		return true;
+
+	bool wasDragging = mouseState == MouseState::Dragging;
+
+	if (wasDragging) {
+		setTranslucent(false);
+
+#ifdef _WIN32
+		// Re-enable the drop shadow
+		setDropShadow(true);
+
+		// The window may have been moved out of bounds, so fix that
+		fixBounds();
+#endif
+	}
+#ifndef _WIN32
+	else if (mouseState == MouseState::CtrlDragging) {
+		setTranslucent(false);
+
+		// We need to fix the bounds later to get the proper screen and size
+		QTimer::singleShot(50, this, [this]() { fixBounds(); });
+	}
+#endif
+
+	mouseState = MouseState::NotPressed;
+	if (event)
+		updateCursor(event->pos());
+
+	if (wasDragging) {
+		// Disable animations on docking to make things look snappier
+		QMainWindow *mainWindow = App()->GetMainWindow();
+		mainWindow->setAnimated(false);
+
+		QTimer::singleShot(1, this, [this, mainWindow]() {
+			if (hasMouseTracking())
+				releaseMouse();
+
+			mainWindow->setAnimated(true);
+		});
+	}
+
+	return false;
 }
 
 void OBSDock::paintEvent(QPaintEvent *)
@@ -641,289 +952,6 @@ void OBSDock::fixBounds()
 	}
 
 	move(x, y);
-}
-
-Qt::Edges OBSDock::getResizeEdges(const QPoint *position)
-{
-	Qt::Edges edges;
-
-	if (!position || !isFloating())
-		return edges;
-
-	const int x = position->x();
-	const int y = position->y();
-
-#ifdef __SUPPORTS_SYSTEM_RESIZE
-	const int borderSize = 4;
-#else
-	const int borderSize = 3;
-#endif
-
-	if (x < borderSize)
-		edges |= Qt::LeftEdge;
-	else if (x >= width() - borderSize)
-		edges |= Qt::RightEdge;
-
-	if (y < borderSize)
-		edges |= Qt::TopEdge;
-	else if (y >= height() - borderSize)
-		edges |= Qt::BottomEdge;
-
-	return edges;
-}
-
-void OBSDock::updateCursor()
-{
-	QPoint position = QCursor::pos(screen());
-	updateCursor(geometry().contains(position) ? &position : nullptr);
-}
-
-void OBSDock::updateCursor(const QPoint *position)
-{
-	// For some reason, on Qt6,
-	// cursors don't always work correctly the way we were setting them.
-	// The workaround is to set a cursor on the title bar widget if necessary.
-
-	TitleBarWidget *titleBar = findChild<TitleBarWidget *>();
-
-	if (!position) {
-		titleBar->unsetCursor();
-		unsetCursor();
-		return;
-	}
-
-	Qt::CursorShape cursor = Qt::ArrowCursor;
-
-	if (isFloating()) {
-		Qt::Edges edges = getResizeEdges(position);
-
-		if (edges & Qt::LeftEdge)
-			cursor = edges & Qt::TopEdge      ? Qt::SizeFDiagCursor
-				 : edges & Qt::BottomEdge ? Qt::SizeBDiagCursor
-							  : Qt::SizeHorCursor;
-		else if (edges & Qt::RightEdge)
-			cursor = edges & Qt::TopEdge      ? Qt::SizeBDiagCursor
-				 : edges & Qt::BottomEdge ? Qt::SizeFDiagCursor
-							  : Qt::SizeHorCursor;
-		else if (edges & (Qt::TopEdge | Qt::BottomEdge))
-			cursor = Qt::SizeVerCursor;
-
-		if (cursor) {
-			titleBar->unsetCursor();
-			setCursor(cursor);
-			return;
-		}
-	}
-
-	switch (mouseState) {
-	case MouseState::Pressed:
-	case MouseState::CtrlPressed:
-	case MouseState::CtrlDragging:
-	case MouseState::Dragging:
-		cursor = Qt::ClosedHandCursor;
-		break;
-	default:
-		if (isDraggable()) {
-			QWidget *widget = childAt(*position);
-			if (qobject_cast<TitleBarWidget *>(widget))
-				cursor = Qt::OpenHandCursor;
-		}
-		break;
-	}
-
-	if (cursor)
-		titleBar->setCursor(cursor);
-	else
-		titleBar->unsetCursor();
-	unsetCursor();
-}
-
-bool OBSDock::onMouseButtonDoubleClicked(QMouseEvent *event)
-{
-	if (event->button() != Qt::LeftButton)
-		return true;
-
-	QWidget *widget = childAt(event->pos());
-	if (!qobject_cast<TitleBarWidget *>(widget))
-		// Didn't click on the title bar
-		return false;
-
-	// Prevent dragging after double click and hold
-	mouseState = MouseState::NotPressed;
-
-	if (hasFeature(QDockWidget::DockWidgetMovable))
-		toggleFloating();
-
-	return false;
-}
-
-bool OBSDock::onMouseButtonPressed(QMouseEvent *event)
-{
-	if (event->button() != Qt::LeftButton)
-		return false;
-
-	pressPosition = event->pos();
-	QTimer::singleShot(1, this, [this]() { updateCursor(&pressPosition); });
-
-#ifdef __SUPPORTS_SYSTEM_RESIZE
-	pressEdges = getResizeEdges(&pressPosition);
-	if (pressEdges) {
-		// Pressed on the resizable border
-		mouseState = MouseState::Pressed;
-		return true;
-	}
-#endif
-
-	if (!isDraggable())
-		return false;
-
-	QWidget *widget = childAt(pressPosition);
-	if (!qobject_cast<TitleBarWidget *>(widget))
-		// Didn't press on the title bar
-		return false;
-
-	if ((event->modifiers() & Qt::ControlModifier) &&
-	    (isFloating() || !OBSApp::IsWayland() && hasFeature(QDockWidget::DockWidgetFloatable))) {
-		mouseState = MouseState::CtrlPressed;
-		return true;
-	}
-
-	mouseState = MouseState::Pressed;
-	return false;
-}
-
-bool OBSDock::onMouseButtonReleased(QMouseEvent *event)
-{
-	if (event && event->button() != Qt::LeftButton)
-		return false;
-
-	if (mouseState == MouseState::Dragging) {
-		setTranslucent(false);
-
-#ifdef _WIN32
-		// Re-enable the drop shadow
-		setDropShadow(true);
-
-		// The window may have been moved out of bounds, so fix that
-		fixBounds();
-#endif
-
-		// No idea why this is happening,
-		// but sometimes the cursor gets set on the main window after a drag to floating
-		App()->GetMainWindow()->unsetCursor();
-	}
-#ifndef _WIN32
-	else if (mouseState == MouseState::CtrlDragging) {
-		setTranslucent(false);
-
-		// We need to fix the bounds later to get the proper screen and size
-		QTimer::singleShot(50, this, [this]() { fixBounds(); });
-	}
-#endif
-
-	mouseState = MouseState::NotPressed;
-
-	if (event) {
-		QPoint position = event->pos();
-		updateCursor(&position);
-	} else {
-		updateCursor();
-	}
-
-	QMainWindow *mainWindow = App()->GetMainWindow();
-	mainWindow->setAnimated(false);
-
-	QTimer::singleShot(1, this, [this, mainWindow]() {
-		if (hasMouseTracking())
-			releaseMouse();
-
-		mainWindow->setAnimated(true);
-	});
-
-	return false;
-}
-
-bool OBSDock::onMouseMoved(QMouseEvent *event)
-{
-#ifdef __SUPPORTS_SYSTEM_RESIZE
-	if (pressEdges && mouseState == MouseState::Pressed) {
-		qreal dragDistance = (event->pos() - pressPosition).manhattanLength();
-		if (dragDistance < QApplication::startDragDistance())
-			return true;
-
-		window()->windowHandle()->startSystemResize(pressEdges);
-		mouseState = MouseState::NotPressed;
-		return true;
-	}
-#endif
-
-	if (mouseState == MouseState::CtrlPressed) {
-		qreal dragDistance = (event->pos() - pressPosition).manhattanLength();
-		if (dragDistance < QApplication::startDragDistance())
-			return true;
-
-		// We Ctrl-dragged far enough
-
-		if (OBSApp::IsWayland()) {
-			window()->windowHandle()->startSystemMove();
-			mouseState = MouseState::NotPressed;
-			return true;
-		}
-
-		if (!isFloating()) {
-			QRect bounds = geometry();
-
-			// Float the dock widget
-
-			// Clear the cursor first.
-			// Otherwise, when changing to a floating window, the cursor can get stuck.
-			updateCursor(nullptr);
-
-			setFloating(true);
-
-			// Position the window properly
-			// (it might still have a previous float location)
-			bounds.moveTo(event->globalPosition().toPoint() - pressPosition);
-			setGeometry(bounds);
-		}
-
-		setTranslucent(true);
-#ifdef _WIN32
-		setDropShadow(false);
-#endif
-		window()->windowHandle()->startSystemMove();
-		mouseState = MouseState::CtrlDragging;
-		return false;
-	}
-
-	if (mouseState == MouseState::Pressed || mouseState == MouseState::CtrlPressed) {
-		if (OBSApp::IsWayland()) {
-			qreal dragDistance = (event->pos() - pressPosition).manhattanLength();
-			if (dragDistance < QApplication::startDragDistance())
-				return false;
-		} else {
-			QDockWidget::event(event);
-			if (!mouseGrabber())
-				// The grabber was not set yet
-				return false;
-		}
-
-		// Avoid the cursor getting stuck
-		updateCursor(nullptr);
-
-		mouseState = MouseState::Dragging;
-		setTranslucent(true);
-
-#ifdef _WIN32
-		// Disable the drop shadow when moving the dock around
-		// This prevents a lot of glitches (like when moving between screens)
-		setDropShadow(false);
-#endif
-
-		return false;
-	}
-
-	return mouseState != MouseState::Dragging;
 }
 
 void OBSDock::onVisibilityChanged(bool visible)

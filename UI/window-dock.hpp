@@ -103,7 +103,6 @@ public:
 
 protected:
 	bool eventFilter(QObject *obj, QEvent *ev) override;
-	virtual bool event(QEvent *event) override;
 	virtual void paintEvent(QPaintEvent *event) override;
 	virtual void closeEvent(QCloseEvent *event) override;
 #ifdef _WIN32
@@ -115,22 +114,30 @@ protected:
 	friend class TitleBarWidget;
 
 private:
-	enum MouseState { NotPressed, Pressed, CtrlPressed, Dragging, CtrlDragging };
+	enum MouseState { NotPressed, Pressed, CtrlPressed, Dragging, CtrlDragging, Resizing };
 #ifdef _WIN32
 	void setDropShadow(bool value);
 #endif
 	void setTranslucent(bool value);
 	void fixBounds();
 
-	Qt::Edges getResizeEdges(const QPoint *position);
-	void updateCursor();
-	void updateCursor(const QPoint *position);
+	Qt::Edges getResizeEdges(const QPoint &position);
+	Qt::CursorShape getCursor(const QPoint &position);
+	void updateCursor(const QPoint &position);
+	void updateCursor(Qt::CursorShape cursor);
+	void clearCursor();
 
-	bool onMouseButtonDoubleClicked(QMouseEvent *event);
-	bool onMouseButtonPressed(QMouseEvent *event);
-	bool onMouseButtonReleased(QMouseEvent *event = nullptr);
-	bool onMouseMoved(QMouseEvent *event);
+	bool onChildAdded(QChildEvent *event);
+	bool onContextMenu(QContextMenuEvent *event);
+	bool onHoverEnter(QHoverEvent *event);
+	bool onHoverMove(QHoverEvent *event);
+	bool onHoverLeave(QHoverEvent *event);
+	bool onMouseButtonDblClick(QMouseEvent *event);
+	bool onMouseButtonPress(QMouseEvent *event);
+	bool onMouseMove(QMouseEvent *event);
+	bool onMouseButtonRelease(QMouseEvent *event);
 
+	Qt::CursorShape cursor = Qt::BlankCursor;
 	MouseState mouseState = MouseState::NotPressed;
 	QPoint pressPosition;
 #if defined(_WIN32) || defined(__linux__)
