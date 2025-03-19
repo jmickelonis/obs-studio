@@ -598,7 +598,11 @@ bool OBSDock::onMouseButtonDblClick(QMouseEvent *event)
 
 	// [Un]float on left double-click
 	clearCursor();
-	setFloating(!isFloating());
+
+	bool floating = !isFloating();
+	setFloating(floating);
+	if (!floating)
+		raise();
 	return true;
 }
 
