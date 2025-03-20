@@ -12,7 +12,6 @@ class OBSQTDisplay : public QWidget {
 
 	OBSDisplay display;
 	bool destroying = false;
-	QWindow *window;
 	QWidget *container;
 
 	virtual void resizeEvent(QResizeEvent *event) override;
@@ -43,4 +42,7 @@ public:
 	};
 
 	void OnDisplayChange();
+
+protected:
+	QWindow *window;
 };
