@@ -550,10 +550,6 @@ void OBSDock::clearCursor()
 
 bool OBSDock::onHoverEnter(QHoverEvent *event)
 {
-	if (OBSApp::IsWayland())
-		// Workaround for Wayland not giving a proper button release event after dragging
-		onMouseButtonRelease(nullptr);
-
 	return onHoverMove(event);
 }
 
@@ -568,8 +564,8 @@ bool OBSDock::onHoverMove(QHoverEvent *event)
 
 bool OBSDock::onHoverLeave(QHoverEvent *)
 {
-	if (mouseState != MouseState::NotPressed)
-		return true;
+	if (mouseState == MouseState::Resizing)
+		onMouseButtonRelease(nullptr);
 
 	clearCursor();
 	return false;
@@ -679,7 +675,6 @@ bool OBSDock::onMouseMove(QMouseEvent *event)
 
 		mouseState = MouseState::CtrlDragging;
 		window()->windowHandle()->startSystemMove();
-		clearCursor();
 		return true;
 	}
 
@@ -692,9 +687,13 @@ bool OBSDock::onMouseMove(QMouseEvent *event)
 		if (dragDistance < QApplication::startDragDistance())
 			return true;
 
+		setTranslucent(true);
+#ifdef _WIN32
+		setDropShadow(false);
+#endif
+
 		mouseState = MouseState::Resizing;
 		window()->windowHandle()->startSystemResize(pressEdges);
-		clearCursor();
 		return true;
 	}
 #endif
