@@ -196,6 +196,13 @@ void OBSQTDisplay::CreateDisplay()
 	emit DisplayCreated(this);
 }
 
+void OBSQTDisplay::moveEvent(QMoveEvent *event)
+{
+	QWidget::moveEvent(event);
+
+	OnMove();
+}
+
 bool OBSQTDisplay::nativeEvent(const QByteArray &, void *message, qintptr *)
 {
 #ifdef _WIN32
@@ -230,6 +237,12 @@ void OBSQTDisplay::resizeEvent(QResizeEvent *event)
 QPaintEngine *OBSQTDisplay::paintEngine() const
 {
 	return nullptr;
+}
+
+void OBSQTDisplay::OnMove()
+{
+	if (display)
+		obs_display_update_color_space(display);
 }
 
 void OBSQTDisplay::OnDisplayChange()
