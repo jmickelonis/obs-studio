@@ -467,8 +467,8 @@ Qt::Edges OBSDock::getResizeEdges(const QPoint &position)
 
 	const int x = position.x();
 	const int y = position.y();
-	const unsigned int w = width();
-	const unsigned int h = height();
+	const int w = width();
+	const int h = height();
 
 	if (x < 0 || x >= w || y < 0 || y >= h)
 		// Position is not within this window
@@ -478,7 +478,7 @@ Qt::Edges OBSDock::getResizeEdges(const QPoint &position)
 	// A little extra space is given inside the title bar
 	const QWidget *titleBar = titleBarWidget();
 	bool inTitleBar = y < titleBar->y() + titleBar->height();
-	unsigned int borderSize = inTitleBar ? 5 : 3;
+	int borderSize = inTitleBar ? 5 : 3;
 
 	if (x < borderSize)
 		edges |= Qt::LeftEdge;
@@ -562,7 +562,7 @@ bool OBSDock::onHoverMove(QHoverEvent *event)
 	if (mouseState != MouseState::NotPressed)
 		return true;
 
-	updateCursor(event->pos());
+	updateCursor(event->position().toPoint());
 	return false;
 }
 
