@@ -112,6 +112,7 @@ OBSQTDisplay::OBSQTDisplay(QWidget *parent, Qt::WindowFlags flags) : QWidget(par
 	window = new QWindow();
 	window->setFlags(Qt::FramelessWindowHint | Qt::WindowTransparentForInput);
 	container = QWidget::createWindowContainer(window);
+	container->setAttribute(Qt::WA_DontCreateNativeAncestors);
 	container->setAttribute(Qt::WA_TransparentForMouseEvents);
 
 	QGridLayout *layout = new QGridLayout();
