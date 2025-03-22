@@ -550,6 +550,9 @@ void OBSDock::clearCursor()
 
 bool OBSDock::onHoverEnter(QHoverEvent *event)
 {
+	if (OBSApp::IsWayland() && (mouseState == MouseState::Pressed || mouseState == MouseState::Dragging))
+		onMouseButtonRelease(nullptr);
+
 	return onHoverMove(event);
 }
 
@@ -668,12 +671,18 @@ bool OBSDock::onMouseMove(QMouseEvent *event)
 			setGeometry(bounds);
 		}
 
-		setTranslucent(true);
 #ifdef _WIN32
 		setDropShadow(false);
 #endif
 
-		mouseState = MouseState::CtrlDragging;
+		if (OBSApp::IsWayland()) {
+			// We won't receive a mouse button release
+			mouseState = MouseState::NotPressed;
+			clearCursor();
+		} else {
+			mouseState = MouseState::CtrlDragging;
+			setTranslucent(true);
+		}
 		window()->windowHandle()->startSystemMove();
 		return true;
 	}
@@ -687,12 +696,18 @@ bool OBSDock::onMouseMove(QMouseEvent *event)
 		if (dragDistance < QApplication::startDragDistance())
 			return true;
 
-		setTranslucent(true);
 #ifdef _WIN32
 		setDropShadow(false);
 #endif
 
-		mouseState = MouseState::Resizing;
+		if (OBSApp::IsWayland()) {
+			// We won't receive a mouse button release
+			mouseState = MouseState::NotPressed;
+			clearCursor();
+		} else {
+			mouseState = MouseState::Resizing;
+			setTranslucent(true);
+		}
 		window()->windowHandle()->startSystemResize(pressEdges);
 		return true;
 	}
@@ -730,16 +745,16 @@ bool OBSDock::onMouseButtonRelease(QMouseEvent *event)
 		return true;
 
 	bool wasDragging = mouseState == MouseState::Dragging;
-
-	if (wasDragging) {
+	if (wasDragging || mouseState == MouseState::Resizing) {
 		setTranslucent(false);
 
 #ifdef _WIN32
 		// Re-enable the drop shadow
 		setDropShadow(true);
 
-		// The window may have been moved out of bounds, so fix that
-		fixBounds();
+		if (wasDragging)
+			// The window may have been moved out of bounds, so fix that
+			fixBounds();
 #endif
 	}
 #ifndef _WIN32
