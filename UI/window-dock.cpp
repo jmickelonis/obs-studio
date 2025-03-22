@@ -438,10 +438,6 @@ bool OBSDock::onContextMenu(QContextMenuEvent *event)
 	if (mouseState != MouseState::NotPressed)
 		return true;
 
-	if (OBSApp::IsWayland() && isFloating())
-		// Global positioning doesn't work on Wayland
-		return false;
-
 	QPoint pos = event->pos();
 
 	Qt::Edges edges = getResizeEdges(pos);
@@ -634,10 +630,11 @@ bool OBSDock::onMouseButtonPress(QMouseEvent *event)
 	bool floating = isFloating();
 	bool floatable = hasFeature(QDockWidget::DockWidgetFloatable);
 
-	if (floating && !floatable ||
+	if (floating && (!floatable || OBSApp::IsWayland()) ||
 	    (event->modifiers() & Qt::ControlModifier) && (floating || !OBSApp::IsWayland() && floatable)) {
 		// Will do a system move on drag
 		// Non-Wayland can use ctrl+drag to float into a system move
+		// Wayland is forced into ctrl+drags because the normal drag is so glitchy
 		mouseState = MouseState::CtrlPressed;
 		updateCursor(pressPosition);
 		return true;
