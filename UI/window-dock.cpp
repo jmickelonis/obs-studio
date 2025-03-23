@@ -934,7 +934,7 @@ void OBSDock::setDropShadow(bool value)
 
 void OBSDock::setTranslucent(bool value)
 {
-	setWindowOpacity(value ? .67 : 1);
+	setWindowOpacity(value ? .9 : 1);
 }
 
 /* Moves the dock back onto the screen if it's too far off of it.
