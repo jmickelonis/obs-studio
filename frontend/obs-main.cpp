@@ -35,6 +35,7 @@
 
 #include <QFileInfo>
 #include <QProcess>
+#include <QStyleHints>
 #include <curl/curl.h>
 
 #include <fstream>
@@ -495,6 +496,12 @@ QAccessibleInterface *accessibleFactory(const QString &classname, QObject *objec
 	return nullptr;
 }
 
+static bool shouldForceDarkScheme()
+{
+	const char *value = getenv("OBS_FORCE_DARK_SCHEME");
+	return value ? QVariant(value).toBool() : true;
+}
+
 static const char *run_program_init = "run_program_init";
 static int run_program(fstream &logFile, int argc, char *argv[])
 {
@@ -576,6 +583,10 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 	qputenv("QT_NO_SUBTRACTOPAQUESIBLINGS", "1");
 
 	OBSApp program(argc, argv, profilerNameStore.get());
+
+	if (shouldForceDarkScheme())
+		QGuiApplication::styleHints()->setColorScheme(Qt::ColorScheme::Dark);
+
 	try {
 		QAccessible::installFactory(accessibleFactory);
 		QFontDatabase::addApplicationFont(":/fonts/OpenSans-Regular.ttf");
