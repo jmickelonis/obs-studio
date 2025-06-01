@@ -961,7 +961,7 @@ void OBSBasic::OBSInit()
 	}
 
 	/* Modules can access frontend information (i.e. profile and scene collection data) during their initialization, and some modules (e.g. obs-websockets) are known to use the filesystem location of the current profile in their own code.
-     
+
      Thus the profile and scene collection discovery needs to happen before any access to that information (but after intializing global settings) to ensure legacy code gets valid path information.
      */
 	RefreshSceneCollections(true);
@@ -1909,22 +1909,20 @@ void OBSBasic::UpdateEditMenu()
 void OBSBasic::UpdateTitleBar()
 {
 	stringstream name;
+	name << "OBS Studio (jmick's Mod)";
 
 	const char *profile = config_get_string(App()->GetUserConfig(), "Basic", "Profile");
 	const char *sceneCollection = config_get_string(App()->GetUserConfig(), "Basic", "SceneCollection");
 
-	name << "OBS ";
-	if (previewProgramMode)
-		name << "Studio ";
+	// Only show Profile/Scenes names if they're non-default
+	const char *untitled = Str("Untitled");
+	if (strcmp(profile, untitled))
+		name << " • " << Str("TitleBar.Profile") << ": " << profile;
+	if (strcmp(sceneCollection, untitled))
+		name << " • " << Str("TitleBar.Scenes") << ": " << sceneCollection;
 
-	name << App()->GetVersionString(false);
 	if (safe_mode)
-		name << " (" << Str("TitleBar.SafeMode") << ")";
-	if (App()->IsPortableMode())
-		name << " - " << Str("TitleBar.PortableMode");
-
-	name << " - " << Str("TitleBar.Profile") << ": " << profile;
-	name << " - " << Str("TitleBar.Scenes") << ": " << sceneCollection;
+		name << " • " << Str("TitleBar.SafeMode") << ")";
 
 	setWindowTitle(QT_UTF8(name.str().c_str()));
 }
