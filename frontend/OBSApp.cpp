@@ -1082,9 +1082,12 @@ bool OBSApp::OBSInit()
 #endif
 #endif
 
-#ifdef __APPLE__
+	/* Set AA_DontCreateNativeWidgetSiblings on all platforms (not just Apple).
+	 * This fixes multiple issues on Linux
+	 * (such as browser docks popping back out and not being able to click things on app load).
+	 * Also seems decidedly smoother on Windows.
+	 */
 	setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
-#endif
 
 	if (!StartupOBS(locale.c_str(), GetProfilerNameStore()))
 		return false;
