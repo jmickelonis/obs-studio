@@ -34,7 +34,7 @@ public:
 
 	// No default or copy/move constructors
 	Canvas() = delete;
-	Canvas(Canvas &other) = delete;
+	Canvas(const Canvas &other) = delete;
 
 	Canvas &operator=(Canvas &&other) noexcept;
 
