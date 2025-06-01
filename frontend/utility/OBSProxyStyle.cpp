@@ -1,6 +1,7 @@
 #include "OBSProxyStyle.hpp"
 
 #include <QStyleOption>
+#include <QPainterPath>
 #include "moc_OBSProxyStyle.cpp"
 
 static inline uint qt_intensity(uint r, uint g, uint b)
@@ -14,8 +15,8 @@ static inline uint qt_intensity(uint r, uint g, uint b)
  *
  * https://code.woboq.org/qt5/qtbase/src/widgets/styles/qcommonstyle.cpp.html#6429
  */
-QPixmap OBSContextBarProxyStyle::generatedIconPixmap(QIcon::Mode iconMode, const QPixmap &pixmap,
-						     const QStyleOption *option) const
+QPixmap OBSProxyStyle::generatedIconPixmap(QIcon::Mode iconMode, const QPixmap &pixmap,
+					   const QStyleOption *option) const
 {
 	if (iconMode == QIcon::Disabled) {
 		QImage im = pixmap.toImage().convertToFormat(QImage::Format_ARGB32);
@@ -82,5 +83,49 @@ int OBSProxyStyle::styleHint(StyleHint hint, const QStyleOption *option, const Q
 		return 1;
 #endif
 
+	// Make widget animations a little faster
+	if (hint == SH_Widget_Animation_Duration)
+		return 125;
+
 	return QProxyStyle::styleHint(hint, option, widget, returnData);
+}
+
+void OBSProxyStyle::drawControl(ControlElement element, const QStyleOption *option, QPainter *painter,
+				const QWidget *widget) const
+{
+	if (element == QStyle::CE_RubberBand) {
+		// Use a simpler style for rubber bands
+		QRectF rect(option->rect);
+
+		static qreal borderThickness = 1;
+		static qreal halfBorderThickness = borderThickness / 2;
+		rect.adjust(halfBorderThickness, halfBorderThickness, -halfBorderThickness, -halfBorderThickness);
+
+		QPainterPath path;
+		path.addRoundedRect(rect, 2, 2);
+
+		const QPalette *palette = &option->palette;
+		QColor highlightColor = palette->color(QPalette::ColorGroup::Active, QPalette::Highlight);
+
+#if true
+		// Translucent
+		QColor fillColor = QColor(highlightColor.red(), highlightColor.green(), highlightColor.blue(), 0x40);
+#else
+		// Opaque
+		QColor windowColor = palette->color(QPalette::ColorGroup::Active, QPalette::Window);
+		static float hcAmount = .25;
+		static float wcAmount = 1 - hcAmount;
+		QColor fillColor = QColor(windowColor.red() * wcAmount + highlightColor.red() * hcAmount,
+					  windowColor.green() * wcAmount + highlightColor.green() * hcAmount,
+					  windowColor.blue() * wcAmount + highlightColor.blue() * hcAmount);
+#endif
+
+		painter->setRenderHint(QPainter::Antialiasing);
+		painter->setPen(QPen(highlightColor, borderThickness));
+		painter->fillPath(path, fillColor);
+		painter->drawPath(path);
+		return;
+	}
+
+	QProxyStyle::drawControl(element, option, painter, widget);
 }
