@@ -1074,7 +1074,7 @@ bool OBSApp::OBSInit()
 #endif
 
 		obs_set_nix_platform(OBS_NIX_PLATFORM_WAYLAND);
-		setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
+		// setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
 
 		blog(LOG_INFO, "Platform: Wayland");
 	}
@@ -1086,12 +1086,9 @@ bool OBSApp::OBSInit()
 #endif
 #endif
 
-	/* Set AA_DontCreateNativeWidgetSiblings on all platforms (not just Apple).
-	 * This fixes multiple issues on Linux
-	 * (such as browser docks popping back out and not being able to click things on app load).
-	 * Also seems decidedly smoother on Windows.
-	 */
+#ifdef __APPLE__
 	setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
+#endif
 
 	if (!StartupOBS(locale.c_str(), GetProfilerNameStore()))
 		return false;
