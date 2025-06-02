@@ -126,7 +126,7 @@ void AbsoluteSlider::setTickColor(QColor c)
 
 void AbsoluteSlider::paintEvent(QPaintEvent *event)
 {
-	if (!getDisplayTicks()) {
+	if (!getDisplayTicks() || !this->isEnabled()) {
 		QSlider::paintEvent(event);
 		return;
 	}
