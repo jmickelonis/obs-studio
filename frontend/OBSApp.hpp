@@ -141,6 +141,8 @@ public:
 
 	inline const char *GetLocale() const { return locale.c_str(); }
 
+	std::string GetThemeCSSPath(std::string id);
+	void PrepareThemeCSS(std::string id);
 	OBSTheme *GetTheme() const { return currentTheme; }
 	QList<OBSTheme> GetThemes() const { return themes.values(); }
 	OBSTheme *GetTheme(const QString &name);
