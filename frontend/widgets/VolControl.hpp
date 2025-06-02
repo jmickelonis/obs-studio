@@ -4,6 +4,9 @@
 
 #include <QFrame>
 
+#include <QLabel>
+#include "components/OBSSourceLabel.hpp"
+
 class OBSSourceLabel;
 class VolumeMeter;
 class VolumeSlider;
@@ -63,4 +66,33 @@ public:
 	inline void SetContextMenu(QMenu *cm) { contextMenu = cm; }
 
 	void refreshColors();
+};
+
+class VerticalLabel : public QLabel {
+	Q_OBJECT
+
+public:
+	explicit VerticalLabel(QWidget *parent = 0) : QLabel(parent) {}
+	explicit VerticalLabel(const QString &text, QWidget *parent = 0) : QLabel(text, parent) {}
+
+protected:
+	void paintEvent(QPaintEvent *) override;
+	QSize sizeHint() const override;
+	QSize minimumSizeHint() const override;
+};
+
+class VerticalSourceLabel : public OBSSourceLabel {
+	Q_OBJECT
+
+public:
+	explicit VerticalSourceLabel(const obs_source_t *source, QWidget *parent = nullptr,
+				     Qt::WindowFlags f = Qt::WindowFlags())
+		: OBSSourceLabel(source, parent, f)
+	{
+	}
+
+protected:
+	void paintEvent(QPaintEvent *) override;
+	QSize sizeHint() const override;
+	QSize minimumSizeHint() const override;
 };

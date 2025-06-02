@@ -7,6 +7,7 @@
 #include <components/VolumeSlider.hpp>
 
 #include <QMessageBox>
+#include <QStylePainter>
 
 #include "moc_VolControl.cpp"
 
@@ -170,8 +171,13 @@ void VolControl::updateText()
 
 	if (db < -96.0f)
 		text = "-inf dB";
-	else
-		text = QString::number(db, 'f', 1).append(" dB");
+	else {
+		text = QString::number(db, 'f', 1);
+		// Ignore .0
+		if (text.endsWith(".0"))
+			text.truncate(text.size() - 2);
+		text = text.append(" dB");
+	}
 
 	volLabel->setText(text);
 
@@ -208,8 +214,8 @@ VolControl::VolControl(OBSSource source_, bool showConfig, bool vertical)
 	  vertical(vertical),
 	  contextMenu(nullptr)
 {
-	nameLabel = new OBSSourceLabel(source);
-	volLabel = new QLabel();
+	nameLabel = vertical ? new VerticalSourceLabel(source) : new OBSSourceLabel(source);
+	volLabel = vertical ? new VerticalLabel() : new QLabel();
 	mute = new MuteCheckBox();
 
 	volLabel->setObjectName("volLabel");
@@ -236,12 +242,13 @@ VolControl::VolControl(OBSSource source_, bool showConfig, bool vertical)
 
 	QVBoxLayout *mainLayout = new QVBoxLayout;
 	mainLayout->setContentsMargins(0, 0, 0, 0);
-	mainLayout->setSpacing(0);
+	mainLayout->setSpacing(2);
 
 	if (vertical) {
-		QHBoxLayout *nameLayout = new QHBoxLayout;
-		QHBoxLayout *controlLayout = new QHBoxLayout;
-		QHBoxLayout *volLayout = new QHBoxLayout;
+		QVBoxLayout *textLayout = new QVBoxLayout;
+		QVBoxLayout *controlLayout = new QVBoxLayout;
+		QVBoxLayout *buttonLayout = new QVBoxLayout;
+		QHBoxLayout *hLayout = new QHBoxLayout;
 		QFrame *meterFrame = new QFrame;
 		QHBoxLayout *meterLayout = new QHBoxLayout;
 
@@ -250,43 +257,44 @@ VolControl::VolControl(OBSSource source_, bool showConfig, bool vertical)
 		slider->setLayoutDirection(Qt::LeftToRight);
 		slider->setDisplayTicks(true);
 
-		nameLayout->setAlignment(Qt::AlignCenter);
-		meterLayout->setAlignment(Qt::AlignCenter);
-		controlLayout->setAlignment(Qt::AlignCenter);
-		volLayout->setAlignment(Qt::AlignCenter);
-
 		meterFrame->setObjectName("volMeterFrame");
 
-		nameLayout->setContentsMargins(0, 0, 0, 0);
-		nameLayout->setSpacing(0);
-		nameLayout->addWidget(nameLabel);
+		textLayout->setContentsMargins(0, 0, 0, 0);
+		textLayout->addWidget(volLabel);
+		textLayout->addWidget(nameLabel);
+		textLayout->setAlignment(nameLabel, Qt::AlignBottom);
+		textLayout->setAlignment(volLabel, Qt::AlignTop);
+
+		buttonLayout->setContentsMargins(0, 0, 0, 0);
+		buttonLayout->setSpacing(0);
+		buttonLayout->addWidget(mute);
+		buttonLayout->setAlignment(mute, Qt::AlignHCenter);
+		if (showConfig) {
+			buttonLayout->addWidget(config);
+			buttonLayout->setAlignment(config, Qt::AlignHCenter);
+		}
 
 		controlLayout->setContentsMargins(0, 0, 0, 0);
-		controlLayout->setSpacing(0);
-
-		// Add Headphone (audio monitoring) widget here
-		controlLayout->addWidget(mute);
-
-		if (showConfig) {
-			controlLayout->addWidget(config);
-		}
+		controlLayout->setSpacing(4);
+		controlLayout->addWidget(slider);
+		controlLayout->setAlignment(slider, Qt::AlignHCenter);
+		controlLayout->addItem(buttonLayout);
+		controlLayout->setAlignment(buttonLayout, Qt::AlignHCenter);
 
 		meterLayout->setContentsMargins(0, 0, 0, 0);
 		meterLayout->setSpacing(0);
-		meterLayout->addWidget(slider);
 		meterLayout->addWidget(volMeter);
 
 		meterFrame->setLayout(meterLayout);
 
-		volLayout->setContentsMargins(0, 0, 0, 0);
-		volLayout->setSpacing(0);
-		volLayout->addWidget(volLabel);
-		volLayout->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Minimum));
+		hLayout->setContentsMargins(0, 0, 0, 0);
+		hLayout->setSpacing(2);
+		hLayout->addItem(textLayout);
+		hLayout->addWidget(meterFrame);
+		hLayout->addItem(controlLayout);
 
-		mainLayout->addItem(nameLayout);
-		mainLayout->addItem(volLayout);
-		mainLayout->addWidget(meterFrame);
-		mainLayout->addItem(controlLayout);
+		mainLayout->addItem(hLayout);
+		mainLayout->setAlignment(hLayout, Qt::AlignHCenter);
 
 		volMeter->setFocusProxy(slider);
 
@@ -301,7 +309,7 @@ VolControl::VolControl(OBSSource source_, bool showConfig, bool vertical)
 		QHBoxLayout *controlLayout = new QHBoxLayout;
 		QFrame *meterFrame = new QFrame;
 		QVBoxLayout *meterLayout = new QVBoxLayout;
-		QVBoxLayout *buttonLayout = new QVBoxLayout;
+		QHBoxLayout *buttonLayout = new QHBoxLayout;
 
 		volMeter = new VolumeMeter(nullptr, obs_volmeter, false);
 		volMeter->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
@@ -323,21 +331,22 @@ VolControl::VolControl(OBSSource source_, bool showConfig, bool vertical)
 		meterLayout->setSpacing(0);
 
 		meterLayout->addWidget(volMeter);
-		meterLayout->addWidget(slider);
 
 		buttonLayout->setContentsMargins(0, 0, 0, 0);
 		buttonLayout->setSpacing(0);
 
-		if (showConfig) {
-			buttonLayout->addWidget(config);
-		}
-		buttonLayout->addItem(new QSpacerItem(0, 0, QSizePolicy::Minimum, QSizePolicy::MinimumExpanding));
 		buttonLayout->addWidget(mute);
+		if (showConfig)
+			buttonLayout->addWidget(config);
+
+		controlLayout->setContentsMargins(0, 0, 0, 0);
+		controlLayout->setSpacing(4);
+		controlLayout->addWidget(slider);
 
 		controlLayout->addItem(buttonLayout);
-		controlLayout->addWidget(meterFrame);
 
 		mainLayout->addItem(textLayout);
+		mainLayout->addWidget(meterFrame);
 		mainLayout->addItem(controlLayout);
 
 		volMeter->setFocusProxy(slider);
@@ -397,4 +406,44 @@ void VolControl::refreshColors()
 	volMeter->setForegroundNominalColor(volMeter->getForegroundNominalColor());
 	volMeter->setForegroundWarningColor(volMeter->getForegroundWarningColor());
 	volMeter->setForegroundErrorColor(volMeter->getForegroundErrorColor());
+}
+
+void VerticalLabel::paintEvent(QPaintEvent *)
+{
+	QStylePainter painter(this);
+	painter.translate(sizeHint().width(), sizeHint().height());
+	painter.rotate(270);
+	painter.drawText(0, -painter.fontMetrics().descent(), text());
+}
+
+QSize VerticalLabel::minimumSizeHint() const
+{
+	QSize s = QLabel::minimumSizeHint();
+	return QSize(s.height(), s.width());
+}
+
+QSize VerticalLabel::sizeHint() const
+{
+	QSize s = QLabel::sizeHint();
+	return QSize(s.height(), s.width());
+}
+
+void VerticalSourceLabel::paintEvent(QPaintEvent *)
+{
+	QStylePainter painter(this);
+	painter.translate(sizeHint().width(), sizeHint().height());
+	painter.rotate(270);
+	painter.drawText(0, -painter.fontMetrics().descent(), text());
+}
+
+QSize VerticalSourceLabel::minimumSizeHint() const
+{
+	QSize s = QLabel::minimumSizeHint();
+	return QSize(s.height(), s.width());
+}
+
+QSize VerticalSourceLabel::sizeHint() const
+{
+	QSize s = QLabel::sizeHint();
+	return QSize(s.height(), s.width());
 }

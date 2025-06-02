@@ -41,6 +41,7 @@ class VolumeMeter : public QWidget {
 	Q_PROPERTY(QColor magnitudeColor READ getMagnitudeColor WRITE setMagnitudeColor DESIGNABLE true)
 	Q_PROPERTY(QColor majorTickColor READ getMajorTickColor WRITE setMajorTickColor DESIGNABLE true)
 	Q_PROPERTY(QColor minorTickColor READ getMinorTickColor WRITE setMinorTickColor DESIGNABLE true)
+	Q_PROPERTY(bool showTickValues READ getShowTickValues WRITE setShowTickValues DESIGNABLE true)
 	Q_PROPERTY(int meterThickness READ getMeterThickness WRITE setMeterThickness DESIGNABLE true)
 	Q_PROPERTY(qreal meterFontScaling READ getMeterFontScaling WRITE setMeterFontScaling DESIGNABLE true)
 
@@ -120,6 +121,7 @@ private:
 	QColor magnitudeColor;
 	QColor majorTickColor;
 	QColor minorTickColor;
+	bool showTickValues;
 
 	int meterThickness;
 	qreal meterFontScaling;
@@ -190,6 +192,8 @@ public:
 	void setMajorTickColor(QColor c);
 	QColor getMinorTickColor() const;
 	void setMinorTickColor(QColor c);
+	bool getShowTickValues() const;
+	void setShowTickValues(bool b);
 	int getMeterThickness() const;
 	void setMeterThickness(int v);
 	qreal getMeterFontScaling() const;

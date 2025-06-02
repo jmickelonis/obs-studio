@@ -227,6 +227,16 @@ void VolumeMeter::setMinorTickColor(QColor c)
 	minorTickColor = std::move(c);
 }
 
+bool VolumeMeter::getShowTickValues() const
+{
+	return showTickValues;
+}
+
+void VolumeMeter::setShowTickValues(bool b)
+{
+	showTickValues = b;
+}
+
 int VolumeMeter::getMeterThickness() const
 {
 	return meterThickness;
@@ -421,6 +431,7 @@ VolumeMeter::VolumeMeter(QWidget *parent, obs_volmeter_t *obs_volmeter, bool ver
 	inputPeakHoldDuration = 1.0;             //  1 second
 	meterThickness = 3;                      // Bar thickness in pixels
 	meterFontScaling = 0.7;                  // Font size for numbers is 70% of Widget's font size
+	showTickValues = true;
 	channels = (int)audio_output_get_channels(obs_get_audio());
 
 	doLayout();
@@ -501,29 +512,42 @@ inline void VolumeMeter::doLayout()
 {
 	QMutexLocker locker(&dataMutex);
 
-	if (displayNrAudioChannels) {
-		int meterSize = std::floor(22 / displayNrAudioChannels);
-		setMeterThickness(std::clamp(meterSize, 3, 7));
-	}
+	// This code prevents setting meterThickness from themes!
+	// if (displayNrAudioChannels) {
+	// 	int meterSize = std::floor(22 / displayNrAudioChannels);
+	// 	setMeterThickness(std::clamp(meterSize, 3, 7));
+	// }
 	recalculateLayout = false;
 
 	tickFont = font();
 	QFontInfo info(tickFont);
-	tickFont.setPointSizeF(info.pointSizeF() * meterFontScaling);
+	tickFont.setPointSizeF(showTickValues ? info.pointSizeF() * meterFontScaling : 1);
 	QFontMetrics metrics(tickFont);
+
+	int thickness = displayNrAudioChannels * (meterThickness + 1) - 1 + 2;
+	int minLength = 100;
+	int maxLength = 0xFFFFFF;
+
 	if (vertical) {
 		// Each meter channel is meterThickness pixels wide, plus one pixel
 		// between channels, but not after the last.
 		// Add 4 pixels for ticks, space to hold our longest label in this font,
 		// and a few pixels before the fader.
-		QRect scaleBounds = metrics.boundingRect("-88");
-		setMinimumSize(displayNrAudioChannels * (meterThickness + 1) - 1 + 10 + scaleBounds.width() + 2, 100);
+		if (showTickValues) {
+			QRect scaleBounds = metrics.boundingRect("-88");
+			thickness += 8 + scaleBounds.width() + 2;
+		}
+		setMinimumSize(thickness, minLength);
+		setMaximumSize(thickness, maxLength);
 	} else {
 		// Each meter channel is meterThickness pixels high, plus one pixel
 		// between channels, but not after the last.
 		// Add 4 pixels for ticks, and space high enough to hold our label in
 		// this font, presuming that digits don't have descenders.
-		setMinimumSize(100, displayNrAudioChannels * (meterThickness + 1) - 1 + 4 + metrics.capHeight());
+		if (showTickValues)
+			thickness += 2 + metrics.capHeight();
+		setMinimumSize(minLength, thickness);
+		setMaximumSize(maxLength, thickness);
 	}
 
 	resetLevels();
@@ -637,6 +661,10 @@ void VolumeMeter::paintHTicks(QPainter &painter, int x, int y, int width)
 	// Draw major tick lines and numeric indicators.
 	for (int i = 0; i >= minimumLevel; i -= 5) {
 		int position = int(x + width - (i * scale) - 1);
+		painter.drawLine(position, y, position, y + 2);
+		if (!showTickValues)
+			continue;
+
 		QString str = QString::number(i);
 
 		// Center the number on the tick, but don't overflow
@@ -650,8 +678,6 @@ void VolumeMeter::paintHTicks(QPainter &painter, int x, int y, int width)
 				pos = 0;
 		}
 		painter.drawText(pos, y + 4 + metrics.capHeight(), str);
-
-		painter.drawLine(position, y, position, y + 2);
 	}
 }
 
@@ -666,6 +692,10 @@ void VolumeMeter::paintVTicks(QPainter &painter, int x, int y, int height)
 	// Draw major tick lines and numeric indicators.
 	for (int i = 0; i >= minimumLevel; i -= 5) {
 		int position = y + int(i * scale) + METER_PADDING;
+		painter.drawLine(x, position, x + 2, position);
+		if (!showTickValues)
+			continue;
+
 		QString str = QString::number(i);
 
 		// Center the number on the tick, but don't overflow
@@ -674,8 +704,6 @@ void VolumeMeter::paintVTicks(QPainter &painter, int x, int y, int height)
 		} else {
 			painter.drawText(x + 8, position + (metrics.capHeight() / 2), str);
 		}
-
-		painter.drawLine(x, position, x + 2, position);
 	}
 }
 
