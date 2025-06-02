@@ -176,7 +176,7 @@ static inline bool SourceVolumeLocked(obs_source_t *source)
 	return lock;
 }
 
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__linux__)
 static inline void UpdateProcessPriority()
 {
 	const char *priority = config_get_string(App()->GetAppConfig(), "General", "ProcessPriority");

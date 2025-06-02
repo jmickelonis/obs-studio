@@ -54,6 +54,7 @@
 #endif
 #ifdef __linux__
 #include <sys/un.h>
+#include <sys/resource.h>
 #endif
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/user.h>
@@ -108,6 +109,32 @@ void CheckIfAlreadyRunning(bool &already_running)
 	already_running = obsCnt == 1 ? 0 : 1;
 	free(line);
 	fclose(fp);
+}
+
+void SetProcessPriority(const char *priority)
+{
+	if (!priority)
+		return;
+
+	int p = !strcmp(priority, "High")          ? -20
+		: !strcmp(priority, "AboveNormal") ? -5
+		: !strcmp(priority, "BelowNormal") ? 5
+		: !strcmp(priority, "Idle")        ? 19
+						   : 0;
+	int pid = getpid();
+
+	// First, try directly
+	int res = setpriority(PRIO_PROCESS, pid, p);
+	if (!res)
+		return;
+
+	// Failed (can only lower priority without root, not raise)
+	// Try to use the helper binary
+	BPtr<char> cmd = os_get_executable_path_ptr("obs-process-priority");
+	std::ostringstream ss;
+	ss << "\"" << cmd << "\" " << p << " " << pid << "&";
+	std::string s = ss.str();
+	system(s.c_str());
 }
 #endif
 #if defined(__FreeBSD__) || defined(__DragonFly__)

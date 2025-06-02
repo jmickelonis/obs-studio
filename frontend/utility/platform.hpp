@@ -54,10 +54,13 @@ void
 #endif
 CheckIfAlreadyRunning(bool &already_running);
 
+#if defined(_WIN32) || defined(__linux__)
+void SetProcessPriority(const char *priority);
+#endif
+
 #ifdef _WIN32
 uint32_t GetWindowsVersion();
 uint32_t GetWindowsBuild();
-void SetProcessPriority(const char *priority);
 void SetWin32DropStyle(QWidget *window);
 bool DisableAudioDucking(bool disable);
 
