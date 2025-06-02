@@ -1238,7 +1238,7 @@ static obs_properties_t *amf_properties_internal(amf_codec_type codec)
 		obs_properties_add_int(props, "bf", obs_module_text("BFrames"), 0, 5, 1);
 	}
 
-	p = obs_properties_add_text(props, "ffmpeg_opts", obs_module_text("AMFOpts"), OBS_TEXT_DEFAULT);
+	p = obs_properties_add_text(props, "ffmpeg_opts", obs_module_text("AMFOpts"), OBS_TEXT_MULTILINE);
 	obs_property_set_long_description(p, obs_module_text("AMFOpts.ToolTip"));
 
 	return props;
@@ -1507,17 +1507,20 @@ static bool amf_avc_init(void *data, obs_data_t *settings)
 
 	check_preset_compatibility(enc, preset);
 
+	char *opts_str = nullptr;
 	const char *ffmpeg_opts = obs_data_get_string(settings, "ffmpeg_opts");
 	if (ffmpeg_opts && *ffmpeg_opts) {
+		opts_str = new char[strlen(ffmpeg_opts) + 1];
+		obs_data_condense_whitespace(ffmpeg_opts, opts_str);
+		ffmpeg_opts = opts_str;
 		struct obs_options opts = obs_parse_options(ffmpeg_opts);
 		for (size_t i = 0; i < opts.count; i++) {
 			amf_apply_opt(enc, &opts.options[i]);
 		}
 		obs_free_options(opts);
-	}
-
-	if (!ffmpeg_opts || !*ffmpeg_opts)
+	} else {
 		ffmpeg_opts = "(none)";
+	}
 
 	/* The ffmpeg_opts just above may have explicitly set the AVC level to a value different than what was
 	 * determined by amf_set_codec_level(). Query the final AVC level then lookup the matching string. Warn if not
@@ -1544,6 +1547,7 @@ static bool amf_avc_init(void *data, obs_data_t *settings)
 	     "\tparams:       %s",
 	     rc_str, bitrate, qp, gop_size, preset, profile, level_str, bf, enc->cx, enc->cy, ffmpeg_opts);
 
+	delete[] opts_str;
 	return true;
 }
 

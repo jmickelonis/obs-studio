@@ -214,7 +214,7 @@ static obs_properties_t *obs_x264_props(void *unused)
 	obs_properties_add_bool(props, "vfr", TEXT_VFR);
 #endif
 
-	obs_properties_add_text(props, "x264opts", TEXT_X264_OPTS, OBS_TEXT_DEFAULT);
+	obs_properties_add_text(props, "x264opts", TEXT_X264_OPTS, OBS_TEXT_MULTILINE);
 
 	headers = obs_properties_add_bool(props, "repeat_headers", "repeat_headers");
 	obs_property_set_visible(headers, false);
@@ -541,8 +541,16 @@ static bool update_settings(struct obs_x264 *obsx264, obs_data_t *settings, bool
 	char *preset = bstrdup(obs_data_get_string(settings, "preset"));
 	char *profile = bstrdup(obs_data_get_string(settings, "profile"));
 	char *tune = bstrdup(obs_data_get_string(settings, "tune"));
-	struct obs_options options = obs_parse_options(obs_data_get_string(settings, "x264opts"));
 	bool repeat_headers = obs_data_get_bool(settings, "repeat_headers");
+
+	char *opts_str = NULL;
+	const char *opts = obs_data_get_string(settings, "x264opts");
+	if (opts && *opts) {
+		opts_str = (char *)malloc(strlen(opts) + 1);
+		obs_data_condense_whitespace(opts, opts_str);
+	}
+	struct obs_options options = obs_parse_options(opts_str);
+	free(opts_str);
 
 	bool success = true;
 
