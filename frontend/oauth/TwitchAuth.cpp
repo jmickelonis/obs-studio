@@ -371,12 +371,6 @@ void TwitchAuth::LoadSecondaryUIPanes()
 		 "https://dashboard.twitch.tv/popout/u/" + name +
 			 "/stream-manager/guest-star-stream-together?uuid=" + uuid,
 		 {}},
-		{"twitchCollaboration",
-		 "Twitch.Collaboration",
-		 "Collaboration",
-		 "https://dashboard.twitch.tv/popout/u/" + name +
-			 "/stream-manager/guest-star-stream-together?uuid=" + uuid,
-		 {}},
 		{"twitchPredictions",
 		 "Twitch.Predictions",
 		 "Predictions",
