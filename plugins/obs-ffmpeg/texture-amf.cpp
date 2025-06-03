@@ -532,6 +532,11 @@ static inline int get_preset(amf_base *enc, const char *preset)
 	return 0;
 }
 
+// Disabling throughput/preset compatibility checks for now.
+// Seems to not work on Linux (always falls back to the lowest option).
+#define _CHECK_THROUGHPUT false
+
+#if _CHECK_THROUGHPUT
 static inline void refresh_throughput_caps(amf_base *enc, const char *&preset)
 {
 	AMF_RESULT res = AMF_OK;
@@ -588,6 +593,7 @@ static inline void check_preset_compatibility(amf_base *enc, const char *&preset
 		}
 	}
 }
+#endif
 
 static inline int64_t convert_to_amf_ts(amf_base *enc, int64_t ts)
 {
@@ -1609,7 +1615,9 @@ static bool amf_avc_init(void *data, obs_data_t *settings)
 	// Determine and set the appropriate AVC level
 	amf_set_codec_level(enc);
 
+#if _CHECK_THROUGHPUT
 	check_preset_compatibility(enc, preset);
+#endif
 
 	char *opts_str = nullptr;
 	const char *ffmpeg_opts = obs_data_get_string(settings, "ffmpeg_opts");
@@ -1960,7 +1968,9 @@ static bool amf_hevc_init(void *data, obs_data_t *settings)
 	// Determine and set the appropriate HEVC level
 	amf_set_codec_level(enc);
 
+#if _CHECK_THROUGHPUT
 	check_preset_compatibility(enc, preset);
+#endif
 
 	const char *ffmpeg_opts = obs_data_get_string(settings, "ffmpeg_opts");
 	if (ffmpeg_opts && *ffmpeg_opts) {
@@ -2370,7 +2380,9 @@ static bool amf_av1_init(void *data, obs_data_t *settings)
 		obs_free_options(opts);
 	}
 
+#if _CHECK_THROUGHPUT
 	check_preset_compatibility(enc, preset);
+#endif
 
 	if (!ffmpeg_opts || !*ffmpeg_opts)
 		ffmpeg_opts = "(none)";
