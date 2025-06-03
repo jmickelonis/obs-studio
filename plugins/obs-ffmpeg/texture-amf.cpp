@@ -1380,10 +1380,12 @@ static bool amf_avc_update(void *data, obs_data_t *settings)
 try {
 	amf_base *enc = (amf_base *)data;
 
-	if (enc->first_update) {
-		enc->first_update = false;
-		return true;
-	}
+	// Is this needed for anything?
+	// It ignores the first settings change after start, every time.
+	// if (enc->first_update) {
+	// 	enc->first_update = false;
+	// 	return true;
+	// }
 
 	int64_t bitrate = obs_data_get_int(settings, "bitrate");
 	int64_t qp = obs_data_get_int(settings, "cqp");
