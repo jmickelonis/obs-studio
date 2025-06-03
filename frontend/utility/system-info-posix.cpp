@@ -563,6 +563,14 @@ std::optional<std::vector<GoLiveApi::Gpu>> system_gpu_data()
 			 * driver version and GPU memory information obtained
 			 * previously by OpenGL calls into the GPU.
 			 */
+
+			// Chop off the extra information from Mesa version strings.
+			// This allows custom Mesa drivers to work.
+			std::regex pattern(R"(^(.* Mesa \d+(?:\.\d+)+).*$)");
+			std::smatch match;
+			if (std::regex_match(gs_driver_version, match, pattern))
+				gs_driver_version = match[1].str();
+
 			gpu.driver_version = gs_driver_version;
 			gpu.dedicated_video_memory = dedicated_video_memory;
 			gpu.shared_system_memory = shared_system_memory;
