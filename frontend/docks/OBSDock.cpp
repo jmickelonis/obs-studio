@@ -290,6 +290,8 @@ bool TitleBarWidget::event(QEvent *event)
 void TitleBarWidget::updateButtons()
 {
 	OBSDock *dock = getDock();
+	if (!dock)
+		return;
 	QStyle *style = dock->style();
 
 	QStyleOptionDockWidget opt;
