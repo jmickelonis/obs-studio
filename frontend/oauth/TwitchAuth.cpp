@@ -190,13 +190,12 @@ Object.defineProperty(document, 'referrer', {get : function() { return '";
 static const char *referrer_script2 = "'; }});";
 
 static const char *style_script = R"(
-var _style = document.createElement('style');
-function _updateCSS(css) {
-	_style.innerText = css;
+var _obs_style = document.createElement('style');
+function _updateOBSStyle() {
+	_obs_style.innerText = obsstudio.getCSS('twitch');
 }
-_updateCSS(obsstudio.getCSS('twitch'));
-document.head.appendChild(_style);
-obsstudio.onCSSChanged('twitch', _updateCSS);
+_updateOBSStyle();
+document.head.appendChild(_obs_style);
 )";
 
 /* Adds a Twitch dock and its associated menu action to the main window.

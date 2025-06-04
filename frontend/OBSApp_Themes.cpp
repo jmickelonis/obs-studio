@@ -34,6 +34,9 @@
 #include <QTimer>
 #include <QLabel>
 
+#include "widgets/OBSBasic.hpp"
+#include "docks/BrowserDock.hpp"
+
 using namespace std;
 
 struct CFParser {
@@ -985,6 +988,18 @@ bool OBSApp::SetTheme(const QString &name)
 
 	PrepareThemeCSS("twitch");
 	emit StyleChanged();
+
+	OBSBasic *basic = OBSBasic::Get();
+	if (basic) {
+		std::string script = "_updateOBSStyle();";
+		// Update the CSS in any service docks
+		for (auto dock : basic->extraDocks) {
+			if (!dock->objectName().startsWith("twitch"))
+				continue;
+			BrowserDock *browserDock = static_cast<BrowserDock *>(dock.get());
+			browserDock->cefWidget->postScript(script);
+		}
+	}
 
 	if (themeWatcher) {
 		themeWatcher->addPaths(filenames);
