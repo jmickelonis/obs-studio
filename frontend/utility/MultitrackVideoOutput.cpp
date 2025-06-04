@@ -17,6 +17,7 @@
 #include <QUrlQuery>
 
 #include <cinttypes>
+#include "widgets/OBSBasic.hpp"
 
 // Codec profile strings
 static const char *h264_main = "Main";
@@ -226,7 +227,8 @@ static bool encoder_available(const char *type)
 
 static OBSEncoderAutoRelease create_video_encoder(DStr &name_buffer, size_t encoder_index,
 						  const GoLiveApi::VideoEncoderConfiguration &encoder_config,
-						  const OBSCanvasAutoRelease &canvas)
+						  const OBSCanvasAutoRelease &canvas, const char *advOutEncoder,
+						  const OBSDataAutoRelease &advOutData)
 {
 	auto encoder_type = encoder_config.type.c_str();
 	if (!encoder_available(encoder_type)) {
@@ -237,6 +239,12 @@ static OBSEncoderAutoRelease create_video_encoder(DStr &name_buffer, size_t enco
 	dstr_printf(name_buffer, "multitrack video video encoder %zu", encoder_index);
 
 	OBSDataAutoRelease encoder_settings = obs_data_create_from_json(encoder_config.settings.dump().c_str());
+
+	if (!strcmp(encoder_type, "ffmpeg_vaapi_tex") && !strcmp(advOutEncoder, "ffmpeg_vaapi_tex")) {
+		// Update settings from Output->Advanced
+		obs_data_set_int(encoder_settings, "bf", obs_data_get_int(advOutData, "bf"));
+		obs_data_set_string(encoder_settings, "ffmpeg_opts", obs_data_get_string(advOutData, "ffmpeg_opts"));
+	}
 
 	/* VAAPI-based encoders unfortunately use an integer for "profile". Until a string-based "profile" can be used with
 	 * VAAPI, find the corresponding integer value and update the settings with an integer-based "profile".
@@ -667,6 +675,25 @@ static bool create_video_encoders(const GoLiveApi::Config &go_live_config,
 
 	auto max_canvas_idx = canvases.size() - 1;
 
+	// Try to get the settings from Output->Advanced
+	const char *advOutEncoder = "";
+	OBSDataAutoRelease advOutData = {};
+	OBSBasic *basic = OBSBasic::Get();
+	config_t *config = basic->Config();
+	const char *mode = config_get_string(config, "Output", "Mode");
+	if (!strcmp(mode, "Advanced")) {
+		const OBSProfile &currentProfile = basic->GetCurrentProfile();
+		const std::filesystem::path jsonFilePath =
+			currentProfile.path / std::filesystem::u8path("streamEncoder.json");
+		if (!jsonFilePath.empty()) {
+			BPtr<char> jsonData = os_quick_read_utf8_file(jsonFilePath.u8string().c_str());
+			if (!!jsonData) {
+				advOutEncoder = config_get_string(config, "AdvOut", "Encoder");
+				advOutData = obs_data_create_from_json(jsonData);
+			}
+		}
+	}
+
 	for (size_t i = 0; i < go_live_config.encoder_configurations.size(); i++) {
 		auto &config = go_live_config.encoder_configurations[i];
 		if (config.canvas_index > max_canvas_idx) {
@@ -675,7 +702,8 @@ static bool create_video_encoders(const GoLiveApi::Config &go_live_config,
 		}
 
 		auto &canvas = canvases[config.canvas_index];
-		auto encoder = create_video_encoder(video_encoder_name_buffer, i, config, canvas);
+		auto encoder =
+			create_video_encoder(video_encoder_name_buffer, i, config, canvas, advOutEncoder, advOutData);
 		if (!encoder)
 			return false;
 
