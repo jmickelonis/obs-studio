@@ -499,6 +499,9 @@ OBSDock #transitionsFrame {
 #controlsDock QPushButton:disabled {
   background: transparent;
 }
+#controlsDock #modeSwitch:!hover:!pressed.state-active {
+  background: rgb(25.5, 25.5, 25.5);
+}
 
 QGroupBox {
   border: none;
