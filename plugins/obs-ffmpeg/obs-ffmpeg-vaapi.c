@@ -353,7 +353,9 @@ static bool vaapi_update(void *data, obs_data_t *settings)
 	struct obs_options opts = obs_parse_options(ffmpeg_opts);
 	for (size_t i = 0; i < opts.count; i++) {
 		struct obs_option *opt = &opts.options[i];
-		av_opt_set(enc->context->priv_data, opt->name, opt->value, 0);
+		int error = av_opt_set(enc->context->priv_data, opt->name, opt->value, 0);
+		if (error == AVERROR_OPTION_NOT_FOUND)
+			warn("Option not found: %s", opt->name);
 	}
 	obs_free_options(opts);
 
