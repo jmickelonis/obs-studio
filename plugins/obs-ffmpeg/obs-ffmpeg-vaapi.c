@@ -235,6 +235,12 @@ static const rc_mode_t *get_rc_mode(const char *name)
 	return rc_mode ? rc_mode : RC_MODES;
 }
 
+static bool vaapi_is_amd(VADisplay dpy)
+{
+	const char *driver = vaQueryVendorString(dpy);
+	return strstr(driver, " AMD ") != NULL;
+}
+
 static bool vaapi_update(void *data, obs_data_t *settings)
 {
 	struct vaapi_encoder *enc = data;
@@ -342,6 +348,36 @@ static bool vaapi_update(void *data, obs_data_t *settings)
 
 	enc->height = enc->context->height;
 
+	bool is_amd = false;
+
+	// Figure out whether this is an AMD device
+	// Unfortunately we have to open the device again, but we're not initialized yet
+	int drm_fd = -1;
+	VADisplay va_dpy = vaapi_open_device(&drm_fd, device, "vaapi_update");
+	if (va_dpy) {
+		is_amd = vaapi_is_amd(va_dpy);
+		vaapi_close_device(&drm_fd, va_dpy);
+	}
+
+	const char *preset = NULL;
+	bool pre_encode = false;
+	bool vbaq = false;
+	if (is_amd) {
+		unsigned int quality = 0x1;
+		preset = obs_data_get_string(settings, "preset");
+		if (!strcmp(preset, "balanced"))
+			quality |= 0x2;
+		else if (!strcmp(preset, "quality"))
+			quality |= 0x4;
+		pre_encode = obs_data_get_bool(settings, "pre_encode");
+		if (pre_encode)
+			quality |= 0x8;
+		vbaq = obs_data_get_bool(settings, "vbaq");
+		if (vbaq)
+			quality |= 0x10;
+		enc->context->compression_level = quality;
+	}
+
 	char *opts_str = NULL;
 	const char *ffmpeg_opts = obs_data_get_string(settings, "ffmpeg_opts");
 	if (ffmpeg_opts && *ffmpeg_opts) {
@@ -374,6 +410,12 @@ static bool vaapi_update(void *data, obs_data_t *settings)
 	     "\tffmpeg opts:  %s\n",
 	     device, rate_control, profile, level, qp, bitrate, maxrate, enc->context->gop_size, enc->context->width,
 	     enc->context->height, enc->context->max_b_frames, ffmpeg_opts);
+	info("AMD settings:\n"
+	     "\tpreset:            %s\n"
+	     "\tpre_encode:        %s\n"
+	     "\tvbaq:              %s\n"
+	     "\tcompression_level: 0x%X\n",
+	     preset, pre_encode ? "true" : "false", vbaq ? "true" : "false", enc->context->compression_level);
 
 	free(opts_str);
 	return vaapi_init_codec(enc, device);
@@ -861,6 +903,7 @@ static void vaapi_defaults_internal(obs_data_t *settings, enum codec_type codec)
 {
 	const char *const device = vaapi_default_device(codec);
 	obs_data_set_default_string(settings, "vaapi_device", device);
+	obs_data_set_default_string(settings, "preset", "balanced");
 #ifdef ENABLE_HEVC
 	if (codec == CODEC_HEVC)
 		obs_data_set_default_int(settings, "profile", FF_PROFILE_HEVC_MAIN);
@@ -876,6 +919,8 @@ static void vaapi_defaults_internal(obs_data_t *settings, enum codec_type codec)
 	obs_data_set_default_int(settings, "bf", 0);
 	obs_data_set_default_int(settings, "qp", 20);
 	obs_data_set_default_int(settings, "maxrate", 0);
+	obs_data_set_default_bool(settings, "vbaq", true);
+	obs_data_set_default_bool(settings, "pre_encode", true);
 
 	int drm_fd = -1;
 	VADisplay va_dpy = vaapi_open_device(&drm_fd, device, "vaapi_defaults");
@@ -971,6 +1016,11 @@ static bool vaapi_device_modified(obs_properties_t *ppts, obs_property_t *p, obs
 		obs_property_list_add_string(rc_p, "CQP", "CQP");
 
 	set_visible(ppts, "bf", vaapi_device_bframe_supported(profile, va_dpy));
+
+	bool is_amd = vaapi_is_amd(va_dpy);
+	set_visible(ppts, "preset", is_amd);
+	set_visible(ppts, "pre_encode", is_amd);
+	set_visible(ppts, "vbaq", is_amd);
 
 fail:
 	vaapi_close_device(&drm_fd, va_dpy);
@@ -1105,6 +1155,12 @@ static obs_properties_t *vaapi_properties_internal(enum codec_type codec)
 
 	obs_property_set_modified_callback(list, vaapi_device_modified);
 
+	list = obs_properties_add_list(props, "preset", obs_module_text("Preset"), OBS_COMBO_TYPE_LIST,
+				       OBS_COMBO_FORMAT_STRING);
+	obs_property_list_add_string(list, obs_module_text("AMF.Preset.quality"), "quality");
+	obs_property_list_add_string(list, obs_module_text("AMF.Preset.balanced"), "balanced");
+	obs_property_list_add_string(list, obs_module_text("AMF.Preset.speed"), "speed");
+
 	list = obs_properties_add_list(props, "profile", obs_module_text("Profile"), OBS_COMBO_TYPE_LIST,
 				       OBS_COMBO_FORMAT_INT);
 	if (codec == CODEC_HEVC) {
@@ -1169,6 +1225,9 @@ static obs_properties_t *vaapi_properties_internal(enum codec_type codec)
 	obs_property_int_set_suffix(p, " s");
 
 	obs_properties_add_int(props, "bf", obs_module_text("BFrames"), 0, 4, 1);
+
+	obs_properties_add_bool(props, "pre_encode", "Pre-Encode Filter");
+	obs_properties_add_bool(props, "vbaq", "VBAQ (Variance-Based Adaptive Quantization)");
 
 	obs_properties_add_text(props, "ffmpeg_opts", obs_module_text("FFmpegOpts"), OBS_TEXT_MULTILINE);
 
