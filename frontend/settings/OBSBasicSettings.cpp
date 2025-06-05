@@ -5674,15 +5674,16 @@ void OBSBasicSettings::UpdateMultitrackVideo()
 		ui->advOutAEncLabel->setDisabled(disable_audio);
 		ui->advOutAEncoder->setDisabled(disable_audio);
 
-		ui->advOutEncLabel->setDisabled(disable_video);
-		ui->advOutEncoder->setDisabled(disable_video);
+		// Allow editing advanced options to tweak Enhanced Broadcasting
+		// ui->advOutEncLabel->setDisabled(disable_video);
+		// ui->advOutEncoder->setDisabled(disable_video);
 
 		ui->advOutUseRescale->setDisabled(disable_video);
 		ui->advOutRescale->setDisabled(disable_video);
 		ui->advOutRescaleFilter->setDisabled(disable_video);
 
-		if (streamEncoderProps)
-			streamEncoderProps->SetDisabled(disable_video);
+		// if (streamEncoderProps)
+		// 	streamEncoderProps->SetDisabled(disable_video);
 	};
 
 	auto update_advanced_output_audio_tracks = [&](bool mtv_enabled) {
