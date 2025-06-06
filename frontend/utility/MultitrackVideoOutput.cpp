@@ -225,10 +225,65 @@ static bool encoder_available(const char *type)
 	return false;
 }
 
+/* Tries to get the settings from Output->Advanced,
+   so we can override some given to us by Enhanced Broadcasting. */
+class AdvancedEncoderInfo {
+
+	bool got_settings = false;
+	obs_data_t *settings = nullptr;
+
+public:
+	const char *id = nullptr;
+
+	AdvancedEncoderInfo()
+	{
+		config_t *config = OBSBasic::Get()->Config();
+		const char *mode = config_get_string(config, "Output", "Mode");
+		if (strcmp(mode, "Advanced"))
+			return;
+
+		id = config_get_string(config, "AdvOut", "Encoder");
+	}
+
+	~AdvancedEncoderInfo()
+	{
+		if (settings) {
+			obs_data_release(settings);
+			settings = nullptr;
+		}
+	}
+
+	obs_data_t *getSettings()
+	{
+		if (got_settings)
+			return settings;
+
+		got_settings = true;
+
+		const OBSProfile &profile = OBSBasic::Get()->GetCurrentProfile();
+		const std::filesystem::path path = profile.path / std::filesystem::u8path("streamEncoder.json");
+		if (path.empty())
+			return nullptr;
+
+		BPtr<char> json = os_quick_read_utf8_file(path.u8string().c_str());
+		if (!json)
+			return nullptr;
+
+		settings = obs_encoder_defaults(id);
+		if (!settings)
+			return nullptr;
+
+		OBSDataAutoRelease data = obs_data_create_from_json(json);
+		if (data)
+			obs_data_apply(settings, data);
+
+		return settings;
+	}
+};
+
 static OBSEncoderAutoRelease create_video_encoder(DStr &name_buffer, size_t encoder_index,
 						  const GoLiveApi::VideoEncoderConfiguration &encoder_config,
-						  const OBSCanvasAutoRelease &canvas, const char *advOutEncoder,
-						  const OBSDataAutoRelease &advOutData)
+						  const OBSCanvasAutoRelease &canvas, AdvancedEncoderInfo &advEncInfo)
 {
 	auto encoder_type = encoder_config.type.c_str();
 	if (!encoder_available(encoder_type)) {
@@ -240,10 +295,18 @@ static OBSEncoderAutoRelease create_video_encoder(DStr &name_buffer, size_t enco
 
 	OBSDataAutoRelease encoder_settings = obs_data_create_from_json(encoder_config.settings.dump().c_str());
 
-	if (!strcmp(encoder_type, "ffmpeg_vaapi_tex") && !strcmp(advOutEncoder, "ffmpeg_vaapi_tex")) {
+	if (!strcmp(encoder_type, "ffmpeg_vaapi_tex") && !strcmp(encoder_type, advEncInfo.id)) {
 		// Update settings from Output->Advanced
-		obs_data_set_int(encoder_settings, "bf", obs_data_get_int(advOutData, "bf"));
-		obs_data_set_string(encoder_settings, "ffmpeg_opts", obs_data_get_string(advOutData, "ffmpeg_opts"));
+		obs_data_t *settings = advEncInfo.getSettings();
+		if (settings) {
+			obs_data_set_default_string(settings, "preset", "balanced");
+			for (const char *key : {"pre_encode", "vbaq"})
+				obs_data_set_bool(encoder_settings, key, obs_data_get_bool(settings, key));
+			for (const char *key : {"async_depth", "bf"})
+				obs_data_set_int(encoder_settings, key, obs_data_get_int(settings, key));
+			for (const char *key : {"preset", "ffmpeg_opts"})
+				obs_data_set_string(encoder_settings, key, obs_data_get_string(settings, key));
+		}
 	}
 
 	/* VAAPI-based encoders unfortunately use an integer for "profile". Until a string-based "profile" can be used with
@@ -675,24 +738,7 @@ static bool create_video_encoders(const GoLiveApi::Config &go_live_config,
 
 	auto max_canvas_idx = canvases.size() - 1;
 
-	// Try to get the settings from Output->Advanced
-	const char *advOutEncoder = "";
-	OBSDataAutoRelease advOutData = {};
-	OBSBasic *basic = OBSBasic::Get();
-	config_t *config = basic->Config();
-	const char *mode = config_get_string(config, "Output", "Mode");
-	if (!strcmp(mode, "Advanced")) {
-		const OBSProfile &currentProfile = basic->GetCurrentProfile();
-		const std::filesystem::path jsonFilePath =
-			currentProfile.path / std::filesystem::u8path("streamEncoder.json");
-		if (!jsonFilePath.empty()) {
-			BPtr<char> jsonData = os_quick_read_utf8_file(jsonFilePath.u8string().c_str());
-			if (!!jsonData) {
-				advOutEncoder = config_get_string(config, "AdvOut", "Encoder");
-				advOutData = obs_data_create_from_json(jsonData);
-			}
-		}
-	}
+	AdvancedEncoderInfo advEncInfo;
 
 	for (size_t i = 0; i < go_live_config.encoder_configurations.size(); i++) {
 		auto &config = go_live_config.encoder_configurations[i];
@@ -702,8 +748,7 @@ static bool create_video_encoders(const GoLiveApi::Config &go_live_config,
 		}
 
 		auto &canvas = canvases[config.canvas_index];
-		auto encoder =
-			create_video_encoder(video_encoder_name_buffer, i, config, canvas, advOutEncoder, advOutData);
+		auto encoder = create_video_encoder(video_encoder_name_buffer, i, config, canvas, advEncInfo);
 		if (!encoder)
 			return false;
 
