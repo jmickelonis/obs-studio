@@ -235,10 +235,37 @@ static const rc_mode_t *get_rc_mode(const char *name)
 	return rc_mode ? rc_mode : RC_MODES;
 }
 
-static bool vaapi_is_amd(VADisplay dpy)
+enum encoder_type {
+	ENCODER_TYPE_AMD,
+	ENCODER_TYPE_QSV,
+	ENCODER_TYPE_UNKNOWN = -1,
+};
+const char *AMD_PRESETS[] = {"quality", "balanced", "speed"};
+const unsigned int N_AMD_PRESETS = 3;
+const char *DEFAULT_AMD_PRESET = "balanced";
+const char *QSV_PRESETS[] = {"veryslow", "slower", "slow", "medium", "fast", "faster", "veryfast"};
+const unsigned int N_QSV_PRESETS = 7;
+const char *DEFAULT_QSV_PRESET = "fast";
+const unsigned int DEFAULT_ASYNC_DEPTH = 2;
+
+static enum encoder_type vaapi_encoder_type_for_display(VADisplay dpy)
 {
 	const char *driver = vaQueryVendorString(dpy);
-	return strstr(driver, " AMD ") != NULL;
+	return strstr(driver, "AMD")     ? ENCODER_TYPE_AMD
+	       : strstr(driver, "Intel") ? ENCODER_TYPE_QSV
+					 : ENCODER_TYPE_UNKNOWN;
+}
+
+static enum encoder_type vaapi_encoder_type_for_device(char *device)
+{
+	int drm_fd = -1;
+	VADisplay va_dpy = vaapi_open_device(&drm_fd, device, "vaapi_encoder_type_for_device");
+	if (va_dpy) {
+		enum encoder_type type = vaapi_encoder_type_for_display(va_dpy);
+		vaapi_close_device(&drm_fd, va_dpy);
+		return type;
+	}
+	return ENCODER_TYPE_UNKNOWN;
 }
 
 static bool vaapi_update(void *data, obs_data_t *settings)
@@ -348,23 +375,23 @@ static bool vaapi_update(void *data, obs_data_t *settings)
 
 	enc->height = enc->context->height;
 
-	bool is_amd = false;
+	int async_depth = obs_data_get_int(settings, "async_depth");
+	if (async_depth != DEFAULT_ASYNC_DEPTH)
+		av_opt_set_int(enc->context->priv_data, "async_depth", async_depth, 0);
 
-	// Figure out whether this is an AMD device
-	// Unfortunately we have to open the device again, but we're not initialized yet
-	int drm_fd = -1;
-	VADisplay va_dpy = vaapi_open_device(&drm_fd, device, "vaapi_update");
-	if (va_dpy) {
-		is_amd = vaapi_is_amd(va_dpy);
-		vaapi_close_device(&drm_fd, va_dpy);
-	}
+	// Unfortunately we have to open the device again, as we're not initialized yet
+	enum encoder_type type = vaapi_encoder_type_for_device(device);
 
 	const char *preset = NULL;
 	bool pre_encode = false;
 	bool vbaq = false;
-	if (is_amd) {
+
+	switch (type) {
+	case ENCODER_TYPE_AMD: {
 		unsigned int quality = 0x1;
 		preset = obs_data_get_string(settings, "preset");
+		if (!strlen(preset))
+			preset = DEFAULT_AMD_PRESET;
 		if (!strcmp(preset, "balanced"))
 			quality |= 0x2;
 		else if (!strcmp(preset, "quality"))
@@ -376,6 +403,15 @@ static bool vaapi_update(void *data, obs_data_t *settings)
 		if (vbaq)
 			quality |= 0x10;
 		enc->context->compression_level = quality;
+		break;
+	}
+	case ENCODER_TYPE_QSV: {
+		preset = obs_data_get_string(settings, "preset");
+		if (!strlen(preset))
+			preset = DEFAULT_QSV_PRESET;
+		av_opt_set(enc->context->priv_data, "preset", preset, 0);
+		break;
+	}
 	}
 
 	char *opts_str = NULL;
@@ -407,15 +443,26 @@ static bool vaapi_update(void *data, obs_data_t *settings)
 	     "\twidth:        %d\n"
 	     "\theight:       %d\n"
 	     "\tb-frames:     %d\n"
+	     "\tasync_depth:  %d\n"
 	     "\tffmpeg opts:  %s\n",
 	     device, rate_control, profile, level, qp, bitrate, maxrate, enc->context->gop_size, enc->context->width,
-	     enc->context->height, enc->context->max_b_frames, ffmpeg_opts);
-	info("AMD settings:\n"
-	     "\tpreset:            %s\n"
-	     "\tpre_encode:        %s\n"
-	     "\tvbaq:              %s\n"
-	     "\tcompression_level: 0x%X\n",
-	     preset, pre_encode ? "true" : "false", vbaq ? "true" : "false", enc->context->compression_level);
+	     enc->context->height, enc->context->max_b_frames, async_depth, ffmpeg_opts);
+
+	switch (type) {
+	case ENCODER_TYPE_AMD:
+		info("AMD settings:\n"
+		     "\tpreset:            %s\n"
+		     "\tpre_encode:        %s\n"
+		     "\tvbaq:              %s\n"
+		     "\tcompression_level: 0x%X\n",
+		     preset, pre_encode ? "true" : "false", vbaq ? "true" : "false", enc->context->compression_level);
+		break;
+	case ENCODER_TYPE_QSV:
+		info("QSV settings:\n"
+		     "\tpreset: %s\n",
+		     preset);
+		break;
+	}
 
 	free(opts_str);
 	return vaapi_init_codec(enc, device);
@@ -903,7 +950,6 @@ static void vaapi_defaults_internal(obs_data_t *settings, enum codec_type codec)
 {
 	const char *const device = vaapi_default_device(codec);
 	obs_data_set_default_string(settings, "vaapi_device", device);
-	obs_data_set_default_string(settings, "preset", "balanced");
 #ifdef ENABLE_HEVC
 	if (codec == CODEC_HEVC)
 		obs_data_set_default_int(settings, "profile", FF_PROFILE_HEVC_MAIN);
@@ -919,6 +965,7 @@ static void vaapi_defaults_internal(obs_data_t *settings, enum codec_type codec)
 	obs_data_set_default_int(settings, "bf", 0);
 	obs_data_set_default_int(settings, "qp", 20);
 	obs_data_set_default_int(settings, "maxrate", 0);
+	obs_data_set_default_int(settings, "async_depth", DEFAULT_ASYNC_DEPTH);
 	obs_data_set_default_bool(settings, "vbaq", true);
 	obs_data_set_default_bool(settings, "pre_encode", true);
 
@@ -1017,10 +1064,32 @@ static bool vaapi_device_modified(obs_properties_t *ppts, obs_property_t *p, obs
 
 	set_visible(ppts, "bf", vaapi_device_bframe_supported(profile, va_dpy));
 
-	bool is_amd = vaapi_is_amd(va_dpy);
-	set_visible(ppts, "preset", is_amd);
+	obs_property_t *preset_p = obs_properties_get(ppts, "preset");
+	obs_property_list_clear(preset_p);
+
+	enum encoder_type type = vaapi_encoder_type_for_display(va_dpy);
+	bool is_amd = type == ENCODER_TYPE_AMD;
+	bool is_qsv = type == ENCODER_TYPE_QSV;
+	set_visible(ppts, "preset", is_amd || is_qsv);
 	set_visible(ppts, "pre_encode", is_amd);
 	set_visible(ppts, "vbaq", is_amd);
+
+	if (is_amd) {
+		obs_data_set_default_string(settings, "preset", DEFAULT_AMD_PRESET);
+		for (int i = 0; i < N_AMD_PRESETS; i++) {
+			char *preset = AMD_PRESETS[i];
+			static char *locale_key_prefix = "AMF.Preset.";
+			char locale_key[strlen(locale_key_prefix) + strlen(preset) + 1];
+			sprintf(locale_key, "%s%s", locale_key_prefix, preset);
+			obs_property_list_add_string(preset_p, obs_module_text(locale_key), preset);
+		}
+	} else if (is_qsv) {
+		obs_data_set_default_string(settings, "preset", DEFAULT_QSV_PRESET);
+		for (int i = 0; i < N_QSV_PRESETS; i++) {
+			char *preset = QSV_PRESETS[i];
+			obs_property_list_add_string(preset_p, preset, preset);
+		}
+	}
 
 fail:
 	vaapi_close_device(&drm_fd, va_dpy);
@@ -1155,11 +1224,8 @@ static obs_properties_t *vaapi_properties_internal(enum codec_type codec)
 
 	obs_property_set_modified_callback(list, vaapi_device_modified);
 
-	list = obs_properties_add_list(props, "preset", obs_module_text("Preset"), OBS_COMBO_TYPE_LIST,
-				       OBS_COMBO_FORMAT_STRING);
-	obs_property_list_add_string(list, obs_module_text("AMF.Preset.quality"), "quality");
-	obs_property_list_add_string(list, obs_module_text("AMF.Preset.balanced"), "balanced");
-	obs_property_list_add_string(list, obs_module_text("AMF.Preset.speed"), "speed");
+	obs_properties_add_list(props, "preset", obs_module_text("Preset"), OBS_COMBO_TYPE_LIST,
+				OBS_COMBO_FORMAT_STRING);
 
 	list = obs_properties_add_list(props, "profile", obs_module_text("Profile"), OBS_COMBO_TYPE_LIST,
 				       OBS_COMBO_FORMAT_INT);
@@ -1226,6 +1292,7 @@ static obs_properties_t *vaapi_properties_internal(enum codec_type codec)
 
 	obs_properties_add_int(props, "bf", obs_module_text("BFrames"), 0, 4, 1);
 
+	obs_properties_add_int(props, "async_depth", "Async Depth", 1, 64, 1);
 	obs_properties_add_bool(props, "pre_encode", "Pre-Encode Filter");
 	obs_properties_add_bool(props, "vbaq", "VBAQ (Variance-Based Adaptive Quantization)");
 
