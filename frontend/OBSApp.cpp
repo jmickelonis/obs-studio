@@ -1227,6 +1227,8 @@ bool OBSApp::TranslateString(const char *lookupVal, const char **out) const
 	return text_lookup_getstr(App()->GetTextLookup(), lookupVal, out);
 }
 
+static bool quitting = false;
+
 // Global handler to receive all QEvent::Show events so we can apply
 // display affinity on any newly created windows and dialogs without
 // caring where they are coming from (e.g. plugins).
@@ -1236,8 +1238,23 @@ bool OBSApp::notify(QObject *receiver, QEvent *e)
 	QWindow *window;
 	int windowType;
 
-	if (!receiver->isWidgetType())
+	if (!receiver->isWidgetType()) {
+		if (e->type() == QEvent::Quit)
+			quitting = true;
+
 		goto skip;
+	}
+
+	if (quitting) {
+		// Not sure exactly why, but:
+		// On Qt 6.9.1, after using QMainWindow::restoreState,
+		// then quitting the app, a segfault occurs deep inside qlayout.
+		// This works around that.
+		// It probably won't hurt to just keep this here.
+		if (e->type() == QEvent::ChildRemoved)
+			return false;
+		goto skip;
+	}
 
 	if (e->type() != QEvent::Show)
 		goto skip;
