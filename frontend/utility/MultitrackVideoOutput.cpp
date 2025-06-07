@@ -283,7 +283,8 @@ public:
 
 static OBSEncoderAutoRelease create_video_encoder(DStr &name_buffer, size_t encoder_index,
 						  const GoLiveApi::VideoEncoderConfiguration &encoder_config,
-						  const OBSCanvasAutoRelease &canvas, AdvancedEncoderInfo &advEncInfo)
+						  const OBSCanvasAutoRelease &canvas, AdvancedEncoderInfo &advEncInfo,
+						  unsigned int maxBitrate, uint64_t maxFrameSize, float maxFPS)
 {
 	auto encoder_type = encoder_config.type.c_str();
 	if (!encoder_available(encoder_type)) {
@@ -294,6 +295,19 @@ static OBSEncoderAutoRelease create_video_encoder(DStr &name_buffer, size_t enco
 	dstr_printf(name_buffer, "multitrack video video encoder %zu", encoder_index);
 
 	OBSDataAutoRelease encoder_settings = obs_data_create_from_json(encoder_config.settings.dump().c_str());
+
+	if (encoder_index) {
+		// Calculate the necessary bitrate to use to avoid quality loss
+		uint64_t frameSize = encoder_config.width * encoder_config.height;
+		double percent = frameSize / (double)maxFrameSize;
+		media_frames_per_second framerate = *encoder_config.framerate;
+		float fps = framerate.numerator / (float)framerate.denominator;
+		double bitrate_d = maxBitrate * percent * (fps / maxFPS);
+		uint32_t bitrate = (uint32_t)(ceil(bitrate_d / 100) * 100);
+
+		if (bitrate > obs_data_get_int(encoder_settings, "bitrate"))
+			obs_data_set_int(encoder_settings, "bitrate", bitrate);
+	}
 
 	if (!strcmp(encoder_type, "ffmpeg_vaapi_tex") && !strcmp(encoder_type, advEncInfo.id)) {
 		// Update settings from Output->Advanced
@@ -740,6 +754,15 @@ static bool create_video_encoders(const GoLiveApi::Config &go_live_config,
 
 	AdvancedEncoderInfo advEncInfo;
 
+	// Grab some info from the main configuration,
+	// so we can adjust the others for quality
+	auto &main_config = go_live_config.encoder_configurations[0];
+	unsigned int maxBitrate;
+	main_config.settings.at("bitrate").get_to(maxBitrate);
+	uint64_t maxFrameSize = main_config.width * main_config.height;
+	media_frames_per_second framerate = *main_config.framerate;
+	float maxFPS = framerate.numerator / (float)framerate.denominator;
+
 	for (size_t i = 0; i < go_live_config.encoder_configurations.size(); i++) {
 		auto &config = go_live_config.encoder_configurations[i];
 		if (config.canvas_index > max_canvas_idx) {
@@ -748,7 +771,8 @@ static bool create_video_encoders(const GoLiveApi::Config &go_live_config,
 		}
 
 		auto &canvas = canvases[config.canvas_index];
-		auto encoder = create_video_encoder(video_encoder_name_buffer, i, config, canvas, advEncInfo);
+		auto encoder = create_video_encoder(video_encoder_name_buffer, i, config, canvas, advEncInfo,
+						    maxBitrate, maxFrameSize, maxFPS);
 		if (!encoder)
 			return false;
 
