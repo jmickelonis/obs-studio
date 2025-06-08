@@ -197,6 +197,7 @@ struct amf_base {
 	bool bframes_supported = false;
 	bool first_update = true;
 	bool roi_supported = false;
+	bool pre_analysis_supported = false;
 
 	inline amf_base(bool fallback) : fallback(fallback) {}
 	virtual ~amf_base() = default;
@@ -1275,9 +1276,13 @@ static void amf_defaults(obs_data_t *settings)
 	obs_data_set_default_string(settings, "preset", "quality");
 	obs_data_set_default_string(settings, "profile", "high");
 	obs_data_set_default_int(settings, "bf", 3);
+
+	obs_data_set_default_bool(settings, "adaptive_quality", true);
+	obs_data_set_default_string(settings, "pa_lookahead", "medium");
+	obs_data_set_default_string(settings, "pa_caq", "medium");
 }
 
-static bool rate_control_modified(obs_properties_t *ppts, obs_property_t *p, obs_data_t *settings)
+static bool on_setting_modified(obs_properties_t *ppts, obs_property_t *p, obs_data_t *settings)
 {
 	const char *rc = obs_data_get_string(settings, "rate_control");
 	bool cqp = astrcmpi(rc, "CQP") == 0;
@@ -1287,7 +1292,62 @@ static bool rate_control_modified(obs_properties_t *ppts, obs_property_t *p, obs
 	obs_property_set_visible(p, !cqp && !qvbr);
 	p = obs_properties_get(ppts, "cqp");
 	obs_property_set_visible(p, cqp || qvbr);
+
+	bool pre_analysis_available = obs_properties_get(ppts, "pre_analysis") != nullptr;
+	bool pre_analysis = pre_analysis_available && obs_data_get_bool(settings, "pre_analysis");
+
+	if (pre_analysis_available) {
+		for (const char *name : {"pa_lookahead", "pa_caq"}) {
+			p = obs_properties_get(ppts, name);
+			obs_property_set_visible(p, pre_analysis);
+		}
+
+		// TAQ only works with lookahead >= medium
+		bool sufficient_lookahead = false;
+		if (pre_analysis) {
+			const char *lookahead = obs_data_get_string(settings, "pa_lookahead");
+			sufficient_lookahead = !strcmp(lookahead, "medium") || !strcmp(lookahead, "long");
+		}
+		p = obs_properties_get(ppts, "pa_taq");
+		obs_property_set_visible(p, sufficient_lookahead);
+	}
+
+	// VBAQ only works with RC != CQP, and CAQ/TAQ disabled
+	p = obs_properties_get(ppts, "adaptive_quality");
+	bool adaptive_quality = !cqp;
+	if (adaptive_quality && pre_analysis) {
+		bool caq = strcmp("none", obs_data_get_string(settings, "pa_caq"));
+		bool taq = obs_property_visible(obs_properties_get(ppts, "pa_taq")) &&
+			   strcmp("none", obs_data_get_string(settings, "pa_taq"));
+		adaptive_quality = !(caq || taq);
+	}
+	obs_property_set_visible(p, adaptive_quality);
+
 	return true;
+}
+
+static bool amf_get_caps(amf_codec_type codec, AMFCaps **caps)
+{
+	AMFContextPtr context;
+	if (amf_factory->CreateContext(&context) != AMF_OK)
+		return false;
+	const wchar_t *amf_codec = codec == amf_codec_type::HEVC  ? AMFVideoEncoder_HEVC
+				   : codec == amf_codec_type::AV1 ? AMFVideoEncoder_AV1
+								  : AMFVideoEncoderVCE_AVC;
+#if defined(_WIN32)
+	if (context->InitDX11(nullptr, AMF_DX11_1) != AMF_OK)
+		return false;
+#elif defined(__linux__)
+	AMFContext1 *context1 = NULL;
+	if (context->QueryInterface(AMFContext1::IID(), (void **)&context1) != AMF_OK)
+		return false;
+	if (context1->InitVulkan(nullptr) != AMF_OK)
+		return false;
+#endif
+	AMFComponentPtr component;
+	if (amf_factory->CreateComponent(context, amf_codec, &component) != AMF_OK)
+		return false;
+	return component->GetCaps(caps) == AMF_OK;
 }
 
 static obs_properties_t *amf_properties_internal(amf_codec_type codec)
@@ -1305,7 +1365,7 @@ static obs_properties_t *amf_properties_internal(amf_codec_type codec)
 	obs_property_list_add_string(p, "HQVBR", "HQVBR");
 	obs_property_list_add_string(p, "HQCBR", "HQCBR");
 
-	obs_property_set_modified_callback(p, rate_control_modified);
+	obs_property_set_modified_callback(p, on_setting_modified);
 
 	p = obs_properties_add_int(props, "bitrate", obs_module_text("Bitrate"), 50, 100000, 50);
 	obs_property_int_set_suffix(p, " Kbps");
@@ -1341,8 +1401,54 @@ static obs_properties_t *amf_properties_internal(amf_codec_type codec)
 #undef add_profile
 	}
 
-	if (amf_codec_type::AVC == codec || amf_codec_type::AV1 == codec) {
+	bool bframes = false;
+	bool pre_analysis = false;
+	AMFCapsPtr caps;
+	if (amf_get_caps(codec, &caps)) {
+		if (codec != amf_codec_type::HEVC)
+			caps->GetProperty(codec == amf_codec_type::AV1 ? AMF_VIDEO_ENCODER_AV1_CAP_BFRAMES
+								       : AMF_VIDEO_ENCODER_CAP_BFRAMES,
+					  &bframes);
+		caps->GetProperty(codec == amf_codec_type::AV1    ? AMF_VIDEO_ENCODER_AV1_CAP_PRE_ANALYSIS
+				  : codec == amf_codec_type::HEVC ? AMF_VIDEO_ENCODER_HEVC_CAP_PRE_ANALYSIS
+								  : AMF_VIDEO_ENCODER_CAP_PRE_ANALYSIS,
+				  &pre_analysis);
+	}
+
+	if (bframes)
 		obs_properties_add_int(props, "bf", obs_module_text("BFrames"), 0, 5, 1);
+
+	obs_properties_add_bool(props, "low_latency", "Low Latency");
+	obs_properties_add_bool(props, "adaptive_quality",
+				codec == amf_codec_type::AV1 ? "Adaptive Quality"
+							     : "VBAQ (Variance-Based Adaptive Quality)");
+
+	if (pre_analysis) {
+		p = obs_properties_add_bool(props, "pre_analysis", "Pre-Analysis");
+		obs_property_set_modified_callback(p, on_setting_modified);
+
+		p = obs_properties_add_list(props, "pa_lookahead", "Lookahead", OBS_COMBO_TYPE_LIST,
+					    OBS_COMBO_FORMAT_STRING);
+		obs_property_list_add_string(p, "None", "none");
+		obs_property_list_add_string(p, "Short", "short");
+		obs_property_list_add_string(p, "Medium", "medium");
+		obs_property_list_add_string(p, "Long", "long");
+		obs_property_set_modified_callback(p, on_setting_modified);
+
+		p = obs_properties_add_list(props, "pa_caq", "CAQ (Content Adaptive Quantization)", OBS_COMBO_TYPE_LIST,
+					    OBS_COMBO_FORMAT_STRING);
+		obs_property_list_add_string(p, "None", "none");
+		obs_property_list_add_string(p, "Low", "low");
+		obs_property_list_add_string(p, "Medium", "medium");
+		obs_property_list_add_string(p, "High", "high");
+		obs_property_set_modified_callback(p, on_setting_modified);
+
+		p = obs_properties_add_list(props, "pa_taq", "TAQ (Temporal Adaptive Quantization)",
+					    OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+		obs_property_list_add_string(p, "None", "none");
+		obs_property_list_add_string(p, "Mode 1", "mode1");
+		obs_property_list_add_string(p, "Mode 2", "mode2");
+		obs_property_set_modified_callback(p, on_setting_modified);
 	}
 
 	p = obs_properties_add_text(props, "ffmpeg_opts", obs_module_text("AMFOpts"), OBS_TEXT_MULTILINE);
@@ -1560,6 +1666,54 @@ static bool amf_get_level_str(amf_base *enc, amf_int64 level, char const **level
 	return found;
 }
 
+static bool set_pre_analysis(amf_base *enc, obs_data_t *settings)
+{
+	bool enabled = enc->pre_analysis_supported && obs_data_get_bool(settings, "pre_analysis");
+	if (!enabled)
+		return false;
+
+	set_opt(PRE_ANALYSIS_ENABLE, true);
+
+	const char *lookahead = obs_data_get_string(settings, "pa_lookahead");
+	int lookahead_depth = 0;
+	if (strcmp(lookahead, "none")) {
+		lookahead_depth = !strcmp(lookahead, "long") ? 41 : !strcmp(lookahead, "medium") ? 21 : 11;
+		set_amf_property(enc, AMF_PA_LOOKAHEAD_BUFFER_DEPTH, lookahead_depth);
+	}
+
+	const char *caq = obs_data_get_string(settings, "pa_caq");
+	if (strcmp(caq, "none")) {
+		set_amf_property(enc, AMF_PA_PAQ_MODE, AMF_PA_PAQ_MODE_CAQ);
+		int strength = !strcmp(caq, "high")     ? AMF_PA_CAQ_STRENGTH_HIGH
+			       : !strcmp(caq, "medium") ? AMF_PA_CAQ_STRENGTH_MEDIUM
+							: AMF_PA_CAQ_STRENGTH_LOW;
+		set_amf_property(enc, AMF_PA_CAQ_STRENGTH, strength);
+	}
+
+	if (lookahead_depth >= 21) {
+		const char *taq = obs_data_get_string(settings, "pa_taq");
+		if (strcmp(taq, "none")) {
+			int mode = !strcmp(taq, "mode2") ? AMF_PA_TAQ_MODE_2 : AMF_PA_TAQ_MODE_1;
+			set_amf_property(enc, AMF_PA_TAQ_MODE, mode);
+		}
+	}
+
+	return true;
+}
+
+static bool should_enable_adaptive_quality(amf_base *enc, obs_data_t *settings, const char *rc, bool pre_analysis)
+{
+	if (!strcmp(rc, "cqp") || !obs_data_get_bool(settings, "adaptive_quality"))
+		return false;
+	if (pre_analysis) {
+		int paq, taq;
+		get_amf_property(enc, AMF_PA_PAQ_MODE, &paq);
+		get_amf_property(enc, AMF_PA_TAQ_MODE, &taq);
+		return !(paq || taq);
+	}
+	return true;
+}
+
 static bool amf_avc_init(void *data, obs_data_t *settings)
 {
 	amf_base *enc = (amf_base *)data;
@@ -1593,7 +1747,8 @@ static bool amf_avc_init(void *data, obs_data_t *settings)
 	int rc = get_avc_rate_control(rc_str);
 
 	set_avc_property(enc, RATE_CONTROL_METHOD, rc);
-	if (rc != AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD_CONSTANT_QP)
+	bool pre_analysis = set_pre_analysis(enc, settings);
+	if (should_enable_adaptive_quality(enc, settings, rc_str, pre_analysis))
 		set_avc_property(enc, ENABLE_VBAQ, true);
 
 	amf_avc_update_data(enc, rc, bitrate * 1000, qp);
@@ -1692,6 +1847,7 @@ static void amf_avc_create_internal(amf_base *enc, obs_data_t *settings)
 		caps->GetProperty(AMF_VIDEO_ENCODER_CAP_MAX_THROUGHPUT, &enc->max_throughput);
 		caps->GetProperty(AMF_VIDEO_ENCODER_CAP_REQUESTED_THROUGHPUT, &enc->requested_throughput);
 		caps->GetProperty(AMF_VIDEO_ENCODER_CAP_ROI, &enc->roi_supported);
+		caps->GetProperty(AMF_VIDEO_ENCODER_CAP_PRE_ANALYSIS, &enc->pre_analysis_supported);
 	}
 
 	const char *preset = obs_data_get_string(settings, "preset");
@@ -1700,7 +1856,7 @@ static void amf_avc_create_internal(amf_base *enc, obs_data_t *settings)
 	set_avc_property(enc, USAGE, AMF_VIDEO_ENCODER_USAGE_TRANSCODING);
 	set_avc_property(enc, QUALITY_PRESET, get_avc_preset(enc, preset));
 	set_avc_property(enc, PROFILE, get_avc_profile(settings));
-	set_avc_property(enc, LOWLATENCY_MODE, false);
+	set_avc_property(enc, LOWLATENCY_MODE, obs_data_get_bool(settings, "low_latency"));
 	set_avc_property(enc, CABAC_ENABLE, AMF_VIDEO_ENCODER_UNDEFINED);
 	set_avc_property(enc, PREENCODE_ENABLE, true);
 	set_avc_property(enc, OUTPUT_COLOR_PROFILE, enc->amf_color_profile);
@@ -1952,7 +2108,8 @@ static bool amf_hevc_init(void *data, obs_data_t *settings)
 	int rc = get_hevc_rate_control(rc_str);
 
 	set_hevc_property(enc, RATE_CONTROL_METHOD, rc);
-	if (rc != AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD_CONSTANT_QP)
+	bool pre_analysis = set_pre_analysis(enc, settings);
+	if (should_enable_adaptive_quality(enc, settings, rc_str, pre_analysis))
 		set_hevc_property(enc, ENABLE_VBAQ, true);
 
 	amf_hevc_update_data(enc, rc, bitrate * 1000, qp);
@@ -1972,17 +2129,20 @@ static bool amf_hevc_init(void *data, obs_data_t *settings)
 	check_preset_compatibility(enc, preset);
 #endif
 
+	char *opts_str = nullptr;
 	const char *ffmpeg_opts = obs_data_get_string(settings, "ffmpeg_opts");
 	if (ffmpeg_opts && *ffmpeg_opts) {
+		opts_str = new char[strlen(ffmpeg_opts) + 1];
+		obs_data_condense_whitespace(ffmpeg_opts, opts_str);
+		ffmpeg_opts = opts_str;
 		struct obs_options opts = obs_parse_options(ffmpeg_opts);
 		for (size_t i = 0; i < opts.count; i++) {
 			amf_apply_opt(enc, &opts.options[i]);
 		}
 		obs_free_options(opts);
-	}
-
-	if (!ffmpeg_opts || !*ffmpeg_opts)
+	} else {
 		ffmpeg_opts = "(none)";
+	}
 
 	/* The ffmpeg_opts just above may have explicitly set the HEVC level to a value different than what was
 	 * determined by amf_set_codec_level(). Query the final HEVC level then lookup the matching string. Warn if not
@@ -2008,6 +2168,7 @@ static bool amf_hevc_init(void *data, obs_data_t *settings)
 	     "\tparams:       %s",
 	     rc_str, bitrate, qp, gop_size, preset, profile, level_str, enc->cx, enc->cy, ffmpeg_opts);
 
+	delete[] opts_str;
 	return true;
 }
 
@@ -2061,6 +2222,7 @@ static void amf_hevc_create_internal(amf_base *enc, obs_data_t *settings)
 		caps->GetProperty(AMF_VIDEO_ENCODER_HEVC_CAP_MAX_THROUGHPUT, &enc->max_throughput);
 		caps->GetProperty(AMF_VIDEO_ENCODER_HEVC_CAP_REQUESTED_THROUGHPUT, &enc->requested_throughput);
 		caps->GetProperty(AMF_VIDEO_ENCODER_HEVC_CAP_ROI, &enc->roi_supported);
+		caps->GetProperty(AMF_VIDEO_ENCODER_HEVC_CAP_PRE_ANALYSIS, &enc->pre_analysis_supported);
 	}
 
 	const bool is10bit = enc->amf_format == AMF_SURFACE_P010;
@@ -2075,7 +2237,7 @@ static void amf_hevc_create_internal(amf_base *enc, obs_data_t *settings)
 	set_hevc_property(enc, COLOR_BIT_DEPTH, is10bit ? AMF_COLOR_BIT_DEPTH_10 : AMF_COLOR_BIT_DEPTH_8);
 	set_hevc_property(enc, PROFILE,
 			  is10bit ? AMF_VIDEO_ENCODER_HEVC_PROFILE_MAIN_10 : AMF_VIDEO_ENCODER_HEVC_PROFILE_MAIN);
-	set_hevc_property(enc, LOWLATENCY_MODE, false);
+	set_hevc_property(enc, LOWLATENCY_MODE, obs_data_get_bool(settings, "low_latency"));
 	set_hevc_property(enc, OUTPUT_COLOR_PROFILE, enc->amf_color_profile);
 	set_hevc_property(enc, OUTPUT_TRANSFER_CHARACTERISTIC, enc->amf_characteristic);
 	set_hevc_property(enc, OUTPUT_COLOR_PRIMARIES, enc->amf_primaries);
@@ -2360,6 +2522,9 @@ static bool amf_av1_init(void *data, obs_data_t *settings)
 
 	int rc = get_av1_rate_control(rc_str);
 	set_av1_property(enc, RATE_CONTROL_METHOD, rc);
+	bool pre_analysis = set_pre_analysis(enc, settings);
+	if (should_enable_adaptive_quality(enc, settings, rc_str, pre_analysis))
+		set_av1_enum(AQ_MODE, CAQ);
 
 	amf_av1_update_data(enc, rc, bitrate * 1000, qp);
 
@@ -2372,21 +2537,24 @@ static bool amf_av1_init(void *data, obs_data_t *settings)
 	int gop_size = (keyint_sec) ? keyint_sec * enc->fps_num / enc->fps_den : 250;
 	set_av1_property(enc, GOP_SIZE, gop_size);
 
+	char *opts_str = nullptr;
 	const char *ffmpeg_opts = obs_data_get_string(settings, "ffmpeg_opts");
 	if (ffmpeg_opts && *ffmpeg_opts) {
+		opts_str = new char[strlen(ffmpeg_opts) + 1];
+		obs_data_condense_whitespace(ffmpeg_opts, opts_str);
+		ffmpeg_opts = opts_str;
 		struct obs_options opts = obs_parse_options(ffmpeg_opts);
 		for (size_t i = 0; i < opts.count; i++) {
 			amf_apply_opt(enc, &opts.options[i]);
 		}
 		obs_free_options(opts);
+	} else {
+		ffmpeg_opts = "(none)";
 	}
 
 #if _CHECK_THROUGHPUT
 	check_preset_compatibility(enc, preset);
 #endif
-
-	if (!ffmpeg_opts || !*ffmpeg_opts)
-		ffmpeg_opts = "(none)";
 
 	/* The ffmpeg_opts just above may have explicitly set the AV1 level to a value different than what was
 	 * determined by amf_set_codec_level(). Query the final AV1 level then lookup the matching string. Warn if not
@@ -2413,6 +2581,7 @@ static bool amf_av1_init(void *data, obs_data_t *settings)
 	     "\tparams:       %s",
 	     rc_str, bitrate, qp, gop_size, preset, profile, level_str, bf, enc->cx, enc->cy, ffmpeg_opts);
 
+	delete[] opts_str;
 	return true;
 }
 
@@ -2429,6 +2598,7 @@ static void amf_av1_create_internal(amf_base *enc, obs_data_t *settings)
 		caps->GetProperty(AMF_VIDEO_ENCODER_AV1_CAP_BFRAMES, &enc->bframes_supported);
 		caps->GetProperty(AMF_VIDEO_ENCODER_AV1_CAP_MAX_THROUGHPUT, &enc->max_throughput);
 		caps->GetProperty(AMF_VIDEO_ENCODER_AV1_CAP_REQUESTED_THROUGHPUT, &enc->requested_throughput);
+		caps->GetProperty(AMF_VIDEO_ENCODER_AV1_CAP_PRE_ANALYSIS, &enc->pre_analysis_supported);
 		/* For some reason there's no specific CAP for AV1, but should always be supported */
 		enc->roi_supported = true;
 	}
@@ -2442,7 +2612,10 @@ static void amf_av1_create_internal(amf_base *enc, obs_data_t *settings)
 	set_av1_property(enc, QUALITY_PRESET, get_av1_preset(enc, preset));
 	set_av1_property(enc, COLOR_BIT_DEPTH, is10bit ? AMF_COLOR_BIT_DEPTH_10 : AMF_COLOR_BIT_DEPTH_8);
 	set_av1_property(enc, PROFILE, get_av1_profile(settings));
-	set_av1_property(enc, ENCODING_LATENCY_MODE, AMF_VIDEO_ENCODER_AV1_ENCODING_LATENCY_MODE_NONE);
+	set_av1_property(enc, ENCODING_LATENCY_MODE,
+			 obs_data_get_bool(settings, "low_latency")
+				 ? AMF_VIDEO_ENCODER_AV1_ENCODING_LATENCY_MODE_LOWEST_LATENCY
+				 : AMF_VIDEO_ENCODER_AV1_ENCODING_LATENCY_MODE_NONE);
 	// set_av1_property(enc, RATE_CONTROL_PREENCODE, true);
 	set_av1_property(enc, OUTPUT_COLOR_PROFILE, enc->amf_color_profile);
 	set_av1_property(enc, OUTPUT_TRANSFER_CHARACTERISTIC, enc->amf_characteristic);
@@ -2546,11 +2719,7 @@ try {
 
 static void amf_av1_defaults(obs_data_t *settings)
 {
-	obs_data_set_default_int(settings, "bitrate", 2500);
-	obs_data_set_default_int(settings, "cqp", 20);
-	obs_data_set_default_string(settings, "rate_control", "CBR");
-	obs_data_set_default_string(settings, "preset", "quality");
-	obs_data_set_default_string(settings, "profile", "high");
+	amf_defaults(settings);
 	obs_data_set_default_int(settings, "bf", 2);
 }
 
