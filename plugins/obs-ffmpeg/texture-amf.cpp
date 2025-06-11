@@ -1,3 +1,6 @@
+/* AMF texture encoding based on work by nowrep:
+   https://github.com/nowrep/obs-studio */
+
 #include <util/threading.h>
 #include <opts-parser.h>
 #include <obs-module.h>
@@ -34,6 +37,15 @@
 #include <util/windows/ComPtr.hpp>
 #endif
 
+#ifdef __linux
+#include <algorithm>
+#include <GL/glcorearb.h>
+#include <GL/glext.h>
+#include <EGL/egl.h>
+#include <vulkan/vulkan.h>
+#include <AMF/core/VulkanAMF.h>
+#endif
+
 #include <util/platform.h>
 #include <util/util.hpp>
 #include <util/pipe.h>
@@ -59,13 +71,97 @@ struct amf_error {
 	inline amf_error(const char *str, AMF_RESULT res) : str(str), res(res) {}
 };
 
+#ifdef _WIN32
 struct handle_tex {
 	uint32_t handle;
-#ifdef _WIN32
 	ComPtr<ID3D11Texture2D> tex;
 	ComPtr<IDXGIKeyedMutex> km;
-#endif
 };
+#elif defined(__linux__)
+
+#define __USE_OPENCL true
+#define __VK_CMD_PIPELINE_BARRIERS false
+#define __VK_WAIT_FOR_FENCES false
+
+#define VK_CHECK(f)                                                      \
+	{                                                                \
+		VkResult res = (f);                                      \
+		if (res != VK_SUCCESS) {                                 \
+			blog(LOG_ERROR, "Vulkan error: " __FILE__ ":%d", \
+			     __LINE__);                                  \
+			throw "Vulkan error";                            \
+		}                                                        \
+	}
+
+static VkFormat to_vk_format(AMF_SURFACE_FORMAT fmt)
+{
+	switch (fmt) {
+	case AMF_SURFACE_NV12:
+		return VK_FORMAT_G8_B8R8_2PLANE_420_UNORM;
+	case AMF_SURFACE_P010:
+		return VK_FORMAT_G16_B16R16_2PLANE_420_UNORM;
+	default:
+		throw "Unsupported AMF_SURFACE_FORMAT";
+	}
+}
+
+static VkFormat to_vk_format(enum gs_color_format fmt)
+{
+	switch (fmt) {
+	case GS_R8:
+		return VK_FORMAT_R8_UNORM;
+	case GS_R16:
+		return VK_FORMAT_R16_UNORM;
+	case GS_R8G8:
+		return VK_FORMAT_R8G8_UNORM;
+	case GS_RG16:
+		return VK_FORMAT_R16G16_UNORM;
+	default:
+		throw "Unsupported gs_color_format";
+	}
+}
+
+static GLenum to_gl_format(enum gs_color_format fmt)
+{
+	switch (fmt) {
+	case GS_R8:
+		return GL_R8;
+	case GS_R16:
+		return GL_R16;
+	case GS_R8G8:
+		return GL_RG8;
+	case GS_RG16:
+		return GL_RG16;
+	default:
+		throw "Unsupported gs_color_format";
+	}
+}
+
+struct texture_info {
+	GLuint glsem = 0;
+	VkSemaphore sem = VK_NULL_HANDLE;
+	GLuint glCopySem = 0;
+	VkSemaphore copySem = VK_NULL_HANDLE;
+	VkFence copyFence = VK_NULL_HANDLE;
+	struct {
+		uint32_t width = 0;
+		uint32_t height = 0;
+		VkImage image = VK_NULL_HANDLE;
+		VkDeviceMemory memory = VK_NULL_HANDLE;
+		GLuint glmem = 0;
+		GLuint gltex = 0;
+		GLuint fbo = 0;
+	} planes[2];
+	GLuint sem_tex[2];
+	GLenum sem_layout[2];
+};
+
+struct amf_tex {
+	AMFVulkanSurface *surfaceVk = nullptr;
+	AMFSurface *amfSurface = nullptr;
+};
+
+#endif
 
 struct adapter_caps {
 	bool is_amd = false;
@@ -168,8 +264,12 @@ struct amf_base {
 	const char *encoder_str;
 	amf_codec_type codec;
 	bool fallback;
+	const wchar_t *output_data_type_key;
 
 	AMFContextPtr amf_context;
+#ifdef __linux__
+	AMFContext1Ptr amf_context1;
+#endif
 	AMFComponentPtr amf_encoder;
 	AMFBufferPtr packet_data;
 	AMFRate amf_frame_rate;
@@ -202,6 +302,9 @@ struct amf_base {
 	inline amf_base(bool fallback) : fallback(fallback) {}
 	virtual ~amf_base() = default;
 	virtual void init() = 0;
+#ifdef __linux__
+	virtual void on_received_packet(const int64_t &ts) {};
+#endif
 };
 
 using buf_t = std::vector<uint8_t>;
@@ -245,10 +348,755 @@ struct amf_texencode : amf_base, public AMFSurfaceObserver {
 			throw amf_error("InitDX11 failed", res);
 	}
 };
+#elif defined(__linux__)
+
+// Some necessary forward refs
+static void amf_encode_base(amf_base *enc, AMFSurface *amf_surf, encoder_packet *packet, bool *received_packet);
+static int64_t convert_to_amf_ts(amf_base *enc, int64_t ts);
+
+struct amf_texencode : amf_base {
+	std::vector<amf_tex> input_textures;
+	std::vector<amf_tex> available_textures;
+	std::unordered_map<int64_t, amf_tex> active_textures;
+
+	std::unique_ptr<AMFVulkanDevice> vk;
+	VkQueue queue = VK_NULL_HANDLE;
+	VkCommandPool cmdpool = VK_NULL_HANDLE;
+	VkCommandBuffer cmdbuf = VK_NULL_HANDLE;
+	struct texture_info textures = {};
+	std::unordered_map<gs_texture *, GLuint> read_fbos;
+
+	VkSubmitInfo submitInfo = {
+		.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+		.commandBufferCount = 1,
+	};
+	VkImageCopy imageCopy = {
+		.srcSubresource =
+			{
+				.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+				.mipLevel = 0,
+				.baseArrayLayer = 0,
+				.layerCount = 1,
+			},
+		.srcOffset =
+			{
+				.x = 0,
+				.y = 0,
+				.z = 0,
+			},
+		.dstSubresource =
+			{
+				.mipLevel = 0,
+				.baseArrayLayer = 0,
+				.layerCount = 1,
+			},
+		.dstOffset =
+			{
+				.x = 0,
+				.y = 0,
+				.z = 0,
+			},
+		.extent =
+			{
+				.depth = 1,
+			},
+	};
+	VkSubmitInfo copyImageSubmitInfo = {
+		.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+		.commandBufferCount = 1,
+		.waitSemaphoreCount = 1,
+		.signalSemaphoreCount = 1,
+	};
+
+	PFN_vkGetMemoryFdKHR vkGetMemoryFdKHR;
+	PFN_vkGetSemaphoreFdKHR vkGetSemaphoreFdKHR;
+	PFNGLGETERRORPROC glGetError;
+	PFNGLCREATEMEMORYOBJECTSEXTPROC glCreateMemoryObjectsEXT;
+	PFNGLDELETEMEMORYOBJECTSEXTPROC glDeleteMemoryObjectsEXT;
+	PFNGLIMPORTMEMORYFDEXTPROC glImportMemoryFdEXT;
+	PFNGLISMEMORYOBJECTEXTPROC glIsMemoryObjectEXT;
+	PFNGLMEMORYOBJECTPARAMETERIVEXTPROC glMemoryObjectParameterivEXT;
+	PFNGLGENTEXTURESPROC glGenTextures;
+	PFNGLDELETETEXTURESPROC glDeleteTextures;
+	PFNGLBINDTEXTUREPROC glBindTexture;
+	PFNGLTEXPARAMETERIPROC glTexParameteri;
+	PFNGLTEXSTORAGEMEM2DEXTPROC glTexStorageMem2DEXT;
+	PFNGLGENSEMAPHORESEXTPROC glGenSemaphoresEXT;
+	PFNGLDELETESEMAPHORESEXTPROC glDeleteSemaphoresEXT;
+	PFNGLIMPORTSEMAPHOREFDEXTPROC glImportSemaphoreFdEXT;
+	PFNGLISSEMAPHOREEXTPROC glIsSemaphoreEXT;
+	PFNGLWAITSEMAPHOREEXTPROC glWaitSemaphoreEXT;
+	PFNGLSIGNALSEMAPHOREEXTPROC glSignalSemaphoreEXT;
+	PFNGLGENFRAMEBUFFERSPROC glGenFramebuffers;
+	PFNGLDELETEFRAMEBUFFERSPROC glDeleteFramebuffers;
+	PFNGLBINDFRAMEBUFFERPROC glBindFramebuffer;
+	PFNGLFRAMEBUFFERTEXTURE2DPROC glFramebufferTexture2D;
+	PFNGLBLITFRAMEBUFFERPROC glBlitFramebuffer;
+
+	inline amf_texencode() : amf_base(false) {}
+	~amf_texencode()
+	{
+		if (!vk)
+			return;
+
+		VkDevice vkDevice = vk->hDevice;
+		vkDeviceWaitIdle(vkDevice);
+		vkFreeCommandBuffers(vkDevice, cmdpool, 1, &cmdbuf);
+		vkDestroyCommandPool(vkDevice, cmdpool, nullptr);
+
+		for (auto &t : input_textures) {
+			t.amfSurface->Release();
+			AMFVulkanSurface *surfaceVk = t.surfaceVk;
+			vkFreeMemory(vkDevice, surfaceVk->hMemory, nullptr);
+			vkDestroyImage(vkDevice, surfaceVk->hImage, nullptr);
+			free(surfaceVk);
+		}
+
+		obs_enter_graphics();
+
+		for (int i = 0; i < 2; ++i) {
+			auto &p = textures.planes[i];
+			vkFreeMemory(vkDevice, p.memory, nullptr);
+			vkDestroyImage(vkDevice, p.image, nullptr);
+			glDeleteMemoryObjectsEXT(1, &p.glmem);
+			glDeleteTextures(1, &p.gltex);
+			glDeleteFramebuffers(1, &p.fbo);
+		}
+		vkDestroySemaphore(vkDevice, textures.sem, nullptr);
+		vkDestroySemaphore(vkDevice, textures.copySem, nullptr);
+		vkDestroyFence(vkDevice, textures.copyFence, nullptr);
+		glDeleteSemaphoresEXT(1, &textures.glsem);
+		glDeleteSemaphoresEXT(1, &textures.glCopySem);
+
+		for (auto f : read_fbos)
+			glDeleteFramebuffers(1, &f.second);
+
+		obs_leave_graphics();
+
+		amf_encoder->Terminate();
+		amf_context1->Terminate();
+		amf_context->Terminate();
+
+		vkDestroyDevice(vkDevice, nullptr);
+		vkDestroyInstance(vk->hInstance, nullptr);
+	}
+
+	/* Using Vulkan, we cache/re-use surfaces, so OnSurfaceDataRelease is never called.
+	   Instead, we match input/output packets to decide what's available. */
+	virtual void on_received_packet(const int64_t &ts) override
+	{
+		auto it = active_textures.find(ts);
+		if (it != active_textures.end()) {
+			available_textures.push_back(it->second);
+			active_textures.erase(it);
+		}
+	}
+
+	void init() override
+	{
+		vk = std::make_unique<AMFVulkanDevice>();
+		vk->cbSizeof = sizeof(AMFVulkanDevice);
+
+		std::vector<const char *> instance_extensions = {
+			VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
+			VK_KHR_SURFACE_EXTENSION_NAME,
+		};
+
+		std::vector<const char *> device_extensions = {
+			VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME,
+			VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME,
+			VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME,
+			VK_KHR_SAMPLER_YCBCR_CONVERSION_EXTENSION_NAME,
+		};
+
+		amf_size count = 0;
+		amf_context1->GetVulkanDeviceExtensions(&count, nullptr);
+		device_extensions.resize(device_extensions.size() + count);
+		amf_context1->GetVulkanDeviceExtensions(&count, &device_extensions[device_extensions.size() - count]);
+
+		VkApplicationInfo appInfo = {
+			.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+			.pApplicationName = "OBS",
+			.apiVersion = VK_API_VERSION_1_2,
+		};
+
+		VkInstanceCreateInfo instanceInfo = {
+			.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+			.pApplicationInfo = &appInfo,
+			.enabledExtensionCount = (uint32_t)instance_extensions.size(),
+			.ppEnabledExtensionNames = instance_extensions.data(),
+		};
+		VK_CHECK(vkCreateInstance(&instanceInfo, nullptr, &vk->hInstance));
+
+		uint32_t deviceCount = 0;
+		VK_CHECK(vkEnumeratePhysicalDevices(vk->hInstance, &deviceCount, nullptr));
+		std::vector<VkPhysicalDevice> physicalDevices(deviceCount);
+		VK_CHECK(vkEnumeratePhysicalDevices(vk->hInstance, &deviceCount, physicalDevices.data()));
+		for (VkPhysicalDevice dev : physicalDevices) {
+			VkPhysicalDeviceDriverProperties driverProps = {
+				.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES,
+			};
+
+			VkPhysicalDeviceProperties2 props = {
+				.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+				.pNext = &driverProps,
+			};
+			vkGetPhysicalDeviceProperties2(dev, &props);
+			if (driverProps.driverID == VK_DRIVER_ID_MESA_RADV ||
+			    driverProps.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE ||
+			    driverProps.driverID == VK_DRIVER_ID_AMD_PROPRIETARY) {
+				vk->hPhysicalDevice = dev;
+				break;
+			}
+		}
+		if (!vk->hPhysicalDevice) {
+			throw "Failed to find Vulkan device";
+		}
+
+		uint32_t deviceExtensionCount = 0;
+		VK_CHECK(vkEnumerateDeviceExtensionProperties(vk->hPhysicalDevice, nullptr, &deviceExtensionCount,
+							      nullptr));
+		std::vector<VkExtensionProperties> deviceExts(deviceExtensionCount);
+		VK_CHECK(vkEnumerateDeviceExtensionProperties(vk->hPhysicalDevice, nullptr, &deviceExtensionCount,
+							      deviceExts.data()));
+		std::vector<const char *> deviceExtensions;
+		for (const char *name : device_extensions) {
+			auto it = std::find_if(deviceExts.begin(), deviceExts.end(), [name](VkExtensionProperties e) {
+				return strcmp(e.extensionName, name) == 0;
+			});
+			if (it != deviceExts.end()) {
+				deviceExtensions.push_back(name);
+			}
+		}
+
+		float queuePriority = 1.0;
+		std::vector<VkDeviceQueueCreateInfo> queueInfos;
+		uint32_t queueFamilyCount;
+		vkGetPhysicalDeviceQueueFamilyProperties(vk->hPhysicalDevice, &queueFamilyCount, nullptr);
+		std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueFamilyCount);
+		vkGetPhysicalDeviceQueueFamilyProperties(vk->hPhysicalDevice, &queueFamilyCount,
+							 queueFamilyProperties.data());
+		for (uint32_t i = 0; i < queueFamilyProperties.size(); ++i) {
+			VkDeviceQueueCreateInfo queueInfo = {
+				.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+				.queueFamilyIndex = i,
+				.queueCount = 1,
+				.pQueuePriorities = &queuePriority,
+			};
+			queueInfos.push_back(queueInfo);
+		}
+
+		VkDeviceCreateInfo deviceInfo = {
+			.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+			.queueCreateInfoCount = (uint32_t)queueInfos.size(),
+			.pQueueCreateInfos = queueInfos.data(),
+			.enabledExtensionCount = (uint32_t)deviceExtensions.size(),
+			.ppEnabledExtensionNames = deviceExtensions.data(),
+		};
+		VK_CHECK(vkCreateDevice(vk->hPhysicalDevice, &deviceInfo, nullptr, &vk->hDevice));
+
+		AMF_RESULT res = amf_context1->InitVulkan(vk.get());
+		if (res != AMF_OK)
+			throw amf_error("InitVulkan failed", res);
+
+		vkGetDeviceQueue(vk->hDevice, 0, 0, &queue);
+
+		VkCommandPoolCreateInfo cmdPoolInfo = {
+			.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+			.queueFamilyIndex = 0,
+			.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+		};
+		VK_CHECK(vkCreateCommandPool(vk->hDevice, &cmdPoolInfo, nullptr, &cmdpool));
+
+		VkCommandBufferAllocateInfo commandBufferInfo = {
+			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+			.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+			.commandPool = cmdpool,
+			.commandBufferCount = 1,
+		};
+		VK_CHECK(vkAllocateCommandBuffers(vk->hDevice, &commandBufferInfo, &cmdbuf));
+		submitInfo.pCommandBuffers = &cmdbuf;
+
+#define GET_PROC_VK(x)                                 \
+	x = reinterpret_cast<decltype(x)>(             \
+		vkGetDeviceProcAddr(vk->hDevice, #x)); \
+	if (!x)                                        \
+		throw "Failed to resolve " #x;
+
+#define GET_PROC_GL(x)                                            \
+	x = reinterpret_cast<decltype(x)>(eglGetProcAddress(#x)); \
+	if (!x)                                                   \
+		throw "Failed to resolve " #x;
+
+		GET_PROC_VK(vkGetMemoryFdKHR);
+		GET_PROC_VK(vkGetSemaphoreFdKHR);
+		GET_PROC_GL(glGetError);
+		GET_PROC_GL(glCreateMemoryObjectsEXT);
+		GET_PROC_GL(glDeleteMemoryObjectsEXT);
+		GET_PROC_GL(glImportMemoryFdEXT);
+		GET_PROC_GL(glIsMemoryObjectEXT);
+		GET_PROC_GL(glMemoryObjectParameterivEXT);
+		GET_PROC_GL(glGenTextures);
+		GET_PROC_GL(glDeleteTextures);
+		GET_PROC_GL(glBindTexture);
+		GET_PROC_GL(glTexParameteri);
+		GET_PROC_GL(glTexStorageMem2DEXT);
+		GET_PROC_GL(glGenSemaphoresEXT);
+		GET_PROC_GL(glDeleteSemaphoresEXT);
+		GET_PROC_GL(glImportSemaphoreFdEXT);
+		GET_PROC_GL(glIsSemaphoreEXT);
+		GET_PROC_GL(glWaitSemaphoreEXT);
+		GET_PROC_GL(glSignalSemaphoreEXT);
+		GET_PROC_GL(glGenFramebuffers);
+		GET_PROC_GL(glDeleteFramebuffers);
+		GET_PROC_GL(glBindFramebuffer);
+		GET_PROC_GL(glFramebufferTexture2D);
+		GET_PROC_GL(glBlitFramebuffer);
+
+#undef GET_PROC_VK
+#undef GET_PROC_GL
+	}
+
+	uint32_t memoryTypeIndex(VkMemoryPropertyFlags properties, uint32_t typeBits)
+	{
+		VkPhysicalDeviceMemoryProperties prop;
+		vkGetPhysicalDeviceMemoryProperties(vk->hPhysicalDevice, &prop);
+		for (uint32_t i = 0; i < prop.memoryTypeCount; i++) {
+			if ((prop.memoryTypes[i].propertyFlags & properties) == properties && typeBits & (1 << i)) {
+				return i;
+			}
+		}
+		return 0xFFFFFFFF;
+	}
+
+	inline void cmd_buf_begin()
+	{
+		static VkCommandBufferBeginInfo info = {
+			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+		};
+		VK_CHECK(vkBeginCommandBuffer(cmdbuf, &info));
+	}
+
+	inline void cmd_buf_submit(VkSemaphore *semaphore = nullptr, VkFence *fence = nullptr)
+	{
+		VK_CHECK(vkEndCommandBuffer(cmdbuf));
+		submitInfo.signalSemaphoreCount = semaphore ? 1 : 0;
+		submitInfo.pSignalSemaphores = semaphore;
+#if __VK_WAIT_FOR_FENCES
+		if (fence) {
+			VK_CHECK(vkQueueSubmit(queue, 1, &submitInfo, *fence));
+			return;
+		}
+		VkFenceCreateInfo fenceInfo = {
+			.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+		};
+		VkFence f;
+		VK_CHECK(vkCreateFence(vk->hDevice, &fenceInfo, nullptr, &f));
+		VK_CHECK(vkQueueSubmit(queue, 1, &submitInfo, f));
+		VK_CHECK(vkWaitForFences(vk->hDevice, 1, &f, VK_TRUE, UINT64_MAX));
+		vkDestroyFence(vk->hDevice, f, nullptr);
+#else
+		VK_CHECK(vkQueueSubmit(queue, 1, &submitInfo, nullptr));
+#endif
+	}
+
+	void create_textures(encoder_texture *from)
+	{
+		cmd_buf_begin();
+		for (int i = 0; i < 2; ++i) {
+			auto &plane = textures.planes[i];
+
+			obs_enter_graphics();
+			auto tex = from->tex[i];
+			auto gs_format = gs_texture_get_color_format(tex);
+			plane.width = gs_texture_get_width(tex);
+			plane.height = gs_texture_get_height(tex);
+			obs_leave_graphics();
+
+			VkExternalMemoryImageCreateInfo extImageInfo = {
+				.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO,
+				.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT,
+			};
+
+			VkImageCreateInfo imageInfo = {
+				.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+				.pNext = &extImageInfo,
+				.imageType = VK_IMAGE_TYPE_2D,
+				.format = to_vk_format(gs_format),
+				.extent =
+					{
+						.width = plane.width,
+						.height = plane.height,
+						.depth = 1,
+					},
+				.arrayLayers = 1,
+				.mipLevels = 1,
+				.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+				.samples = VK_SAMPLE_COUNT_1_BIT,
+				.tiling = VK_IMAGE_TILING_OPTIMAL,
+				.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+				.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+			};
+			VK_CHECK(vkCreateImage(vk->hDevice, &imageInfo, nullptr, &plane.image));
+
+			VkMemoryRequirements memoryReqs;
+			vkGetImageMemoryRequirements(vk->hDevice, plane.image, &memoryReqs);
+
+			VkExportMemoryAllocateInfo expMemoryAllocInfo = {
+				.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO,
+				.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT,
+			};
+
+			VkMemoryDedicatedAllocateInfo dedMemoryAllocInfo = {
+				.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO,
+				.image = plane.image,
+				.pNext = &expMemoryAllocInfo,
+			};
+
+			VkMemoryAllocateInfo memoryAllocInfo = {
+				.pNext = &dedMemoryAllocInfo,
+				.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+				.allocationSize = memoryReqs.size,
+				.memoryTypeIndex =
+					memoryTypeIndex(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memoryReqs.memoryTypeBits),
+			};
+			VK_CHECK(vkAllocateMemory(vk->hDevice, &memoryAllocInfo, nullptr, &plane.memory));
+			VK_CHECK(vkBindImageMemory(vk->hDevice, plane.image, plane.memory, 0));
+
+#if __VK_CMD_PIPELINE_BARRIERS
+			VkImageMemoryBarrier imageBarrier = {
+				.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+				.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+				.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+				.image = plane.image,
+				.subresourceRange =
+					{
+						.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+						.layerCount = 1,
+						.levelCount = 1,
+					},
+				.srcAccessMask = 0,
+				.dstAccessMask = 0,
+			};
+			vkCmdPipelineBarrier(cmdbuf, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+					     0, 0, nullptr, 0, nullptr, 1, &imageBarrier);
+
+			imageBarrier.oldLayout = imageBarrier.newLayout;
+			imageBarrier.srcQueueFamilyIndex = 0;
+			imageBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_EXTERNAL;
+			vkCmdPipelineBarrier(cmdbuf, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+					     0, 0, nullptr, 0, nullptr, 1, &imageBarrier);
 #endif
 
-#ifdef __linux__
-#define __USE_OPENCL 1
+			// Import memory
+			VkMemoryGetFdInfoKHR memFdInfo = {
+				.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR,
+				.memory = plane.memory,
+				.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT,
+			};
+			int fd = -1;
+			VK_CHECK(vkGetMemoryFdKHR(vk->hDevice, &memFdInfo, &fd));
+
+			obs_enter_graphics();
+
+			glCreateMemoryObjectsEXT(1, &plane.glmem);
+			GLint dedicated = GL_TRUE;
+			glMemoryObjectParameterivEXT(plane.glmem, GL_DEDICATED_MEMORY_OBJECT_EXT, &dedicated);
+			glImportMemoryFdEXT(plane.glmem, memoryAllocInfo.allocationSize, GL_HANDLE_TYPE_OPAQUE_FD_EXT,
+					    fd);
+
+			glGenTextures(1, &plane.gltex);
+			glBindTexture(GL_TEXTURE_2D, plane.gltex);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_TILING_EXT, GL_OPTIMAL_TILING_EXT);
+			glTexStorageMem2DEXT(GL_TEXTURE_2D, 1, to_gl_format(gs_format), imageInfo.extent.width,
+					     imageInfo.extent.height, plane.glmem, 0);
+
+			glGenFramebuffers(1, &plane.fbo);
+			glBindFramebuffer(GL_FRAMEBUFFER, plane.fbo);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, plane.gltex, 0);
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+			bool import_ok = glIsMemoryObjectEXT(plane.glmem) && glGetError() == GL_NO_ERROR;
+
+			obs_leave_graphics();
+
+			if (!import_ok)
+				throw "OpenGL texture import failed";
+
+			textures.sem_tex[i] = plane.gltex;
+			textures.sem_layout[i] = GL_LAYOUT_TRANSFER_SRC_EXT;
+		}
+
+		VkExportSemaphoreCreateInfo expSemInfo = {
+			.sType = VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO,
+			.handleTypes = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT,
+		};
+
+		VkSemaphoreCreateInfo semInfo = {
+			.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+			.pNext = &expSemInfo,
+		};
+		VK_CHECK(vkCreateSemaphore(vk->hDevice, &semInfo, nullptr, &textures.sem));
+		VK_CHECK(vkCreateSemaphore(vk->hDevice, &semInfo, nullptr, &textures.copySem));
+
+		VkFenceCreateInfo fenceInfo = {
+			.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+		};
+		VK_CHECK(vkCreateFence(vk->hDevice, &fenceInfo, nullptr, &textures.copyFence));
+
+		cmd_buf_submit(&textures.copySem, &textures.copyFence);
+
+		VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		copyImageSubmitInfo.pCommandBuffers = &cmdbuf;
+		copyImageSubmitInfo.pWaitSemaphores = &textures.sem;
+		copyImageSubmitInfo.pWaitDstStageMask = &waitStage;
+		copyImageSubmitInfo.pSignalSemaphores = &textures.copySem;
+
+		// Import semaphores
+		VkSemaphoreGetFdInfoKHR semFdInfo = {
+			.sType = VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR,
+			.semaphore = textures.sem,
+			.handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT,
+		};
+		int fd = -1;
+		VK_CHECK(vkGetSemaphoreFdKHR(vk->hDevice, &semFdInfo, &fd));
+
+		semFdInfo.semaphore = textures.copySem;
+		int fdCopy = -1;
+		VK_CHECK(vkGetSemaphoreFdKHR(vk->hDevice, &semFdInfo, &fdCopy));
+
+		obs_enter_graphics();
+
+		glGenSemaphoresEXT(1, &textures.glsem);
+		glGenSemaphoresEXT(1, &textures.glCopySem);
+		glImportSemaphoreFdEXT(textures.glsem, GL_HANDLE_TYPE_OPAQUE_FD_EXT, fd);
+		glImportSemaphoreFdEXT(textures.glCopySem, GL_HANDLE_TYPE_OPAQUE_FD_EXT, fdCopy);
+
+		bool import_ok = glIsSemaphoreEXT(textures.glsem) && glIsSemaphoreEXT(textures.glCopySem) &&
+				 glGetError() == GL_NO_ERROR;
+
+		obs_leave_graphics();
+
+		if (!import_ok)
+			throw "OpenGL semaphore import failed";
+	}
+
+	inline GLuint get_read_fbo(gs_texture *tex)
+	{
+		auto it = read_fbos.find(tex);
+		if (it != read_fbos.end()) {
+			return it->second;
+		}
+		GLuint *tex_obj = static_cast<GLuint *>(gs_texture_get_obj(tex));
+		GLuint fbo;
+		glGenFramebuffers(1, &fbo);
+		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, *tex_obj, 0);
+		read_fbos.insert({tex, fbo});
+		return fbo;
+	}
+
+	void add_output_tex(amf_tex &output_tex, encoder_texture *from)
+	{
+		VkImageCreateInfo imageInfo = {
+			.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+			.imageType = VK_IMAGE_TYPE_2D,
+			.format = to_vk_format(amf_format),
+			.extent =
+				{
+					.width = cx,
+					.height = cy,
+					.depth = 1,
+				},
+			.arrayLayers = 1,
+			.mipLevels = 1,
+			.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+			.samples = VK_SAMPLE_COUNT_1_BIT,
+			.tiling = VK_IMAGE_TILING_LINEAR,
+			.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+			.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT,
+			.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+		};
+		VkImage vkImage;
+		VK_CHECK(vkCreateImage(vk->hDevice, &imageInfo, nullptr, &vkImage));
+
+		VkMemoryRequirements memoryReqs;
+		vkGetImageMemoryRequirements(vk->hDevice, vkImage, &memoryReqs);
+		VkMemoryAllocateInfo memoryAllocInfo = {
+			.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+			.allocationSize = memoryReqs.size,
+			.memoryTypeIndex =
+				memoryTypeIndex(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memoryReqs.memoryTypeBits),
+		};
+		VkDeviceMemory vkMemory;
+		VK_CHECK(vkAllocateMemory(vk->hDevice, &memoryAllocInfo, nullptr, &vkMemory));
+		VK_CHECK(vkBindImageMemory(vk->hDevice, vkImage, vkMemory, 0));
+
+#if __VK_CMD_PIPELINE_BARRIERS
+		cmd_buf_begin();
+		VkImageMemoryBarrier imageBarrier = {
+			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+			.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+			.newLayout = VK_IMAGE_LAYOUT_GENERAL,
+			.image = vkImage,
+			.subresourceRange =
+				{
+					.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+					.layerCount = 1,
+					.levelCount = 1,
+				},
+			.srcAccessMask = 0,
+			.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
+		};
+		vkCmdPipelineBarrier(cmdbuf, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0,
+				     nullptr, 0, nullptr, 1, &imageBarrier);
+		cmd_buf_submit();
+#endif
+
+		output_tex.surfaceVk = (AMFVulkanSurface *)malloc(sizeof(AMFVulkanSurface));
+		*output_tex.surfaceVk = {
+			.cbSizeof = sizeof(AMFVulkanSurface),
+			.pNext = nullptr,
+			.hImage = vkImage,
+			.hMemory = vkMemory,
+			.iSize = (amf_int64)memoryAllocInfo.allocationSize,
+			.eFormat = imageInfo.format,
+			.iWidth = (amf_int32)imageInfo.extent.width,
+			.iHeight = (amf_int32)imageInfo.extent.height,
+			.eCurrentLayout = imageInfo.initialLayout,
+			.eUsage = AMF_SURFACE_USAGE_DEFAULT,
+			.eAccess = AMF_MEMORY_CPU_LOCAL,
+			.Sync =
+				{
+					.cbSizeof = sizeof(AMFVulkanSync),
+					.pNext = nullptr,
+					.hSemaphore = textures.copySem,
+					.bSubmitted = true,
+					.hFence = nullptr,
+				},
+		};
+
+		AMF_RESULT res = amf_context1->CreateSurfaceFromVulkanNative(output_tex.surfaceVk,
+									     &output_tex.amfSurface, nullptr);
+		if (res != AMF_OK)
+			throw amf_error("CreateSurfaceFromVulkanNative failed", res);
+
+		input_textures.push_back(output_tex);
+	}
+
+	bool encode(encoder_texture *texture, int64_t pts, encoder_packet *packet, bool *received_packet)
+	{
+		if (!texture)
+			throw "Encode failed: bad texture handle";
+
+		if (!textures.glsem)
+			create_textures(texture);
+
+		amf_tex output_tex;
+		if (available_textures.size()) {
+			output_tex = available_textures.back();
+			available_textures.pop_back();
+		} else {
+			add_output_tex(output_tex, texture);
+		}
+
+		/* ------------------------------------ */
+		/* copy to output tex                   */
+
+#if __VK_WAIT_FOR_FENCES
+		VK_CHECK(vkWaitForFences(vk->hDevice, 1, &textures.copyFence, VK_TRUE, UINT64_MAX));
+		VK_CHECK(vkResetFences(vk->hDevice, 1, &textures.copyFence));
+#endif
+
+		obs_enter_graphics();
+
+		auto &planes = textures.planes;
+		glWaitSemaphoreEXT(textures.glCopySem, 0, 0, 2, textures.sem_tex, textures.sem_layout);
+		for (int i = 0; i < 2; ++i) {
+			GLuint read_fbo = get_read_fbo(texture->tex[i]);
+			auto &plane = planes[i];
+			glBindFramebuffer(GL_READ_FRAMEBUFFER, read_fbo);
+			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, plane.fbo);
+			glBlitFramebuffer(0, 0, plane.width, plane.height, 0, 0, plane.width, plane.height,
+					  GL_COLOR_BUFFER_BIT, GL_NEAREST);
+			glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+		}
+		glSignalSemaphoreEXT(textures.glsem, 0, 0, 2, textures.sem_tex, textures.sem_layout);
+
+		obs_leave_graphics();
+
+		/* ------------------------------------ */
+		/* copy to submit tex                   */
+
+		cmd_buf_begin();
+
+#if __VK_CMD_PIPELINE_BARRIERS
+		VkImageMemoryBarrier imageBarriers[2];
+		for (int i = 0; i < 2; ++i) {
+			imageBarriers[i] = {
+				.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+				.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+				.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+				.image = planes[i].image,
+				.subresourceRange =
+					{
+						.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+						.layerCount = 1,
+						.levelCount = 1,
+					},
+				.srcAccessMask = 0,
+				.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT,
+				.srcQueueFamilyIndex = VK_QUEUE_FAMILY_EXTERNAL,
+				.dstQueueFamilyIndex = 0,
+			};
+		}
+		vkCmdPipelineBarrier(cmdbuf, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0,
+				     nullptr, 0, nullptr, 2, imageBarriers);
+#endif
+
+		for (int i = 0; i < 2; ++i) {
+			auto &plane = planes[i];
+			auto &extent = imageCopy.extent;
+			extent.width = plane.width;
+			extent.height = plane.height;
+			imageCopy.dstSubresource.aspectMask = i ? VK_IMAGE_ASPECT_PLANE_1_BIT
+								: VK_IMAGE_ASPECT_PLANE_0_BIT;
+			vkCmdCopyImage(cmdbuf, plane.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+				       output_tex.surfaceVk->hImage, VK_IMAGE_LAYOUT_GENERAL, 1, &imageCopy);
+		}
+
+#if __VK_CMD_PIPELINE_BARRIERS
+		for (int i = 0; i < 2; ++i) {
+			auto barrier = &imageBarriers[i];
+			barrier->srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+			barrier->dstAccessMask = 0;
+			barrier->srcQueueFamilyIndex = 0;
+			barrier->dstQueueFamilyIndex = VK_QUEUE_FAMILY_EXTERNAL;
+		}
+		vkCmdPipelineBarrier(cmdbuf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0,
+				     nullptr, 0, nullptr, 2, imageBarriers);
+#endif
+
+		VK_CHECK(vkEndCommandBuffer(cmdbuf));
+		VK_CHECK(vkQueueSubmit(queue, 1, &copyImageSubmitInfo, textures.copyFence));
+
+		int64_t last_ts = convert_to_amf_ts(this, pts - 1);
+		int64_t cur_ts = convert_to_amf_ts(this, pts);
+
+		AMFSurface *amf_surf = output_tex.amfSurface;
+		amf_surf->SetPts(cur_ts);
+		amf_surf->SetProperty(L"PTS", pts);
+		active_textures.insert(std::make_pair(pts, output_tex));
+
+		/* ------------------------------------ */
+		/* do actual encode                     */
+
+		amf_encode_base(this, amf_surf, packet, received_packet);
+		return true;
+	}
+};
+
 #endif
 
 struct amf_fallback : amf_base, public AMFSurfaceObserver {
@@ -258,7 +1106,7 @@ struct amf_fallback : amf_base, public AMFSurfaceObserver {
 	std::vector<buf_t> available_buffers;
 	std::unordered_map<AMFSurface *, buf_t> active_buffers;
 
-#ifdef __USE_OPENCL
+#if __USE_OPENCL
 	AMFComputePtr amfCompute = nullptr;
 #endif
 
@@ -266,14 +1114,14 @@ struct amf_fallback : amf_base, public AMFSurfaceObserver {
 	~amf_fallback()
 	{
 		os_atomic_set_bool(&destroying, true);
-#ifdef __USE_OPENCL
+#if __USE_OPENCL
 		amfCompute = nullptr;
 #endif
 	}
 
 	void AMF_STD_CALL OnSurfaceDataRelease(amf::AMFSurface *surf) override
 	{
-#ifdef __USE_OPENCL
+#if __USE_OPENCL
 		if (amfCompute)
 			return;
 #endif
@@ -297,16 +1145,11 @@ struct amf_fallback : amf_base, public AMFSurfaceObserver {
 		if (res != AMF_OK)
 			throw amf_error("InitDX11 failed", res);
 #elif defined(__linux__)
-		AMFContext1 *context1 = NULL;
-		AMF_RESULT res = amf_context->QueryInterface(AMFContext1::IID(), (void **)&context1);
-		if (res != AMF_OK)
-			throw amf_error("CreateContext1 failed", res);
-		res = context1->InitVulkan(nullptr);
-		context1->Release();
+		AMF_RESULT res = amf_context1->InitVulkan(nullptr);
 		if (res != AMF_OK)
 			throw amf_error("InitVulkan failed", res);
 
-#ifdef __USE_OPENCL
+#if __USE_OPENCL
 		if (amf_context->InitOpenCL() == AMF_OK &&
 		    amf_context->GetCompute(amf::AMF_MEMORY_OPENCL, &amfCompute) == AMF_OK)
 			blog(LOG_INFO, "Initialized OpenCL");
@@ -616,27 +1459,16 @@ static void convert_to_encoder_packet(amf_base *enc, AMFDataPtr &data, encoder_p
 	enc->packet_data = AMFBufferPtr(data);
 	data->GetProperty(L"PTS", &packet->pts);
 
-	const wchar_t *get_output_type = NULL;
-	switch (enc->codec) {
-	case amf_codec_type::AVC:
-		get_output_type = AMF_VIDEO_ENCODER_OUTPUT_DATA_TYPE;
-		break;
-	case amf_codec_type::HEVC:
-		get_output_type = AMF_VIDEO_ENCODER_HEVC_OUTPUT_DATA_TYPE;
-		break;
-	case amf_codec_type::AV1:
-		get_output_type = AMF_VIDEO_ENCODER_AV1_OUTPUT_FRAME_TYPE;
-		break;
-	}
-
 	uint64_t type = 0;
-	AMF_RESULT res = data->GetProperty(get_output_type, &type);
+	AMF_RESULT res = data->GetProperty(enc->output_data_type_key, &type);
 	if (res != AMF_OK)
 		throw amf_error("Failed to GetProperty(): encoder output "
 				"data type",
 				res);
 
-	if (enc->codec == amf_codec_type::AVC || enc->codec == amf_codec_type::HEVC) {
+	switch (enc->codec) {
+	case amf_codec_type::AVC:
+	case amf_codec_type::HEVC:
 		switch (type) {
 		case AMF_VIDEO_ENCODER_OUTPUT_DATA_TYPE_IDR:
 			packet->priority = OBS_NAL_PRIORITY_HIGHEST;
@@ -644,14 +1476,12 @@ static void convert_to_encoder_packet(amf_base *enc, AMFDataPtr &data, encoder_p
 		case AMF_VIDEO_ENCODER_OUTPUT_DATA_TYPE_I:
 			packet->priority = OBS_NAL_PRIORITY_HIGH;
 			break;
-		case AMF_VIDEO_ENCODER_OUTPUT_DATA_TYPE_P:
+		default:
 			packet->priority = OBS_NAL_PRIORITY_LOW;
 			break;
-		case AMF_VIDEO_ENCODER_OUTPUT_DATA_TYPE_B:
-			packet->priority = OBS_NAL_PRIORITY_DISPOSABLE;
-			break;
 		}
-	} else if (enc->codec == amf_codec_type::AV1) {
+		break;
+	case amf_codec_type::AV1:
 		switch (type) {
 		case AMF_VIDEO_ENCODER_AV1_OUTPUT_FRAME_TYPE_KEY:
 			packet->priority = OBS_NAL_PRIORITY_HIGHEST;
@@ -659,16 +1489,15 @@ static void convert_to_encoder_packet(amf_base *enc, AMFDataPtr &data, encoder_p
 		case AMF_VIDEO_ENCODER_AV1_OUTPUT_FRAME_TYPE_INTRA_ONLY:
 			packet->priority = OBS_NAL_PRIORITY_HIGH;
 			break;
-		case AMF_VIDEO_ENCODER_AV1_OUTPUT_FRAME_TYPE_INTER:
-			packet->priority = OBS_NAL_PRIORITY_LOW;
-			break;
 		case AMF_VIDEO_ENCODER_AV1_OUTPUT_FRAME_TYPE_SWITCH:
-			packet->priority = OBS_NAL_PRIORITY_DISPOSABLE;
-			break;
 		case AMF_VIDEO_ENCODER_AV1_OUTPUT_FRAME_TYPE_SHOW_EXISTING:
 			packet->priority = OBS_NAL_PRIORITY_DISPOSABLE;
 			break;
+		default:
+			packet->priority = OBS_NAL_PRIORITY_LOW;
+			break;
 		}
+		break;
 	}
 
 	packet->data = (uint8_t *)enc->packet_data->GetNative();
@@ -676,6 +1505,10 @@ static void convert_to_encoder_packet(amf_base *enc, AMFDataPtr &data, encoder_p
 	packet->type = OBS_ENCODER_VIDEO;
 	packet->dts = convert_to_obs_ts(enc, data->GetPts());
 	packet->keyframe = type == AMF_VIDEO_ENCODER_OUTPUT_DATA_TYPE_IDR;
+
+#ifdef __linux__
+	enc->on_received_packet(packet->dts);
+#endif
 
 	if (enc->dts_offset && enc->codec != amf_codec_type::AV1)
 		packet->dts -= enc->dts_offset;
@@ -925,6 +1758,28 @@ try {
 }
 #endif
 
+static bool amf_encode_tex2(void *data, encoder_texture *texture, int64_t pts, uint64_t lock_key, uint64_t *next_key,
+			    encoder_packet *packet, bool *received_packet)
+try {
+	UNUSED_PARAMETER(lock_key);
+	UNUSED_PARAMETER(next_key);
+
+	amf_texencode *enc = (amf_texencode *)data;
+	return enc->encode(texture, pts, packet, received_packet);
+
+} catch (const char *err) {
+	amf_texencode *enc = (amf_texencode *)data;
+	error("%s: %s", __FUNCTION__, err);
+	*received_packet = false;
+	return false;
+
+} catch (const amf_error &err) {
+	amf_texencode *enc = (amf_texencode *)data;
+	error("%s: %s: %ls", __FUNCTION__, err.str, amf_trace->GetResultText(err.res));
+	*received_packet = false;
+	return false;
+}
+
 static buf_t alloc_buf(amf_fallback *enc)
 {
 	buf_t buf;
@@ -983,7 +1838,7 @@ try {
 	if (!enc->linesize)
 		enc->linesize = frame->linesize[0];
 
-#ifdef __USE_OPENCL
+#if __USE_OPENCL
 	if (enc->amfCompute) {
 		// Copy the frame to an OpenCL surface (instead of host memory),
 		// then convert it to Vulkan
@@ -1194,21 +2049,27 @@ try {
 	if (res != AMF_OK)
 		throw amf_error("CreateContext failed", res);
 
+#ifdef __linux__
+	enc->amf_context1 = AMFContext1Ptr(enc->amf_context);
+#endif
+
 	enc->init();
 
 	const wchar_t *codec = nullptr;
 	switch (enc->codec) {
+	default:
 	case (amf_codec_type::AVC):
 		codec = AMFVideoEncoderVCE_AVC;
+		enc->output_data_type_key = AMF_VIDEO_ENCODER_OUTPUT_DATA_TYPE;
 		break;
 	case (amf_codec_type::HEVC):
 		codec = AMFVideoEncoder_HEVC;
+		enc->output_data_type_key = AMF_VIDEO_ENCODER_HEVC_OUTPUT_DATA_TYPE;
 		break;
 	case (amf_codec_type::AV1):
 		codec = AMFVideoEncoder_AV1;
+		enc->output_data_type_key = AMF_VIDEO_ENCODER_AV1_OUTPUT_FRAME_TYPE;
 		break;
-	default:
-		codec = AMFVideoEncoder_HEVC;
 	}
 	res = amf_factory->CreateComponent(enc->amf_context, codec, &enc->amf_encoder);
 	if (res != AMF_OK)
@@ -1903,7 +2764,6 @@ static void amf_avc_create_internal(amf_base *enc, obs_data_t *settings)
 }
 
 static void *amf_avc_create_texencode(obs_data_t *settings, obs_encoder_t *encoder)
-#ifdef _WIN32
 try {
 	check_texture_encode_capability(encoder, amf_codec_type::AVC);
 
@@ -1911,8 +2771,10 @@ try {
 	enc->encoder = encoder;
 	enc->encoder_str = "texture-amf-h264";
 
+#ifdef _WIN32
 	if (!amf_init_d3d11(enc.get()))
 		throw "Failed to create D3D11";
+#endif
 
 	amf_avc_create_internal(enc.get(), settings);
 	return enc.release();
@@ -1925,12 +2787,6 @@ try {
 	blog(LOG_ERROR, "[texture-amf-h264] %s: %s", __FUNCTION__, err);
 	return obs_encoder_create_rerouted(encoder, "h264_fallback_amf");
 }
-#else
-{
-	UNUSED_PARAMETER(settings);
-	return obs_encoder_create_rerouted(encoder, "h264_fallback_amf");
-}
-#endif
 
 static void *amf_avc_create_fallback(obs_data_t *settings, obs_encoder_t *encoder)
 try {
@@ -1987,6 +2843,7 @@ static void register_avc()
 	amf_encoder_info.destroy = amf_destroy;
 	amf_encoder_info.update = amf_avc_update;
 	amf_encoder_info.encode_texture = amf_encode_tex;
+	amf_encoder_info.encode_texture2 = amf_encode_tex2;
 	amf_encoder_info.get_defaults = amf_defaults;
 	amf_encoder_info.get_properties = amf_avc_properties;
 	amf_encoder_info.get_extra_data = amf_extra_data;
@@ -1997,6 +2854,7 @@ static void register_avc()
 	amf_encoder_info.id = "h264_fallback_amf";
 	amf_encoder_info.caps = OBS_ENCODER_CAP_INTERNAL | OBS_ENCODER_CAP_DYN_BITRATE | OBS_ENCODER_CAP_ROI;
 	amf_encoder_info.encode_texture = nullptr;
+	amf_encoder_info.encode_texture2 = nullptr;
 	amf_encoder_info.create = amf_avc_create_fallback;
 	amf_encoder_info.encode = amf_encode_fallback;
 	amf_encoder_info.get_video_info = h264_video_info_fallback;
@@ -2292,7 +3150,6 @@ static void amf_hevc_create_internal(amf_base *enc, obs_data_t *settings)
 }
 
 static void *amf_hevc_create_texencode(obs_data_t *settings, obs_encoder_t *encoder)
-#ifdef _WIN32
 try {
 	check_texture_encode_capability(encoder, amf_codec_type::HEVC);
 
@@ -2300,8 +3157,10 @@ try {
 	enc->encoder = encoder;
 	enc->encoder_str = "texture-amf-h265";
 
+#ifdef _WIN32
 	if (!amf_init_d3d11(enc.get()))
 		throw "Failed to create D3D11";
+#endif
 
 	amf_hevc_create_internal(enc.get(), settings);
 	return enc.release();
@@ -2314,12 +3173,6 @@ try {
 	blog(LOG_ERROR, "[texture-amf-h265] %s: %s", __FUNCTION__, err);
 	return obs_encoder_create_rerouted(encoder, "h265_fallback_amf");
 }
-#else
-{
-	UNUSED_PARAMETER(settings);
-	return obs_encoder_create_rerouted(encoder, "h265_fallback_amf");
-}
-#endif
 
 static void *amf_hevc_create_fallback(obs_data_t *settings, obs_encoder_t *encoder)
 try {
@@ -2373,6 +3226,7 @@ static void register_hevc()
 	amf_encoder_info.destroy = amf_destroy;
 	amf_encoder_info.update = amf_hevc_update;
 	amf_encoder_info.encode_texture = amf_encode_tex;
+	amf_encoder_info.encode_texture2 = amf_encode_tex2;
 	amf_encoder_info.get_defaults = amf_defaults;
 	amf_encoder_info.get_properties = amf_hevc_properties;
 	amf_encoder_info.get_extra_data = amf_extra_data;
@@ -2383,6 +3237,7 @@ static void register_hevc()
 	amf_encoder_info.id = "h265_fallback_amf";
 	amf_encoder_info.caps = OBS_ENCODER_CAP_INTERNAL | OBS_ENCODER_CAP_DYN_BITRATE | OBS_ENCODER_CAP_ROI;
 	amf_encoder_info.encode_texture = nullptr;
+	amf_encoder_info.encode_texture2 = nullptr;
 	amf_encoder_info.create = amf_hevc_create_fallback;
 	amf_encoder_info.encode = amf_encode_fallback;
 	amf_encoder_info.get_video_info = h265_video_info_fallback;
@@ -2646,7 +3501,6 @@ static void amf_av1_create_internal(amf_base *enc, obs_data_t *settings)
 }
 
 static void *amf_av1_create_texencode(obs_data_t *settings, obs_encoder_t *encoder)
-#ifdef _WIN32
 try {
 	check_texture_encode_capability(encoder, amf_codec_type::AV1);
 
@@ -2654,8 +3508,10 @@ try {
 	enc->encoder = encoder;
 	enc->encoder_str = "texture-amf-av1";
 
+#ifdef _WIN32
 	if (!amf_init_d3d11(enc.get()))
 		throw "Failed to create D3D11";
+#endif
 
 	amf_av1_create_internal(enc.get(), settings);
 	return enc.release();
@@ -2668,12 +3524,6 @@ try {
 	blog(LOG_ERROR, "[texture-amf-av1] %s: %s", __FUNCTION__, err);
 	return obs_encoder_create_rerouted(encoder, "av1_fallback_amf");
 }
-#else
-{
-	UNUSED_PARAMETER(settings);
-	return obs_encoder_create_rerouted(encoder, "av1_fallback_amf");
-}
-#endif
 
 static void *amf_av1_create_fallback(obs_data_t *settings, obs_encoder_t *encoder)
 try {
@@ -2734,6 +3584,7 @@ static void register_av1()
 	amf_encoder_info.destroy = amf_destroy;
 	amf_encoder_info.update = amf_av1_update;
 	amf_encoder_info.encode_texture = amf_encode_tex;
+	amf_encoder_info.encode_texture2 = amf_encode_tex2;
 	amf_encoder_info.get_defaults = amf_av1_defaults;
 	amf_encoder_info.get_properties = amf_av1_properties;
 	amf_encoder_info.get_extra_data = amf_extra_data;
@@ -2744,6 +3595,7 @@ static void register_av1()
 	amf_encoder_info.id = "av1_fallback_amf";
 	amf_encoder_info.caps = OBS_ENCODER_CAP_INTERNAL | OBS_ENCODER_CAP_DYN_BITRATE | OBS_ENCODER_CAP_ROI;
 	amf_encoder_info.encode_texture = nullptr;
+	amf_encoder_info.encode_texture2 = nullptr;
 	amf_encoder_info.create = amf_av1_create_fallback;
 	amf_encoder_info.encode = amf_encode_fallback;
 	amf_encoder_info.get_video_info = av1_video_info_fallback;
