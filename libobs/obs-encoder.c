@@ -1120,6 +1120,16 @@ static void encoder_set_video(obs_encoder_t *encoder, video_t *video)
 	}
 
 	if (video) {
+		video_t *media = encoder->media;
+		if (media && video != media) {
+			// Update the parent reference for GPU-based rescaling
+			// This fixes the encoding frame counters
+			if (video == video_output_get_parent(media))
+				video_output_set_parent(media, NULL);
+			else
+				video_output_set_parent(video, media);
+		}
+
 		voi = video_output_get_info(video);
 		encoder->media = video;
 		encoder->timebase_num = voi->fps_den;

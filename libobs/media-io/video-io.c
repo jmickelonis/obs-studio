@@ -677,3 +677,13 @@ void video_output_free_frame_rate_divisor(video_t *video)
 	if (video && video->parent)
 		bfree(video);
 }
+
+video_t *video_output_get_parent(video_t *video)
+{
+	return video->parent;
+}
+
+void video_output_set_parent(video_t *video, video_t *parent)
+{
+	video->parent = parent;
+}
