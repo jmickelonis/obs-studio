@@ -10,6 +10,7 @@
 #include <AMF/components/VideoEncoderVCE.h>
 #include <AMF/components/VideoEncoderHEVC.h>
 using namespace amf;
+using namespace std;
 
 enum AMF_PROPERTY_TYPE {
 #define _ITEM(NAME) AMF_PROPERTY_TYPE_##NAME
@@ -62,7 +63,10 @@ enum AMF_PROPERTY_TYPE {
 #undef _ITEM
 };
 
-static const std::map<const wchar_t *, AMF_PROPERTY_TYPE> amf_avc_capability_types{
+typedef map<const wchar_t *, AMF_PROPERTY_TYPE> property_types_t;
+typedef map<const char *, property_types_t> category_property_types_t;
+
+static const property_types_t amf_avc_capability_types{
 #define _ITEM(NAME, TYPE) {AMF_VIDEO_ENCODER_CAP_##NAME, AMF_PROPERTY_TYPE_##TYPE}
 	_ITEM(MAX_BITRATE, INT),
 	_ITEM(NUM_OF_STREAMS, INT),
@@ -90,7 +94,7 @@ static const char *amf_avc_property_categories[] = {
 	"SVC",    "Feedback",         "Miscellaneous",
 };
 
-static const std::map<const char *, std::map<const wchar_t *, AMF_PROPERTY_TYPE>> amf_avc_property_types{
+static const category_property_types_t amf_avc_property_types{
 #define _ITEM(NAME, TYPE) {AMF_VIDEO_ENCODER_##NAME, AMF_PROPERTY_TYPE_##TYPE}
 	{"Static",
 	 {
@@ -175,19 +179,15 @@ static const std::map<const char *, std::map<const wchar_t *, AMF_PROPERTY_TYPE>
 	{"Miscellaneous",
 	 {
 		 // EXTRADATA
-		 _ITEM(SCANTYPE, AVC_SCANTYPE),
-		 _ITEM(QUALITY_PRESET, AVC_QUALITY_PRESET),
-		 _ITEM(FULL_RANGE_COLOR, BOOL),
-		 _ITEM(PICTURE_TRANSFER_MODE, AVC_PICTURE_TRANSFER_MODE),
-		 _ITEM(QUERY_TIMEOUT, INT),
-		 _ITEM(INPUT_QUEUE_SIZE, INT),
-		 _ITEM(OUTPUT_MODE, AVC_OUTPUT_MODE),
-		 _ITEM(MEMORY_TYPE, MEMORY_TYPE),
+		 _ITEM(SCANTYPE, AVC_SCANTYPE), _ITEM(QUALITY_PRESET, AVC_QUALITY_PRESET),
+		 _ITEM(FULL_RANGE_COLOR, BOOL), _ITEM(PICTURE_TRANSFER_MODE, AVC_PICTURE_TRANSFER_MODE),
+		 _ITEM(QUERY_TIMEOUT, INT), _ITEM(INPUT_QUEUE_SIZE, INT), _ITEM(OUTPUT_MODE, AVC_OUTPUT_MODE),
+		 // _ITEM(MEMORY_TYPE, MEMORY_TYPE),
 	 }},
 #undef _ITEM
 };
 
-static const std::map<const wchar_t *, AMF_PROPERTY_TYPE> amf_hevc_capability_types{
+static const property_types_t amf_hevc_capability_types{
 #define _ITEM(NAME, TYPE) {AMF_VIDEO_ENCODER_HEVC_CAP_##NAME, AMF_PROPERTY_TYPE_##TYPE}
 	_ITEM(MAX_BITRATE, INT),
 	_ITEM(NUM_OF_STREAMS, INT),
@@ -214,7 +214,7 @@ static const char *amf_hevc_property_categories[] = {
 	"Color Conversion", "SVC",          "Feedback",        "Miscellaneous",
 };
 
-static const std::map<const char *, std::map<const wchar_t *, AMF_PROPERTY_TYPE>> amf_hevc_property_types{
+static const category_property_types_t amf_hevc_property_types{
 #define _ITEM(NAME, TYPE) {AMF_VIDEO_ENCODER_HEVC_##NAME, AMF_PROPERTY_TYPE_##TYPE}
 	{"Static",
 	 {
@@ -300,7 +300,7 @@ static const std::map<const char *, std::map<const wchar_t *, AMF_PROPERTY_TYPE>
 		 _ITEM(QUERY_TIMEOUT, INT),
 		 _ITEM(INPUT_QUEUE_SIZE, INT),
 		 _ITEM(OUTPUT_MODE, HEVC_OUTPUT_MODE),
-		 _ITEM(MEMORY_TYPE, MEMORY_TYPE),
+// _ITEM(MEMORY_TYPE, MEMORY_TYPE),
 #if AMF_VERSION_MAJOR >= 1 && AMF_VERSION_MINOR >= 4 && AMF_VERSION_RELEASE >= 35
 		 _ITEM(MULTI_HW_INSTANCE_ENCODE, BOOL),
 #endif
@@ -308,7 +308,7 @@ static const std::map<const char *, std::map<const wchar_t *, AMF_PROPERTY_TYPE>
 #undef _ITEM
 };
 
-static const std::map<const wchar_t *, AMF_PROPERTY_TYPE> amf_pa_property_types{
+static const property_types_t amf_pa_property_types{
 #define _ITEM(NAME, TYPE) {AMF_PA_##NAME, AMF_PROPERTY_TYPE_##TYPE}
 	_ITEM(ENGINE_TYPE, MEMORY_TYPE),
 	_ITEM(ACTIVITY_TYPE, PA_ACTIVITY_TYPE),
@@ -328,29 +328,29 @@ static const std::map<const wchar_t *, AMF_PROPERTY_TYPE> amf_pa_property_types{
 #undef _ITEM
 };
 
-static void amf_property_value_string_enum(std::ostringstream &ss, const AMFPropertyStorage *storage,
-					   const wchar_t *name, const std::string prefix,
-					   const std::map<amf_int64, std::string> strings)
+static string amf_property_value_string_enum(const AMFPropertyStorage *storage, const wchar_t *name,
+					     const string prefix, const map<amf_int64, string> strings)
 {
 	amf_int64 value;
 	storage->GetProperty<amf_int64>(name, &value);
+	stringstream ss;
 	ss << value << " (" << prefix << "_";
 	try {
 		ss << strings.at(value);
-	} catch (const std::out_of_range) {
+	} catch (const out_of_range) {
 		ss << "???";
 	}
 	ss << ")";
+	return ss.str();
 }
 
-static void amf_property_value_string(std::ostringstream &ss, const AMFPropertyStorage *storage, const wchar_t *name,
-				      const AMF_PROPERTY_TYPE type)
+static string amf_property_value_string(const AMFPropertyStorage *storage, const wchar_t *name,
+					const AMF_PROPERTY_TYPE type)
 {
 	switch (type) {
 #define _ENUM(TYPE, PREFIX, ...)                                                         \
 	case AMF_PROPERTY_TYPE_##TYPE:                                                   \
-		amf_property_value_string_enum(ss, storage, name, #PREFIX, __VA_ARGS__); \
-		break;
+		return amf_property_value_string_enum(storage, name, #PREFIX, __VA_ARGS__);
 
 // General
 #define _ITEM(NAME) {AMF_ACCEL_##NAME, #NAME}
@@ -414,17 +414,8 @@ static void amf_property_value_string(std::ostringstream &ss, const AMFPropertyS
 #define _ITEM(NAME) {AMF_MEMORY_##NAME, #NAME}
 		_ENUM(MEMORY_TYPE, AMF_MEMORY,
 		      {
-			      _ITEM(UNKNOWN),
-			      _ITEM(HOST),
-			      _ITEM(DX9),
-			      _ITEM(DX11),
-			      _ITEM(OPENCL),
-			      _ITEM(OPENGL),
-			      _ITEM(XV),
-			      _ITEM(GRALLOC),
-			      _ITEM(COMPUTE_FOR_DX9),
-			      _ITEM(COMPUTE_FOR_DX11),
-			      _ITEM(VULKAN),
+			      _ITEM(UNKNOWN), _ITEM(HOST), _ITEM(DX9), _ITEM(DX11), _ITEM(OPENCL), _ITEM(OPENGL),
+			      _ITEM(XV), _ITEM(GRALLOC), _ITEM(COMPUTE_FOR_DX9), _ITEM(COMPUTE_FOR_DX11), _ITEM(VULKAN),
 			      _ITEM(DX12),
 			      // _ITEM(LAST),
 		      })
@@ -689,81 +680,120 @@ static void amf_property_value_string(std::ostringstream &ss, const AMFPropertyS
 	case AMF_PROPERTY_TYPE_RATE: {
 		AMFRate value;
 		storage->GetProperty<AMFRate>(name, &value);
+		stringstream ss;
 		ss << "{" << value.num << ", " << value.den << "}";
-	} break;
+		return ss.str();
+	}
 	case AMF_PROPERTY_TYPE_RATIO: {
 		AMFRatio value;
 		storage->GetProperty<AMFRatio>(name, &value);
+		stringstream ss;
 		ss << "{" << value.num << ", " << value.den << "}";
-	} break;
+		return ss.str();
+	}
 	case AMF_PROPERTY_TYPE_SIZE: {
 		AMFSize value;
 		storage->GetProperty<AMFSize>(name, &value);
+		stringstream ss;
 		ss << "{" << value.width << ", " << value.height << "}";
-	} break;
+		return ss.str();
+	}
 
 	// Primitives
-	case AMF_PROPERTY_TYPE_INT: {
+	case AMF_PROPERTY_TYPE_INT:
+	default: {
 		amf_int64 value;
 		storage->GetProperty<amf_int64>(name, &value);
-		ss << value;
-	} break;
+		return to_string(value);
+	}
 	case AMF_PROPERTY_TYPE_UINT: {
 		amf_uint64 value;
 		storage->GetProperty<amf_uint64>(name, &value);
-		ss << value;
-	} break;
-	case AMF_PROPERTY_TYPE_BOOL:
-	default: {
+		return to_string(value);
+	}
+	case AMF_PROPERTY_TYPE_BOOL: {
 		bool value;
 		storage->GetProperty<bool>(name, &value);
-		ss << (value ? "true" : "false");
-	} break;
+		return value ? "true" : "false";
+	}
 	}
 }
 
-static std::string amf_property_string(const AMFPropertyStorage *storage, const wchar_t *name,
-				       const AMF_PROPERTY_TYPE type)
+static string amf_property_string(const AMFPropertyStorage *storage, const wchar_t *name, const AMF_PROPERTY_TYPE type)
 {
-	std::ostringstream ss;
+	stringstream ss;
 	for (int i = 0; i < wcslen(name); i++)
 		ss << (char)name[i];
 	ss << ": ";
-	amf_property_value_string(ss, storage, name, type);
+	ss << amf_property_value_string(storage, name, type);
 	return ss.str();
 }
 
-static std::list<std::string> amf_property_strings(const AMFPropertyStorage *storage,
-						   const std::map<const wchar_t *, AMF_PROPERTY_TYPE> properties)
+static list<string> amf_property_strings(const AMFPropertyStorage *storage, const property_types_t properties)
 {
-	std::list<std::string> strings;
+	list<string> strings;
 	for (auto const &[name, type] : properties)
 		strings.push_back(amf_property_string(storage, name, type));
 	strings.sort();
 	return strings;
 }
 
-static void amf_print_properties(std::ostringstream &ss, const AMFPropertyStorage *storage,
-				 const std::map<const wchar_t *, AMF_PROPERTY_TYPE> properties, unsigned int indent = 1)
+static void amf_print_properties(stringstream &ss, const AMFPropertyStorage *storage, const property_types_t properties,
+				 unsigned int indent = 1)
 {
-	std::list<std::string> strings = amf_property_strings(storage, properties);
-	for (std::string s : strings) {
+	list<string> strings = amf_property_strings(storage, properties);
+	for (string s : strings) {
 		if (ss.tellp())
-			ss << std::endl;
+			ss << endl;
 		for (unsigned int i = 0; i < indent; i++)
 			ss << "\t";
 		ss << s;
 	}
 }
 
-static void amf_print_property_category(std::ostringstream &ss, const AMFPropertyStorage *storage, const char *category,
-					const std::map<const wchar_t *, AMF_PROPERTY_TYPE> properties,
-					unsigned int indent = 1)
+static void amf_print_property_category(stringstream &ss, const AMFPropertyStorage *storage, const char *category,
+					const property_types_t properties, unsigned int indent = 1)
 {
 	if (ss.tellp())
-		ss << std::endl;
+		ss << endl;
 	for (unsigned int i = 0; i < indent; i++)
 		ss << "\t";
 	ss << category << ":";
 	amf_print_properties(ss, storage, properties, indent + 1);
+}
+
+typedef map<const wchar_t *, string> property_values_t;
+
+static property_values_t amf_property_values(const AMFPropertyStorage *storage,
+					     const category_property_types_t properties)
+{
+	property_values_t map;
+	for (auto const &[category, types] : properties) {
+		for (auto const &[name, type] : types) {
+			string value = amf_property_value_string(storage, name, type);
+			map.insert(make_pair(name, value));
+		}
+	}
+	return map;
+}
+
+static void amf_print_changed_property_values(stringstream &ss, const AMFPropertyStorage *storage,
+					      const category_property_types_t properties, property_values_t old_values,
+					      unsigned int indent = 1)
+{
+	for (auto const &[category, types] : properties) {
+		for (auto const &[name, type] : types) {
+			string value = amf_property_value_string(storage, name, type);
+			if (value == old_values.at(name))
+				continue;
+			if (ss.tellp())
+				ss << endl;
+			for (unsigned int i = 0; i < indent; i++)
+				ss << "\t";
+			for (int i = 0; i < wcslen(name); i++)
+				ss << (char)name[i];
+			ss << ": ";
+			ss << value;
+		}
+	}
 }
