@@ -2610,7 +2610,7 @@ try {
 
 #ifndef OBS_AMF_DISABLE_PROPERTIES
 	std::stringstream ss;
-	amf_print_changed_property_values(ss, encoder, amf_hevc_property_types, old_values);
+	amf_print_changed_property_values(ss, encoder, amf_avc_property_types, old_values);
 	if (ss.tellp())
 		info("updated properties:\n%s", ss.str().c_str());
 #endif
