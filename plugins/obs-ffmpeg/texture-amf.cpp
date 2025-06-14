@@ -2779,7 +2779,6 @@ static void amf_avc_create_internal(amf_base *enc, obs_data_t *settings)
 	set_avc_property(enc, FRAMESIZE, AMFConstructSize(enc->cx, enc->cy));
 	set_avc_property(enc, USAGE, AMF_VIDEO_ENCODER_USAGE_TRANSCODING);
 	set_avc_property(enc, CABAC_ENABLE, AMF_VIDEO_ENCODER_UNDEFINED);
-	set_avc_property(enc, RATE_CONTROL_SKIP_FRAME_ENABLE, true);
 	set_avc_property(enc, OUTPUT_COLOR_PROFILE, enc->amf_color_profile);
 	set_avc_property(enc, OUTPUT_TRANSFER_CHARACTERISTIC, enc->amf_characteristic);
 	set_avc_property(enc, OUTPUT_COLOR_PRIMARIES, enc->amf_primaries);
@@ -3135,7 +3134,6 @@ static void amf_hevc_create_internal(amf_base *enc, obs_data_t *settings)
 	set_hevc_property(enc, COLOR_BIT_DEPTH, is10bit ? AMF_COLOR_BIT_DEPTH_10 : AMF_COLOR_BIT_DEPTH_8);
 	set_hevc_property(enc, PROFILE,
 			  is10bit ? AMF_VIDEO_ENCODER_HEVC_PROFILE_MAIN_10 : AMF_VIDEO_ENCODER_HEVC_PROFILE_MAIN);
-	set_hevc_property(enc, RATE_CONTROL_SKIP_FRAME_ENABLE, true);
 	set_hevc_property(enc, OUTPUT_COLOR_PROFILE, enc->amf_color_profile);
 	set_hevc_property(enc, OUTPUT_TRANSFER_CHARACTERISTIC, enc->amf_characteristic);
 	set_hevc_property(enc, OUTPUT_COLOR_PRIMARIES, enc->amf_primaries);
@@ -3515,7 +3513,6 @@ static void amf_av1_create_internal(amf_base *enc, obs_data_t *settings)
 	set_av1_property(enc, USAGE, AMF_VIDEO_ENCODER_USAGE_TRANSCODING);
 	set_av1_property(enc, ALIGNMENT_MODE, AMF_VIDEO_ENCODER_AV1_ALIGNMENT_MODE_NO_RESTRICTIONS);
 	set_av1_property(enc, COLOR_BIT_DEPTH, is10bit ? AMF_COLOR_BIT_DEPTH_10 : AMF_COLOR_BIT_DEPTH_8);
-	set_av1_property(enc, RATE_CONTROL_SKIP_FRAME, true);
 	set_av1_property(enc, OUTPUT_COLOR_PROFILE, enc->amf_color_profile);
 	set_av1_property(enc, OUTPUT_TRANSFER_CHARACTERISTIC, enc->amf_characteristic);
 	set_av1_property(enc, OUTPUT_COLOR_PRIMARIES, enc->amf_primaries);
