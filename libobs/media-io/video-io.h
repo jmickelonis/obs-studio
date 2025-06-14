@@ -333,8 +333,8 @@ extern void video_output_inc_texture_skipped_frames(video_t *video);
 extern video_t *video_output_create_with_frame_rate_divisor(video_t *video, uint32_t divisor);
 extern void video_output_free_frame_rate_divisor(video_t *video);
 
-extern video_t *video_output_get_parent(video_t *video);
-extern void video_output_set_parent(video_t *video, video_t *parent);
+extern video_t *video_get_counter(video_t *video);
+extern void video_set_counter(video_t *video, video_t *parent);
 
 #ifdef __cplusplus
 }

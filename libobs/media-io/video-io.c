@@ -89,11 +89,19 @@ struct video_output {
 
 	struct video_output *parent;
 
+	// Workaround to fix encoding frame counters
+	struct video_output *counter;
+
 	volatile bool raw_active;
 	volatile long gpu_refs;
 };
 
 /* ------------------------------------------------------------------------- */
+
+static inline video_t *get_counter(video_t *video)
+{
+	return video->counter ? video->counter : video;
+}
 
 static inline bool scale_video_output(struct video_input *input, struct video_data *data)
 {
@@ -177,7 +185,7 @@ static inline bool video_output_cur_frame(struct video_output *video)
 			video->last_added = video->first_added;
 	} else if (skipped) {
 		--frame_info->skipped;
-		os_atomic_inc_long(&video->skipped_frames);
+		os_atomic_inc_long(&get_counter(video)->skipped_frames);
 	}
 
 	pthread_mutex_unlock(&video->data_mutex);
@@ -199,13 +207,14 @@ static void *video_thread(void *param)
 	while (os_sem_wait(video->update_semaphore) == 0) {
 		if (video->stop)
 			break;
+		video_t *counter = get_counter(video);
 
 		profile_start(video_thread_name);
 		while (!video->stop && !video_output_cur_frame(video)) {
-			os_atomic_inc_long(&video->total_frames);
+			os_atomic_inc_long(&counter->total_frames);
 		}
 
-		os_atomic_inc_long(&video->total_frames);
+		os_atomic_inc_long(&counter->total_frames);
 		profile_end(video_thread_name);
 
 		profile_reenable_thread();
@@ -371,6 +380,7 @@ static inline bool video_input_init(struct video_input *input, struct video_outp
 
 static inline void reset_frames(video_t *video)
 {
+	video = get_counter(video);
 	os_atomic_set_long(&video->skipped_frames, 0);
 	os_atomic_set_long(&video->total_frames, 0);
 }
@@ -450,6 +460,7 @@ bool video_output_connect2(video_t *video, const struct video_scale_info *conver
 
 static void log_skipped(video_t *video)
 {
+	video = get_counter(video);
 	long skipped = os_atomic_load_long(&video->skipped_frames);
 	double percentage_skipped = (double)skipped / (double)os_atomic_load_long(&video->total_frames) * 100.0;
 
@@ -615,12 +626,12 @@ double video_output_get_frame_rate(const video_t *video)
 
 uint32_t video_output_get_skipped_frames(const video_t *video)
 {
-	return (uint32_t)os_atomic_load_long(&get_const_root(video)->skipped_frames);
+	return (uint32_t)os_atomic_load_long(&get_counter(get_const_root(video))->skipped_frames);
 }
 
 uint32_t video_output_get_total_frames(const video_t *video)
 {
-	return (uint32_t)os_atomic_load_long(&get_const_root(video)->total_frames);
+	return (uint32_t)os_atomic_load_long(&get_counter(get_const_root(video))->total_frames);
 }
 
 /* Note: These four functions below are a very slight bit of a hack.  If the
@@ -649,12 +660,12 @@ void video_output_dec_texture_encoders(video_t *video)
 
 void video_output_inc_texture_frames(video_t *video)
 {
-	os_atomic_inc_long(&get_root(video)->total_frames);
+	os_atomic_inc_long(&get_counter(get_root(video))->total_frames);
 }
 
 void video_output_inc_texture_skipped_frames(video_t *video)
 {
-	os_atomic_inc_long(&get_root(video)->skipped_frames);
+	os_atomic_inc_long(&get_counter(get_root(video))->skipped_frames);
 }
 
 video_t *video_output_create_with_frame_rate_divisor(video_t *video, uint32_t divisor)
@@ -678,12 +689,12 @@ void video_output_free_frame_rate_divisor(video_t *video)
 		bfree(video);
 }
 
-video_t *video_output_get_parent(video_t *video)
+video_t *video_get_counter(video_t *video)
 {
-	return video->parent;
+	return video->counter;
 }
 
-void video_output_set_parent(video_t *video, video_t *parent)
+void video_set_counter(video_t *video, video_t *parent)
 {
-	video->parent = parent;
+	video->counter = parent;
 }

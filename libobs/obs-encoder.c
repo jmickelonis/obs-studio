@@ -1122,12 +1122,12 @@ static void encoder_set_video(obs_encoder_t *encoder, video_t *video)
 	if (video) {
 		video_t *media = encoder->media;
 		if (media && video != media) {
-			// Update the parent reference for GPU-based rescaling
-			// This fixes the encoding frame counters
-			if (video == video_output_get_parent(media))
-				video_output_set_parent(media, NULL);
+			// Workaround to fix encoding frame counters
+			// (see libobs/media-io/video-io.c)
+			if (video == video_get_counter(media))
+				video_set_counter(media, NULL);
 			else
-				video_output_set_parent(video, media);
+				video_set_counter(video, media);
 		}
 
 		voi = video_output_get_info(video);
