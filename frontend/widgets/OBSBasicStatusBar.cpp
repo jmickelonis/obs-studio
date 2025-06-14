@@ -5,8 +5,8 @@
 
 #include "moc_OBSBasicStatusBar.cpp"
 
-static constexpr int bitrateUpdateSeconds = 2;
-static constexpr int congestionUpdateSeconds = 4;
+static constexpr int bitrateUpdateSeconds = 1;
+static constexpr int congestionUpdateSeconds = 2;
 static constexpr float excellentThreshold = 0.0f;
 static constexpr float goodThreshold = 0.3333f;
 static constexpr float mediocreThreshold = 0.6667f;
