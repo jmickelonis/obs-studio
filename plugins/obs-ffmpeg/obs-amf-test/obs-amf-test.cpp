@@ -22,21 +22,21 @@ extern "C" __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 
 #define AMD_VENDOR_ID 0x1002
 
-struct adapter_caps {
+struct AdapterCapabilities {
 	bool is_amd = false;
-	bool supports_avc = false;
-	bool supports_hevc = false;
-	bool supports_av1 = false;
+	bool avc = false;
+	bool hevc = false;
+	bool av1 = false;
 };
 
-static AMFFactory *amf_factory = nullptr;
+static AMFFactory *amfFactory = nullptr;
 static std::vector<uint64_t> luid_order;
-static std::map<uint32_t, adapter_caps> adapter_info;
+static std::map<uint32_t, AdapterCapabilities> adapter_info;
 
 static bool has_encoder(AMFContextPtr &amf_context, const wchar_t *encoder_name)
 {
 	AMFComponentPtr encoder;
-	AMF_RESULT res = amf_factory->CreateComponent(amf_context, encoder_name, &encoder);
+	AMF_RESULT res = amfFactory->CreateComponent(amf_context, encoder_name, &encoder);
 	return res == AMF_OK;
 }
 
@@ -80,7 +80,7 @@ static bool get_adapter_caps(IDXGIFactory *factory, uint32_t adapter_idx)
 		return true;
 
 	AMFContextPtr amf_context;
-	res = amf_factory->CreateContext(&amf_context);
+	res = amfFactory->CreateContext(&amf_context);
 	if (res != AMF_OK)
 		return true;
 
@@ -133,7 +133,7 @@ try {
 	if (!init)
 		throw "Failed to get init func";
 
-	res = init(AMF_FULL_VERSION, &amf_factory);
+	res = init(AMF_FULL_VERSION, &amfFactory);
 	if (res != AMF_OK)
 		throw "AMFInit failed";
 

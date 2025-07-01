@@ -1293,8 +1293,8 @@ static obs_properties_t *vaapi_properties_internal(enum codec_type codec)
 	obs_properties_add_int(props, "bf", obs_module_text("BFrames"), 0, 4, 1);
 
 	obs_properties_add_int(props, "async_depth", "Async Depth", 1, 64, 1);
-	obs_properties_add_bool(props, "pre_encode", "Pre-Encode Filter");
-	obs_properties_add_bool(props, "vbaq", "VBAQ (Variance-Based Adaptive Quantization)");
+	obs_properties_add_bool(props, "pre_encode", "Rate Control Pre-Analysis");
+	obs_properties_add_bool(props, "vbaq", "Variance-Based Adaptive Quantization (VBAQ)");
 
 	obs_properties_add_text(props, "ffmpeg_opts", obs_module_text("FFmpegOpts"), OBS_TEXT_MULTILINE);
 

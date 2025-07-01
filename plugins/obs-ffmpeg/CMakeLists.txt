@@ -26,8 +26,6 @@ target_sources(
     $<$<PLATFORM_ID:Linux,FreeBSD,OpenBSD>:obs-ffmpeg-vaapi.c>
     $<$<PLATFORM_ID:Linux,FreeBSD,OpenBSD>:vaapi-utils.c>
     $<$<PLATFORM_ID:Linux,FreeBSD,OpenBSD>:vaapi-utils.h>
-    $<$<PLATFORM_ID:Linux>:texture-amf-opts.hpp>
-    $<$<PLATFORM_ID:Linux>:texture-amf.cpp>
     obs-ffmpeg-audio-encoders.c
     obs-ffmpeg-av1.c
     obs-ffmpeg-compat.h
@@ -76,12 +74,11 @@ target_link_libraries(
     $<$<BOOL:${ENABLE_NEW_MPEGTS_OUTPUT}>:Libsrt::Libsrt>
 )
 
-if(OS_WINDOWS)
-  if(CMAKE_VS_PLATFORM_NAME STREQUAL x64)
-    target_sources(obs-ffmpeg PRIVATE texture-amf-opts.hpp texture-amf.cpp)
-    target_link_libraries(obs-ffmpeg PRIVATE AMF::AMF)
-  endif()
+if(OS_WINDOWS AND CMAKE_VS_PLATFORM_NAME STREQUAL x64 OR OS_LINUX)
+  add_subdirectory(amf)
+endif()
 
+if(OS_WINDOWS)
   configure_file(cmake/windows/obs-module.rc.in obs-ffmpeg.rc)
   target_sources(obs-ffmpeg PRIVATE obs-ffmpeg.rc)
 endif()
