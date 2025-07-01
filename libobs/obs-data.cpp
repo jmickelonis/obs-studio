@@ -6,7 +6,7 @@
 using namespace std;
 
 static regex spaces("\\s+");
-static regex strip("^\\s+(.*)\\s+$");
+static regex strip("^\\s*(.*)\\s*$");
 
 extern "C" void obs_data_condense_whitespace(const char *in, char *out);
 
