@@ -39,16 +39,16 @@ GLFunctions::GLFunctions()
 
 static VkInstance createInstance()
 {
-	static VkApplicationInfo applicationInfo = {
+	static VkApplicationInfo applicationInfo{
 		.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
 		.pApplicationName = "OBS",
 		.apiVersion = VK_API_VERSION_1_2,
 	};
-	static vector<const char *> extensions = {
+	static vector<const char *> extensions{
 		VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
 		VK_KHR_SURFACE_EXTENSION_NAME,
 	};
-	static VkInstanceCreateInfo instanceCreateInfo = {
+	static VkInstanceCreateInfo instanceCreateInfo{
 		.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
 		.pApplicationInfo = &applicationInfo,
 		.enabledExtensionCount = (uint32_t)extensions.size(),
@@ -67,10 +67,10 @@ static VkPhysicalDevice getDevice(VkInstance instance)
 	vector<VkPhysicalDevice> devices(count);
 	VK_CHECK(vkEnumeratePhysicalDevices(instance, &count, devices.data()));
 
-	VkPhysicalDeviceDriverProperties driverProps = {
+	VkPhysicalDeviceDriverProperties driverProps{
 		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES,
 	};
-	VkPhysicalDeviceProperties2 props = {
+	VkPhysicalDeviceProperties2 props{
 		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
 		.pNext = &driverProps,
 	};
@@ -89,7 +89,7 @@ static VkPhysicalDevice getDevice(VkInstance instance)
 static vector<const char *> getExtensions(AMFContext1Ptr amfContext, VkPhysicalDevice device)
 {
 	// Start with what we want
-	vector<const char *> want = {
+	vector<const char *> want{
 		VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME,
 		VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME,
 		VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME,
@@ -165,7 +165,7 @@ TextureEncoder::TextureEncoder(CodecType codec, obs_encoder_t *encoder, VideoInf
 			.pQueuePriorities = &queuePriority,
 		};
 
-		VkDeviceCreateInfo deviceInfo = {
+		VkDeviceCreateInfo deviceInfo{
 			.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
 			.queueCreateInfoCount = 1,
 			.pQueueCreateInfos = &queueCreateInfo,
@@ -298,7 +298,7 @@ void TextureEncoder::createTextures(encoder_texture *from)
 	glTexturesPtr = unique_ptr<GLuint[]>(glTextures);
 
 	vkGetDeviceQueue(vkDevice, 0, 0, &vkQueue);
-	VkCommandPoolCreateInfo poolInfo = {
+	VkCommandPoolCreateInfo poolInfo{
 		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 		.queueFamilyIndex = 0,
 		.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
@@ -341,11 +341,11 @@ void TextureEncoder::createTextures(encoder_texture *from)
 			throw "Unsupported color format";
 		}
 
-		VkExternalMemoryImageCreateInfo externalImageInfo = {
+		VkExternalMemoryImageCreateInfo externalImageInfo{
 			.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO,
 			.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT,
 		};
-		VkImageCreateInfo imageInfo = {
+		VkImageCreateInfo imageInfo{
 			.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
 			.pNext = &externalImageInfo,
 			.imageType = VK_IMAGE_TYPE_2D,
@@ -367,16 +367,16 @@ void TextureEncoder::createTextures(encoder_texture *from)
 		VkMemoryRequirements memoryRequirements;
 		vkGetImageMemoryRequirements(vkDevice, plane.vkImage, &memoryRequirements);
 
-		VkExportMemoryAllocateInfo exportMemoryAllocateInfo = {
+		VkExportMemoryAllocateInfo exportMemoryAllocateInfo{
 			.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO,
 			.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT,
 		};
-		VkMemoryDedicatedAllocateInfo dedicatedAllocateInfo = {
+		VkMemoryDedicatedAllocateInfo dedicatedAllocateInfo{
 			.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO,
 			.image = plane.vkImage,
 			.pNext = &exportMemoryAllocateInfo,
 		};
-		VkMemoryAllocateInfo memoryAllocInfo = {
+		VkMemoryAllocateInfo memoryAllocInfo{
 			.pNext = &dedicatedAllocateInfo,
 			.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
 			.allocationSize = memoryRequirements.size,
@@ -386,7 +386,7 @@ void TextureEncoder::createTextures(encoder_texture *from)
 		VK_CHECK(vkAllocateMemory(vkDevice, &memoryAllocInfo, nullptr, &plane.vkMemory));
 		VK_CHECK(vkBindImageMemory(vkDevice, plane.vkImage, plane.vkMemory, 0));
 
-		VkImageMemoryBarrier memoryBarrier = {
+		VkImageMemoryBarrier memoryBarrier{
 			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
 			.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 			.image = plane.vkImage,
@@ -406,7 +406,7 @@ void TextureEncoder::createTextures(encoder_texture *from)
 				     0, 0, nullptr, 0, nullptr, 1, &memoryBarrier);
 
 		// Import memory
-		VkMemoryGetFdInfoKHR memFdInfo = {
+		VkMemoryGetFdInfoKHR memFdInfo{
 			.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR,
 			.memory = plane.vkMemory,
 			.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT,
@@ -445,11 +445,11 @@ void TextureEncoder::createTextures(encoder_texture *from)
 		glDstLayouts[i] = GL_LAYOUT_TRANSFER_SRC_EXT;
 	}
 
-	VkExportSemaphoreCreateInfo exportSemaphoreInfo = {
+	VkExportSemaphoreCreateInfo exportSemaphoreInfo{
 		.sType = VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO,
 		.handleTypes = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT,
 	};
-	VkSemaphoreCreateInfo semaphoreInfo = {
+	VkSemaphoreCreateInfo semaphoreInfo{
 		.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
 		.pNext = &exportSemaphoreInfo,
 	};
@@ -457,11 +457,11 @@ void TextureEncoder::createTextures(encoder_texture *from)
 
 	endCommandBuffer();
 
-	VkFenceCreateInfo fenceInfo = {
+	VkFenceCreateInfo fenceInfo{
 		.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
 	};
 	VK_CHECK(vkCreateFence(vkDevice, &fenceInfo, nullptr, &vkFence));
-	VkSubmitInfo submitInfo = {
+	VkSubmitInfo submitInfo{
 		.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
 		.commandBufferCount = 1,
 		.pCommandBuffers = &vkCommandBuffer,
@@ -470,7 +470,7 @@ void TextureEncoder::createTextures(encoder_texture *from)
 	VK_CHECK(vkWaitForFences(vkDevice, 1, &vkFence, VK_TRUE, UINT64_MAX));
 
 	// Import semaphores
-	VkSemaphoreGetFdInfoKHR semFdInfo = {
+	VkSemaphoreGetFdInfoKHR semFdInfo{
 		.sType = VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR,
 		.semaphore = vkSemaphore,
 		.handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT,
@@ -528,7 +528,7 @@ BufferPtr TextureEncoder::getBuffer()
 	VkCommandBuffer copyCommandBuffer = nullptr;
 
 	try {
-		VkImageCreateInfo imageInfo = {
+		VkImageCreateInfo imageInfo{
 			.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
 			.imageType = VK_IMAGE_TYPE_2D,
 			.format = vkFormat,
@@ -549,7 +549,7 @@ BufferPtr TextureEncoder::getBuffer()
 
 		VkMemoryRequirements memoryRequirements;
 		vkGetImageMemoryRequirements(vkDevice, vkImage, &memoryRequirements);
-		VkMemoryAllocateInfo memoryAllocateInfo = {
+		VkMemoryAllocateInfo memoryAllocateInfo{
 			.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
 			.allocationSize = memoryRequirements.size,
 			.memoryTypeIndex = getMemoryTypeIndex(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
@@ -559,7 +559,7 @@ BufferPtr TextureEncoder::getBuffer()
 		VK_CHECK(vkBindImageMemory(vkDevice, vkImage, vkMemory, 0));
 
 		beginCommandBuffer();
-		VkImageMemoryBarrier memoryBarrier = {
+		VkImageMemoryBarrier memoryBarrier{
 			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
 			.newLayout = VK_IMAGE_LAYOUT_GENERAL,
 			.image = vkImage,
@@ -601,7 +601,7 @@ BufferPtr TextureEncoder::getBuffer()
 				     VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, planeCount,
 				     memoryBarriers);
 
-		VkImageCopy imageCopy = {
+		VkImageCopy imageCopy{
 			.srcSubresource =
 				{
 					.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -685,7 +685,7 @@ void TextureEncoder::allocateCommandBuffer(VkCommandBuffer *buffer)
 {
 	if (!buffer)
 		buffer = &vkCommandBuffer;
-	VkCommandBufferAllocateInfo info = {
+	VkCommandBufferAllocateInfo info{
 		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
 		.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
 		.commandPool = vkCommandPool,
@@ -698,7 +698,7 @@ void TextureEncoder::beginCommandBuffer(VkCommandBuffer *buffer)
 {
 	if (!buffer)
 		buffer = &vkCommandBuffer;
-	static VkCommandBufferBeginInfo info = {
+	static VkCommandBufferBeginInfo info{
 		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
 	};
 	VK_CHECK(vkBeginCommandBuffer(*buffer, &info));
@@ -716,7 +716,7 @@ void TextureEncoder::submitCommandBuffer(VkCommandBuffer *buffer)
 	if (!buffer)
 		buffer = &vkCommandBuffer;
 	endCommandBuffer(buffer);
-	VkSubmitInfo info = {
+	VkSubmitInfo info{
 		.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
 		.commandBufferCount = 1,
 		.pCommandBuffers = buffer,
