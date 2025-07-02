@@ -117,21 +117,14 @@ static vector<const char *> getExtensions(AMFContext1Ptr amfContext, VkPhysicalD
 	return result;
 }
 
-static uint32_t getQueueFamilyIndex(VkPhysicalDevice device)
+static vector<VkQueueFamilyProperties2> getQueueFamilies(VkPhysicalDevice device)
 {
 	uint32_t count = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties2(device, &count, nullptr);
 
-	vector<VkQueueFamilyProperties2> items(count);
-	vkGetPhysicalDeviceQueueFamilyProperties2(device, &count, items.data());
-
-	for (uint32_t i = 0; i < count; i++) {
-		VkQueueFamilyProperties &props = items.at(i).queueFamilyProperties;
-		if (props.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-			return i;
-	}
-
-	throw "Could not find queue family that supports graphics";
+	vector<VkQueueFamilyProperties2> result(count);
+	vkGetPhysicalDeviceQueueFamilyProperties2(device, &count, result.data());
+	return result;
 }
 
 TextureEncoder::TextureEncoder(CodecType codec, obs_encoder_t *encoder, VideoInfo &videoInfo, string name)
@@ -157,22 +150,47 @@ TextureEncoder::TextureEncoder(CodecType codec, obs_encoder_t *encoder, VideoInf
 
 		vector<const char *> extensions = getExtensions(amfContext1, vkPhysicalDevice);
 
-		float queuePriority = 1.0;
-		VkDeviceQueueCreateInfo queueCreateInfo{
-			.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-			.queueFamilyIndex = getQueueFamilyIndex(vkPhysicalDevice),
-			.queueCount = 1,
-			.pQueuePriorities = &queuePriority,
-		};
+		vector<VkQueueFamilyProperties2> queueFamilies = getQueueFamilies(vkPhysicalDevice);
+		unsigned int queueFamilyCount = queueFamilies.size();
+
+		static const int REQUIRED_QUEUE_FLAGS = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT |
+							VK_QUEUE_VIDEO_DECODE_BIT_KHR;
+		vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+		uint32_t graphicsQueueFamilyIndex = -1;
+
+		for (unsigned int i = 0; i < queueFamilyCount; i++) {
+			VkQueueFamilyProperties &props = queueFamilies.at(i).queueFamilyProperties;
+			VkQueueFlags &queueFlags = props.queueFlags;
+
+			if (!(queueFlags & REQUIRED_QUEUE_FLAGS))
+				// Don't create queues not needed by us or AMF (like compute, encode, etc)
+				continue;
+
+			if (graphicsQueueFamilyIndex == -1 && (queueFlags & VK_QUEUE_GRAPHICS_BIT))
+				graphicsQueueFamilyIndex = i;
+
+			static const float PRIORITY = 1.0;
+			VkDeviceQueueCreateInfo info = {
+				.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+				.queueFamilyIndex = i,
+				.queueCount = 1,
+				.pQueuePriorities = &PRIORITY,
+			};
+			queueCreateInfos.push_back(info);
+		}
+
+		if (graphicsQueueFamilyIndex == -1)
+			throw "Could not find graphics queue family index";
 
 		VkDeviceCreateInfo deviceInfo{
 			.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-			.queueCreateInfoCount = 1,
-			.pQueueCreateInfos = &queueCreateInfo,
+			.queueCreateInfoCount = (uint32_t)queueCreateInfos.size(),
+			.pQueueCreateInfos = queueCreateInfos.data(),
 			.enabledExtensionCount = (uint32_t)extensions.size(),
 			.ppEnabledExtensionNames = extensions.data(),
 		};
 		VK_CHECK(vkCreateDevice(vkPhysicalDevice, &deviceInfo, nullptr, &vkDevice));
+		vkGetDeviceQueue(vkDevice, graphicsQueueFamilyIndex, 0, &vkQueue);
 
 		amfVulkanDevice = {
 			.cbSizeof = sizeof(AMFVulkanDevice),
@@ -297,7 +315,6 @@ void TextureEncoder::createTextures(encoder_texture *from)
 	GLuint *glTextures = new GLuint[planeCount];
 	glTexturesPtr = unique_ptr<GLuint[]>(glTextures);
 
-	vkGetDeviceQueue(vkDevice, 0, 0, &vkQueue);
 	VkCommandPoolCreateInfo poolInfo{
 		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 		.queueFamilyIndex = 0,
