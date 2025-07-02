@@ -79,12 +79,6 @@ void FallbackEncoder::onReinitialize(bool full)
 {
 	scoped_lock lock(bufferMutex);
 
-	if (full) {
-		activeBuffers.clear();
-		buffers.clear();
-		return;
-	}
-
 	for (auto &pair : activeBuffers)
 		buffers.push_back(pair.second);
 	activeBuffers.clear();
