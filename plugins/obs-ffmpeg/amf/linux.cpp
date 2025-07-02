@@ -117,23 +117,21 @@ static vector<const char *> getExtensions(AMFContext1Ptr amfContext, VkPhysicalD
 	return result;
 }
 
-static vector<VkDeviceQueueCreateInfo> getQueueInfos(VkPhysicalDevice device)
+static uint32_t getQueueFamilyIndex(VkPhysicalDevice device)
 {
 	uint32_t count = 0;
-	vkGetPhysicalDeviceQueueFamilyProperties(device, &count, nullptr);
+	vkGetPhysicalDeviceQueueFamilyProperties2(device, &count, nullptr);
 
-	float priority = 1.0;
-	vector<VkDeviceQueueCreateInfo> result;
-	for (uint32_t i = 0; i < count; ++i) {
-		VkDeviceQueueCreateInfo info = {
-			.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-			.queueFamilyIndex = i,
-			.queueCount = 1,
-			.pQueuePriorities = &priority,
-		};
-		result.push_back(info);
+	vector<VkQueueFamilyProperties2> items(count);
+	vkGetPhysicalDeviceQueueFamilyProperties2(device, &count, items.data());
+
+	for (uint32_t i = 0; i < count; i++) {
+		VkQueueFamilyProperties &props = items.at(i).queueFamilyProperties;
+		if (props.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+			return i;
 	}
-	return result;
+
+	throw "Could not find queue family that supports graphics";
 }
 
 TextureEncoder::TextureEncoder(CodecType codec, obs_encoder_t *encoder, VideoInfo &videoInfo, string name)
@@ -157,19 +155,20 @@ TextureEncoder::TextureEncoder(CodecType codec, obs_encoder_t *encoder, VideoInf
 		vkInstance = createInstance();
 		vkPhysicalDevice = getDevice(vkInstance);
 
-		if (!gl) {
-			scoped_lock lock(glMutex);
-			if (!gl)
-				gl = new GLFunctions;
-		}
-
 		vector<const char *> extensions = getExtensions(amfContext1, vkPhysicalDevice);
-		vector<VkDeviceQueueCreateInfo> queueInfos = getQueueInfos(vkPhysicalDevice);
+
+		float queuePriority = 1.0;
+		VkDeviceQueueCreateInfo queueCreateInfo{
+			.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+			.queueFamilyIndex = getQueueFamilyIndex(vkPhysicalDevice),
+			.queueCount = 1,
+			.pQueuePriorities = &queuePriority,
+		};
 
 		VkDeviceCreateInfo deviceInfo = {
 			.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-			.queueCreateInfoCount = (uint32_t)queueInfos.size(),
-			.pQueueCreateInfos = queueInfos.data(),
+			.queueCreateInfoCount = 1,
+			.pQueueCreateInfos = &queueCreateInfo,
 			.enabledExtensionCount = (uint32_t)extensions.size(),
 			.ppEnabledExtensionNames = extensions.data(),
 		};
@@ -190,6 +189,11 @@ TextureEncoder::TextureEncoder(CodecType codec, obs_encoder_t *encoder, VideoInf
 		GET(vkGetSemaphoreFdKHR);
 #undef GET
 
+		if (!gl) {
+			scoped_lock lock(glMutex);
+			if (!gl)
+				gl = new GLFunctions;
+		}
 	} catch (...) {
 		if (vkDevice)
 			vkDestroyDevice(vkDevice, nullptr);
@@ -642,7 +646,8 @@ BufferPtr TextureEncoder::getBuffer()
 			.eFormat = vkFormat,
 			.iWidth = (amf_int32)width,
 			.iHeight = (amf_int32)height,
-			.eUsage = AMF_SURFACE_USAGE_TRANSFER_DST | AMF_SURFACE_USAGE_NOSYNC | AMF_SURFACE_USAGE_NO_TRANSITION,
+			.eUsage = AMF_SURFACE_USAGE_TRANSFER_DST | AMF_SURFACE_USAGE_NOSYNC |
+				  AMF_SURFACE_USAGE_NO_TRANSITION,
 			.eAccess = AMF_MEMORY_CPU_LOCAL,
 		};
 
