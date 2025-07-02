@@ -96,12 +96,10 @@ private:
 
 	VkCommandBuffer vkCommandBuffer = nullptr;
 	VkCommandPool vkCommandPool = nullptr;
-	VkSemaphore vkCopySemaphore = nullptr;
 	VkFence vkFence = nullptr;
 	VkQueue vkQueue = nullptr;
 	VkSemaphore vkSemaphore = nullptr;
 
-	GLuint glCopySemaphore = 0;
 	GLuint glSemaphore = 0;
 
 	unsigned int planeCount = 0;

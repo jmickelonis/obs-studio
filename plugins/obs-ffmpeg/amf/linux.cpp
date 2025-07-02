@@ -217,9 +217,7 @@ TextureEncoder::~TextureEncoder()
 		vkDestroyImage(vkDevice, plane.vkImage, nullptr);
 	}
 	gl->DeleteSemaphoresEXT(1, &glSemaphore);
-	gl->DeleteSemaphoresEXT(1, &glCopySemaphore);
 	vkDestroySemaphore(vkDevice, vkSemaphore, nullptr);
-	vkDestroySemaphore(vkDevice, vkCopySemaphore, nullptr);
 	for (auto &item : readFBOs)
 		gl->DeleteFramebuffers(1, &item.second);
 	obs_leave_graphics();
@@ -256,7 +254,8 @@ bool TextureEncoder::encode(encoder_texture *texture, int64_t pts, encoder_packe
 	BufferPtr bufferPtr = getBuffer();
 	Buffer &buffer = *bufferPtr;
 	vkCopySubmitInfo.pCommandBuffers = &buffer.copyCommandBuffer;
-	VK_CHECK(vkQueueSubmit(vkQueue, 1, &vkCopySubmitInfo, nullptr));
+	VK_CHECK(vkQueueSubmit(vkQueue, 1, &vkCopySubmitInfo, vkFence));
+	VK_CHECK(vkWaitForFences(vkDevice, 1, &vkFence, VK_TRUE, UINT64_MAX));
 
 	if (!buffer.surface)
 		AMF_CHECK(amfContext1->CreateSurfaceFromVulkanNative(&buffer.vulkanSurface, &buffer.surface, nullptr),
@@ -451,7 +450,6 @@ void TextureEncoder::createTextures(encoder_texture *from)
 		.pNext = &exportSemaphoreInfo,
 	};
 	VK_CHECK(vkCreateSemaphore(vkDevice, &semaphoreInfo, nullptr, &vkSemaphore));
-	VK_CHECK(vkCreateSemaphore(vkDevice, &semaphoreInfo, nullptr, &vkCopySemaphore));
 
 	endCommandBuffer();
 
@@ -477,16 +475,10 @@ void TextureEncoder::createTextures(encoder_texture *from)
 	int fd;
 	VK_CHECK(vkGetSemaphoreFdKHR(vkDevice, &semFdInfo, &fd));
 
-	semFdInfo.semaphore = vkCopySemaphore;
-	int fdCopy;
-	VK_CHECK(vkGetSemaphoreFdKHR(vkDevice, &semFdInfo, &fdCopy));
-
 	obs_enter_graphics();
 	GL_CHECK(gl->GenSemaphoresEXT(1, &glSemaphore));
 	GL_CHECK(gl->ImportSemaphoreFdEXT(glSemaphore, GL_HANDLE_TYPE_OPAQUE_FD_EXT, fd));
-	GL_CHECK(gl->GenSemaphoresEXT(1, &glCopySemaphore));
-	GL_CHECK(gl->ImportSemaphoreFdEXT(glCopySemaphore, GL_HANDLE_TYPE_OPAQUE_FD_EXT, fdCopy));
-	bool imported = gl->IsSemaphoreEXT(glSemaphore) && gl->IsSemaphoreEXT(glCopySemaphore);
+	bool imported = gl->IsSemaphoreEXT(glSemaphore);
 	obs_leave_graphics();
 
 	if (!imported)
@@ -499,8 +491,6 @@ void TextureEncoder::createTextures(encoder_texture *from)
 		.pWaitSemaphores = &vkSemaphore,
 		.pWaitDstStageMask = &waitStage,
 		.commandBufferCount = 1,
-		.signalSemaphoreCount = 1,
-		.pSignalSemaphores = &vkCopySemaphore,
 	};
 }
 
@@ -652,14 +642,8 @@ BufferPtr TextureEncoder::getBuffer()
 			.eFormat = vkFormat,
 			.iWidth = (amf_int32)width,
 			.iHeight = (amf_int32)height,
-			.eUsage = AMF_SURFACE_USAGE_DEFAULT,
+			.eUsage = AMF_SURFACE_USAGE_TRANSFER_DST | AMF_SURFACE_USAGE_NOSYNC | AMF_SURFACE_USAGE_NO_TRANSITION,
 			.eAccess = AMF_MEMORY_CPU_LOCAL,
-			.Sync =
-				{
-					.cbSizeof = sizeof(AMFVulkanSync),
-					.hSemaphore = vkCopySemaphore,
-					.bSubmitted = true,
-				},
 		};
 
 		buffer.copyCommandBuffer = copyCommandBuffer;
@@ -761,10 +745,6 @@ void TextureEncoder::onReceivePacket(const int64_t &ts)
 
 void TextureEncoder::onReinitialize(bool full)
 {
-	if (full)
-		for (BufferPtr &buffer : buffers)
-			buffer->surface = nullptr;
-
 	for (BufferPtr &buffer : activeBuffers)
 		availableBuffers.push_back(buffer);
 	activeBuffers.clear();
