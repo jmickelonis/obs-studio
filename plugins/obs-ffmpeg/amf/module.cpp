@@ -124,7 +124,7 @@ obs_properties_t *createProperties(void *, void *typeData)
 	}
 
 	if (caps.bFrames) {
-		INT(B_FRAMES, obs_module_text("BFrames"), 0, 3, 1);
+		INT(B_FRAMES, obs_module_text("BFrames"), 0, 5, 1);
 		if (caps.preAnalysis)
 			setModifiedCallback();
 	}
