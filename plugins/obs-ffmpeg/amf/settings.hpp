@@ -17,9 +17,11 @@ using std::vector;
 
 namespace settings {
 const char *const ADAPTIVE_QUANTIZATION = "aq";
+const char *const AUTO = "auto";
 const char *const B_FRAMES = "bf";
 const char *const BITRATE = "bitrate";
 const char *const BUFFER_SIZE = "buffer_size";
+const char *const DEVICE = "device";
 const char *const DYNAMIC_B_FRAMES = "dynamic_bf";
 const char *const HIGH_MOTION_QUALITY_BOOST = "hmqb";
 const char *const KEY_FRAME_INTERVAL = "keyint_sec";
@@ -169,8 +171,8 @@ struct Settings {
 
 shared_ptr<char[]> getUserOptions(obs_data_t *data);
 
-void cacheCapabilities(CodecType codec, Capabilities &capabilities);
-const Capabilities *getCapabilities(CodecType codec, bool load = true);
+void cacheCapabilities(uint32_t deviceID, CodecType codec, Capabilities &capabilities);
+const Capabilities *getCapabilities(uint32_t deviceID, CodecType codec, bool load = true);
 
 struct Level {
 	const char *const name;

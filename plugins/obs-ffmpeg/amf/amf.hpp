@@ -10,6 +10,14 @@
 #include <AMF/core/Factory.h>
 #include <AMF/core/Trace.h>
 
+#ifdef __linux__
+#include <memory>
+#include <vector>
+#include <AMF/core/VulkanAMF.h>
+using std::shared_ptr;
+using std::vector;
+#endif
+
 using namespace amf;
 
 #ifndef __FILE_NAME__
@@ -18,6 +26,7 @@ using namespace amf;
 
 extern AMFFactory *amfFactory;
 extern AMFTrace *amfTrace;
+extern amf_uint64 amfVersion;
 
 enum class CodecType {
 	AVC,
@@ -36,7 +45,17 @@ public:
 	virtual const char *what();
 };
 
-bool getCaps(CodecType codec, AMFCaps **caps);
+#ifdef __linux__
+
+struct VulkanDevice : public AMFVulkanDevice {
+	~VulkanDevice();
+};
+
+shared_ptr<VulkanDevice> createDevice(AMFContext1Ptr context, uint32_t id, const vector<const char *> &extensions = {});
+
+#endif
+
+bool getCaps(uint32_t deviceID, CodecType codec, AMFCaps **caps);
 const wchar_t *getEncoderID(CodecType codec);
 
 bool getBool(AMFPropertyStorage *storage, const wchar_t *name);

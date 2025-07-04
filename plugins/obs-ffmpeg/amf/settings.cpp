@@ -196,30 +196,45 @@ shared_ptr<char[]> getUserOptions(obs_data_t *data)
 }
 
 static mutex cacheMutex;
-static unordered_map<CodecType, const Capabilities *> capabilitiesCache;
+static unordered_map<uint32_t, unordered_map<CodecType, const Capabilities *>> capabilitiesCache;
 
-void cacheCapabilities(CodecType codec, Capabilities &capabilities)
+void cacheCapabilities(uint32_t deviceID, CodecType codec, Capabilities &capabilities)
 {
 	scoped_lock lock(cacheMutex);
-	capabilitiesCache[codec] = new Capabilities(capabilities);
+
+	auto it = capabilitiesCache.find(deviceID);
+	if (it == capabilitiesCache.end())
+		capabilitiesCache[deviceID] = unordered_map<CodecType, const Capabilities *>();
+
+	unordered_map<CodecType, const Capabilities *> &deviceCapabilities = capabilitiesCache[deviceID];
+	deviceCapabilities[codec] = new Capabilities(capabilities);
 }
 
-const Capabilities *getCapabilities(CodecType codec, bool load)
+const Capabilities *getCapabilities(uint32_t deviceID, CodecType codec, bool load)
 {
 	scoped_lock lock(cacheMutex);
 
-	auto it = capabilitiesCache.find(codec);
-	if (it != capabilitiesCache.end())
+	auto cacheIterator = capabilitiesCache.find(deviceID);
+	if (cacheIterator == capabilitiesCache.end()) {
+		if (!load)
+			return nullptr;
+		capabilitiesCache[deviceID] = unordered_map<CodecType, const Capabilities *>();
+	}
+
+	unordered_map<CodecType, const Capabilities *> &deviceCapabilities = capabilitiesCache[deviceID];
+
+	auto it = deviceCapabilities.find(codec);
+	if (it != deviceCapabilities.end())
 		return it->second;
 
 	if (!load)
 		return nullptr;
 
-	Capabilities *capabilities = new Capabilities;
+	Capabilities *capabilities = new Capabilities{};
 	AMFCapsPtr caps;
-	if (getCaps(codec, &caps))
+	if (getCaps(deviceID, codec, &caps))
 		capabilities->set(codec, caps);
-	capabilitiesCache[codec] = capabilities;
+	deviceCapabilities[codec] = capabilities;
 	return capabilities;
 }
 

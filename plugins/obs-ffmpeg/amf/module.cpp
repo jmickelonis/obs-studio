@@ -15,64 +15,74 @@ static vector<AdapterCapabilities> caps;
 
 AMFFactory *amfFactory = nullptr;
 AMFTrace *amfTrace = nullptr;
+uint64_t amfVersion = 0;
 
-bool adapterSupports(CodecType codec)
+bool AdapterCapabilities::supports(CodecType codec)
 {
-	obs_video_info ovi;
-	obs_get_video_info(&ovi);
+	switch (codec) {
+	case CodecType::AVC:
+		return avc;
+	case CodecType::HEVC:
+		return hevc;
+	case CodecType::AV1:
+		return av1;
+	}
+}
 
-	try {
-		AdapterCapabilities &info = caps.at(ovi.adapter);
-
-		switch (codec) {
-		case CodecType::AVC:
-			return info.avc;
-		case CodecType::HEVC:
-			return info.hevc;
-		case CodecType::AV1:
-			return info.av1;
-		}
-	} catch (out_of_range) {
+uint32_t getDeviceID(CodecType codec, uint32_t requestedID)
+{
+	if (!requestedID) {
+		// If no device in settings, just use the first available
+		for (AdapterCapabilities &info : caps)
+			if (info.supports(codec))
+				return info.deviceID;
+		return 0;
 	}
 
-	return false;
+	uint32_t id = 0;
+
+	// Try to match the requested ID
+	// If not found, it'll still end up using the first available
+	for (auto it = caps.rbegin(); it != caps.rend(); ++it) {
+		if (!it->supports(codec))
+			continue;
+		id = it->deviceID;
+		if (id == requestedID)
+			break;
+	}
+
+	return id;
 }
+
+#define LIST_STRING(TEXT, VALUE) obs_property_list_add_string(prop, TEXT, VALUE)
+#define LIST_STRING_CAPITALIZED(VALUE) \
+	{ \
+		char *text = strdup(VALUE); \
+		text[0] = toupper(text[0]); \
+		obs_property_list_add_string(prop, text, VALUE); \
+		free(text); \
+	}
 
 obs_properties_t *createProperties(void *, void *typeData)
 {
 	EncoderType *type = (EncoderType *)typeData;
 	CodecType codec = type->codec;
-	const Capabilities &caps = *getCapabilities(codec);
 
 	obs_properties_t *props = obs_properties_create();
 	obs_property_t *prop;
 
-	// Adds a list item, using its capitalized value as text
-	auto addCapitalizedItem = [&](const char *value) {
-		char *text = strdup(value);
-		text[0] = toupper(text[0]);
-		obs_property_list_add_string(prop, text, value);
-		free(text);
-	};
-
 #define BOOL(NAME, ...) prop = obs_properties_add_bool(props, settings::NAME, __VA_ARGS__)
 #define INT(NAME, ...) prop = obs_properties_add_int(props, settings::NAME, __VA_ARGS__)
 #define LIST(NAME, ...) prop = obs_properties_add_list(props, settings::NAME, __VA_ARGS__, OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING)
-#define LIST_STRING(TEXT, VALUE) obs_property_list_add_string(prop, TEXT, VALUE)
 #define setModifiedCallback() obs_property_set_modified_callback2(prop, onPropertyModified, typeData)
 
+	prop = obs_properties_add_list(props, settings::DEVICE, "Device", OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	for (AdapterCapabilities &adapterCaps : caps)
+		if (adapterCaps.supports(codec))
+			obs_property_list_add_int(prop, adapterCaps.device, adapterCaps.deviceID);
+	setModifiedCallback();
+
 	LIST(RATE_CONTROL, obs_module_text("RateControl"));
-#define ITEM(NAME) LIST_STRING(rate_control::NAME, rate_control::NAME)
-	ITEM(CBR);
-	ITEM(CQP);
-	ITEM(VBR);
-	ITEM(VBR_LAT);
-	if (caps.preAnalysis) {
-		ITEM(QVBR);
-		ITEM(HQCBR);
-		ITEM(HQVBR);
-	}
-#undef ITEM
 	setModifiedCallback();
 
 	INT(BITRATE, obs_module_text("Bitrate"), 50, 100000, 50);
@@ -108,7 +118,7 @@ obs_properties_t *createProperties(void *, void *typeData)
 
 	if (codec == CodecType::AVC) {
 		LIST(PROFILE, obs_module_text("Profile"));
-#define ITEM(NAME) addCapitalizedItem(profile::NAME)
+#define ITEM(NAME) LIST_STRING_CAPITALIZED(profile::NAME)
 		ITEM(HIGH);
 		ITEM(MAIN);
 		ITEM(BASELINE);
@@ -116,18 +126,9 @@ obs_properties_t *createProperties(void *, void *typeData)
 	}
 
 	LIST(LEVEL, obs_module_text("Level"));
-	addCapitalizedItem("auto");
-	for (const Level &level : getLevels(codec)) {
-		if (level.value > caps.level)
-			break;
-		LIST_STRING(level.name, level.name);
-	}
 
-	if (caps.bFrames) {
-		INT(B_FRAMES, obs_module_text("BFrames"), 0, 5, 1);
-		if (caps.preAnalysis)
-			setModifiedCallback();
-	}
+	INT(B_FRAMES, obs_module_text("BFrames"), 0, 5, 1);
+	setModifiedCallback();
 
 	BOOL(LOW_LATENCY, "Low Latency");
 	BOOL(PRE_ENCODE, "Rate Control Pre-Analysis");
@@ -135,41 +136,33 @@ obs_properties_t *createProperties(void *, void *typeData)
 							    : "Variance-Based Adaptive Quantization (VBAQ)");
 	BOOL(HIGH_MOTION_QUALITY_BOOST, "High-Motion Quality Boost");
 
-	if (caps.preAnalysis) {
-		BOOL(PRE_ANALYSIS, "Pre-Analysis");
-		setModifiedCallback();
+	BOOL(PRE_ANALYSIS, "Pre-Analysis");
+	setModifiedCallback();
 
-		if (caps.bFrames)
-			BOOL(DYNAMIC_B_FRAMES, "Dynamic B-Frames");
+	BOOL(DYNAMIC_B_FRAMES, "Dynamic B-Frames");
 
-		LIST(PA_LOOKAHEAD, "Lookahead");
-#define ITEM(NAME) addCapitalizedItem(pa_lookahead::NAME)
-		ITEM(NONE);
-		ITEM(SHORT);
-		ITEM(MEDIUM);
-		ITEM(LONG);
+	LIST(PA_LOOKAHEAD, "Lookahead");
+#define ITEM(NAME) LIST_STRING_CAPITALIZED(pa_lookahead::NAME)
+	ITEM(NONE);
+	ITEM(SHORT);
+	ITEM(MEDIUM);
+	ITEM(LONG);
 #undef ITEM
-		setModifiedCallback();
+	setModifiedCallback();
 
-		LIST(PA_AQ, "Adaptive Quantization");
-		addCapitalizedItem("none");
-		if (codec != CodecType::AV1)
-			LIST_STRING("Variance-Based (VBAQ)", pa_aq::VBAQ);
-		LIST_STRING("Content (CAQ)", pa_aq::CAQ);
-		LIST_STRING("Temporal (TAQ)", pa_aq::TAQ);
-		setModifiedCallback();
+	LIST(PA_AQ, "Adaptive Quantization");
+	setModifiedCallback();
 
-		LIST(PA_CAQ, "CAQ Strength");
-#define ITEM(NAME) addCapitalizedItem(pa_caq::NAME)
-		ITEM(LOW);
-		ITEM(MEDIUM);
-		ITEM(HIGH);
+	LIST(PA_CAQ, "CAQ Strength");
+#define ITEM(NAME) LIST_STRING_CAPITALIZED(pa_caq::NAME)
+	ITEM(LOW);
+	ITEM(MEDIUM);
+	ITEM(HIGH);
 #undef ITEM
 
-		LIST(PA_TAQ, "TAQ Mode");
-		LIST_STRING("1", pa_taq::MODE_1);
-		LIST_STRING("2", pa_taq::MODE_2);
-	}
+	LIST(PA_TAQ, "TAQ Mode");
+	LIST_STRING("1", pa_taq::MODE_1);
+	LIST_STRING("2", pa_taq::MODE_2);
 
 	prop = obs_properties_add_text(props, settings::OPTIONS, obs_module_text("AMFOpts"), OBS_TEXT_MULTILINE);
 	obs_property_set_long_description(prop, obs_module_text("AMFOpts.ToolTip"));
@@ -177,7 +170,6 @@ obs_properties_t *createProperties(void *, void *typeData)
 #undef BOOL
 #undef INT
 #undef LIST
-#undef LIST_STRING
 #undef setModifiedCallback
 	return props;
 }
@@ -195,7 +187,7 @@ void setPropertyDefaults(obs_data_t *data, void *)
 	INT(BITRATE, 2500);
 	INT(BUFFER_SIZE, 2500);
 	INT(QP, 20);
-	STRING(LEVEL, "auto");
+	STRING(LEVEL, settings::AUTO);
 	STRING(PRESET, preset::BALANCED);
 	STRING(PROFILE, profile::HIGH);
 	STRING(RATE_CONTROL, rate_control::CBR);
@@ -214,9 +206,12 @@ bool onPropertyModified(void *typeData, obs_properties_t *props, obs_property_t 
 	EncoderType *type = (EncoderType *)typeData;
 	CodecType codec = type->codec;
 
-	const Capabilities &capabilities = *getCapabilities(codec);
-	Settings settings(capabilities, data);
+	using namespace settings;
 
+	uint32_t device = obs_data_get_int(data, settings::DEVICE);
+	const Capabilities &capabilities = *getCapabilities(device, codec);
+
+	const char *changedProperty = obs_property_name(prop);
 	bool updated = false;
 
 	auto setVisible = [&](const char *name, bool visible) {
@@ -227,56 +222,112 @@ bool onPropertyModified(void *typeData, obs_properties_t *props, obs_property_t 
 		updated = true;
 	};
 
-	using namespace settings;
+	const bool &preAnalysisCap = capabilities.preAnalysis;
 
-	bool showBitrate = settings.bitrateSupported;
+	if (STR_EQ(changedProperty, settings::DEVICE)) {
+		setVisible(B_FRAMES, capabilities.bFrames);
+
+		int expectedCount = preAnalysisCap ? 7 : 4;
+		prop = obs_properties_get(props, RATE_CONTROL);
+		if (obs_property_list_item_count(prop) != expectedCount) {
+			// Rebuild the Rate Control list
+			obs_property_list_clear(prop);
+#define ITEM(NAME) LIST_STRING(rate_control::NAME, rate_control::NAME)
+			ITEM(CBR);
+			ITEM(CQP);
+			ITEM(VBR);
+			ITEM(VBR_LAT);
+			if (preAnalysisCap) {
+				ITEM(QVBR);
+				ITEM(HQCBR);
+				ITEM(HQVBR);
+			}
+#undef ITEM
+			updated = true;
+		}
+
+		// Figure out how many levels we support
+		int levelCount = 0;
+		const Levels &levels = getLevels(codec);
+		const amf_int64 &maxLevel = capabilities.level;
+		for (const Level &level : levels) {
+			if (maxLevel && level.value > maxLevel)
+				break;
+			levelCount++;
+		}
+
+		prop = obs_properties_get(props, LEVEL);
+		if (obs_property_list_item_count(prop) != levelCount + 1) {
+			// Rebuild the Level list
+			obs_property_list_clear(prop);
+			LIST_STRING_CAPITALIZED(AUTO);
+			for (int i = 0; i < levelCount; i++) {
+				const Level &level = levels.at(i);
+				LIST_STRING(level.name, level.name);
+			}
+			updated = true;
+		}
+	}
+
+	Settings settings(capabilities, data);
+
+	bool &showBitrate = settings.bitrateSupported;
 	setVisible(BITRATE, showBitrate);
 	setVisible(USE_BUFFER_SIZE, showBitrate);
 	setVisible(BUFFER_SIZE, showBitrate && settings.useBufferSize);
 	setVisible(QP, !showBitrate);
 
-	if (capabilities.preAnalysis) {
-		setVisible(PRE_ENCODE, settings.preEncodeSupported);
-		setVisible(ADAPTIVE_QUANTIZATION, settings.aqSupported && !settings.preAnalysis);
-		setVisible(HIGH_MOTION_QUALITY_BOOST, settings.hmqbSupported);
-		setVisible(PRE_ANALYSIS, !settings.isQuality);
-		setVisible(DYNAMIC_B_FRAMES, settings.bFrames > 0 && settings.preAnalysis);
-		setVisible(PA_LOOKAHEAD, settings.preAnalysis);
-		setVisible(PA_AQ, settings.preAnalysis);
+	bool &preAnalysis = settings.preAnalysis;
+	setVisible(PRE_ENCODE, settings.preEncodeSupported);
+	setVisible(ADAPTIVE_QUANTIZATION, settings.aqSupported && !preAnalysis);
+	setVisible(HIGH_MOTION_QUALITY_BOOST, settings.hmqbSupported);
+	setVisible(PRE_ANALYSIS, preAnalysisCap && !settings.isQuality);
+	setVisible(DYNAMIC_B_FRAMES, settings.bFrames > 0 && preAnalysis);
+	setVisible(PA_LOOKAHEAD, preAnalysis);
+	setVisible(PA_AQ, preAnalysis);
 
-		const char *aq = settings.paAQ;
+	const char *aq = settings.paAQ;
 
-		if (settings.preAnalysis) {
-			obs_property_t *prop = obs_properties_get(props, PA_AQ);
-			bool showVBAQ = codec != CodecType::AV1 && settings.aqSupported;
-			bool showTAQ = settings.paTAQSupported;
-			int previousCount = obs_property_list_item_count(prop);
+	if (preAnalysis) {
+		bool showVBAQ = codec != CodecType::AV1 && settings.aqSupported;
+		bool showTAQ = settings.paTAQSupported;
 
+		// Figure out how many AQ values we support
+		int expectedCount = 2;
+		if (showVBAQ)
+			expectedCount++;
+		if (showTAQ)
+			expectedCount++;
+
+		prop = obs_properties_get(props, PA_AQ);
+		if (obs_property_list_item_count(prop) != expectedCount) {
+			// Rebuild the AQ list
 			obs_property_list_clear(prop);
-			obs_property_list_add_string(prop, "None", pa_aq::NONE);
+			LIST_STRING_CAPITALIZED(pa_aq::NONE);
 			if (showVBAQ)
-				obs_property_list_add_string(prop, "Variance-Based (VBAQ)", pa_aq::VBAQ);
-			obs_property_list_add_string(prop, "Content (CAQ)", pa_aq::CAQ);
+				LIST_STRING("Variance-Based (VBAQ)", pa_aq::VBAQ);
+			LIST_STRING("Content (CAQ)", pa_aq::CAQ);
 			if (showTAQ)
-				obs_property_list_add_string(prop, "Temporal (TAQ)", pa_aq::TAQ);
+				LIST_STRING("Temporal (TAQ)", pa_aq::TAQ);
 
-			if (obs_property_list_item_count(prop) != previousCount) {
-				updated = true;
-
-				if (!showVBAQ && STR_EQ(aq, pa_aq::VBAQ) || !showTAQ && STR_EQ(aq, pa_aq::TAQ)) {
-					// Change to CAQ when the selected item disappears
-					aq = pa_aq::CAQ;
-					obs_data_set_string(data, PA_AQ, aq);
-				}
+			if (!showVBAQ && STR_EQ(aq, pa_aq::VBAQ) || !showTAQ && STR_EQ(aq, pa_aq::TAQ)) {
+				// Change to CAQ when the selected item disappears
+				aq = pa_aq::CAQ;
+				obs_data_set_string(data, PA_AQ, aq);
 			}
-		}
 
-		setVisible(PA_CAQ, settings.preAnalysis && STR_EQ(aq, pa_aq::CAQ));
-		setVisible(PA_TAQ, settings.preAnalysis && STR_EQ(aq, pa_aq::TAQ));
+			updated = true;
+		}
 	}
+
+	setVisible(PA_CAQ, preAnalysis && STR_EQ(aq, pa_aq::CAQ));
+	setVisible(PA_TAQ, preAnalysis && STR_EQ(aq, pa_aq::TAQ));
 
 	return updated;
 }
+
+#undef LIST_STRING
+#undef LIST_STRING_CAPITALIZED
 
 static void logEncoderError(const string name, const char *func)
 {
@@ -286,6 +337,8 @@ static void logEncoderError(const string name, const char *func)
 		rethrow_exception(current_exception());
 	} catch (const char *s) {
 		ss << s;
+	} catch (const string &s) {
+		ss << s.c_str();
 	} catch (const AMFException &e) {
 		ss << e.message << " (" << e.resultText << ")";
 	} catch (const exception &e) {
@@ -321,11 +374,7 @@ void *createTextureEncoder(obs_data_t *data, obs_encoder_t *encoder)
 
 	try {
 		CodecType codec = type->codec;
-
-		if (!adapterSupports(codec))
-			throw "Wrong adapter";
-
-		VideoInfo videoInfo(codec, encoder);
+		VideoInfo videoInfo(encoder, codec);
 
 		allowFallback = true;
 
@@ -335,13 +384,15 @@ void *createTextureEncoder(obs_data_t *data, obs_encoder_t *encoder)
 		if (videoInfo.format == AMF_SURFACE_BGRA)
 			throw "Cannot use textures with BGRA format";
 
+		uint32_t deviceID = getDeviceID(codec, obs_data_get_int(data, settings::DEVICE));
+
 		// Workaround alert:
 		// For some reason, on Linux, using multiple texture encoders at once doesn't work
 		// until a Vulkan AMFComponent has been created and destroyed.
 		// This does exactly that, plus caches the capability information.
-		getCapabilities(codec);
+		getCapabilities(deviceID, codec);
 
-		unique_ptr<TextureEncoder> enc = make_unique<TextureEncoder>(codec, encoder, videoInfo, name);
+		unique_ptr<TextureEncoder> enc = make_unique<TextureEncoder>(encoder, codec, videoInfo, name, deviceID);
 		enc->initialize(data);
 		return enc.release();
 
@@ -367,10 +418,10 @@ void *createFallbackEncoder(obs_data_t *data, obs_encoder_t *encoder)
 
 	try {
 		CodecType codec = type->codec;
-		if (!adapterSupports(codec))
-			throw "Wrong adapter";
-		VideoInfo videoInfo(codec, encoder);
-		unique_ptr<FallbackEncoder> enc = make_unique<FallbackEncoder>(codec, encoder, videoInfo, name);
+		VideoInfo videoInfo(encoder, codec);
+		uint32_t deviceID = getDeviceID(codec, obs_data_get_int(data, settings::DEVICE));
+		unique_ptr<FallbackEncoder> enc =
+			make_unique<FallbackEncoder>(encoder, codec, videoInfo, name, deviceID);
 		enc->initialize(data);
 		return enc.release();
 
@@ -584,9 +635,9 @@ extern "C" void amf_load(void)
 		if (error)
 			throw error;
 
-		bool avc = false;
-		bool hevc = false;
-		bool av1 = false;
+		bool anyAVC = false;
+		bool anyHEVC = false;
+		bool anyAV1 = false;
 
 		size_t adapterCount = config_num_sections(config);
 		caps.reserve(adapterCount);
@@ -594,20 +645,29 @@ extern "C" void amf_load(void)
 			string sectionString = to_string(i);
 			const char *section = sectionString.c_str();
 
+			if (!config_get_bool(config, section, "is_amd"))
+				continue;
+
 #define SUPPORTS(NAME) config_get_bool(config, section, "supports_" #NAME)
-			AdapterCapabilities info{SUPPORTS(avc), SUPPORTS(hevc), SUPPORTS(av1)};
+			bool avc = SUPPORTS(avc);
+			bool hevc = SUPPORTS(hevc);
+			bool av1 = SUPPORTS(av1);
+			if (!(avc | hevc | av1))
+				continue;
 #undef SUPPORTS
+
+			const char *device = strdup(config_get_string(config, section, "device"));
+			int deviceID = config_get_int(config, section, "device_id");
+			AdapterCapabilities info{device, deviceID, avc, hevc, av1};
 			caps.push_back(info);
 
-			avc |= info.avc;
-			hevc |= info.hevc;
-			av1 |= info.av1;
+			anyAVC |= avc;
+			anyHEVC |= hevc;
+			anyAV1 |= av1;
 		}
 
-		if (!avc && !hevc && !av1) {
-			caps.clear();
+		if (caps.empty())
 			throw "Neither AVC, HEVC, nor AV1 are supported by any devices";
-		}
 
 		// Initialize AMF
 
@@ -629,8 +689,18 @@ extern "C" void amf_load(void)
 		amfTrace->EnableWriter(AMF_TRACE_WRITER_CONSOLE, false);
 #endif
 
+		AMFQueryVersion_Fn getVersion = (AMFQueryVersion_Fn)os_dlsym(module, AMF_QUERY_VERSION_FUNCTION_NAME);
+		if (!getVersion)
+			throw "Failed to get AMFQueryVersion address";
+
+		AMF_CHECK(getVersion(&amfVersion), "AMFQueryVersion failed");
+
+		blog(LOG_INFO, "Loaded AMF v%d.%d.%d.%d", AMF_GET_MAJOR_VERSION(amfVersion),
+		     AMF_GET_MINOR_VERSION(amfVersion), AMF_GET_SUBMINOR_VERSION(amfVersion),
+		     AMF_GET_BUILD_VERSION(amfVersion));
+
 		// Register encoders
-		if (avc) {
+		if (anyAVC) {
 			EncoderType type = {
 				.name = "AMD HW H.264 (AVC)",
 				.id = "h264",
@@ -639,7 +709,7 @@ extern "C" void amf_load(void)
 			registerEncoder("h264", type);
 		}
 #if ENABLE_HEVC
-		if (hevc) {
+		if (anyHEVC) {
 			EncoderType type = {
 				.name = "AMD HW H.265 (HEVC)",
 				.id = "h265",
@@ -648,7 +718,7 @@ extern "C" void amf_load(void)
 			registerEncoder("hevc", type);
 		}
 #endif
-		if (av1) {
+		if (anyAV1) {
 			EncoderType type = {
 				.name = "AMD HW AV1",
 				.id = "av1",

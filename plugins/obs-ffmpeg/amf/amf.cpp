@@ -13,7 +13,7 @@ const char *AMFException::what()
 	return message;
 }
 
-bool getCaps(CodecType codec, AMFCaps **caps)
+bool getCaps(uint32_t deviceID, CodecType codec, AMFCaps **caps)
 {
 	AMFContextPtr context;
 	if (AMF_FAILED(amfFactory->CreateContext(&context)))
@@ -23,14 +23,22 @@ bool getCaps(CodecType codec, AMFCaps **caps)
 		return false;
 #elif defined(__linux__)
 	AMFContext1Ptr context1 = AMFContext1Ptr(context);
-	if (AMF_FAILED(context1->InitVulkan(nullptr)))
+	shared_ptr<VulkanDevice> device;
+	try {
+		device = createDevice(context1, deviceID);
+	} catch (...) {
+		return false;
+	}
+	if (AMF_FAILED(context1->InitVulkan(device.get())))
 		return false;
 #endif
 	const wchar_t *id = getEncoderID(codec);
 	AMFComponentPtr component;
 	if (AMF_FAILED(amfFactory->CreateComponent(context, id, &component)))
 		return false;
-	return AMF_SUCCEEDED(component->GetCaps(caps));
+	bool ok = AMF_SUCCEEDED(component->GetCaps(caps));
+	context->Terminate(); // Have to call this before VulkanDevice is destroyed
+	return ok;
 }
 
 const wchar_t *getEncoderID(CodecType codec)

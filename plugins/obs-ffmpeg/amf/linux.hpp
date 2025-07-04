@@ -9,7 +9,6 @@
 
 #include <GL/glcorearb.h>
 #include <GL/glext.h>
-#include <AMF/core/VulkanAMF.h>
 
 struct GLFunctions {
 
@@ -78,18 +77,16 @@ struct Plane {
 class TextureEncoder : public Encoder {
 
 public:
-	TextureEncoder(CodecType codec, obs_encoder_t *encoder, VideoInfo &videoInfo, string name);
+	TextureEncoder(obs_encoder_t *encoder, CodecType codec, VideoInfo &videoInfo, string name, uint32_t deviceID);
 	virtual ~TextureEncoder();
 
 	bool encode(encoder_texture *texture, int64_t pts, encoder_packet *packet, bool *received_packet);
 
 private:
-	VkInstance vkInstance;
-	VkDevice vkDevice;
-	VkPhysicalDevice vkPhysicalDevice;
+	VkDevice vkDevice = nullptr;
+	VkPhysicalDevice vkPhysicalDevice = nullptr;
 	PFN_vkGetMemoryFdKHR vkGetMemoryFdKHR;
 	PFN_vkGetSemaphoreFdKHR vkGetSemaphoreFdKHR;
-	AMFVulkanDevice amfVulkanDevice;
 
 	VkFormat vkFormat;
 	VkSubmitInfo vkCopySubmitInfo;
@@ -112,7 +109,8 @@ private:
 	vector<BufferPtr> availableBuffers;
 	deque<BufferPtr> activeBuffers;
 
-	virtual void *getVulkanDevice() override;
+	virtual shared_ptr<VulkanDevice> createDevice() override;
+
 	void createTextures(encoder_texture *from);
 	GLuint getReadFBO(gs_texture *tex);
 	BufferPtr getBuffer();

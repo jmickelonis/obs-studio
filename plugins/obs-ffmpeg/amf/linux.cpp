@@ -59,7 +59,7 @@ static VkInstance createInstance()
 	return instance;
 }
 
-static VkPhysicalDevice getDevice(VkInstance instance)
+static VkPhysicalDevice getPhysicalDevice(VkInstance instance, uint32_t id = 0)
 {
 	uint32_t count;
 	VK_CHECK(vkEnumeratePhysicalDevices(instance, &count, nullptr));
@@ -74,47 +74,37 @@ static VkPhysicalDevice getDevice(VkInstance instance)
 		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
 		.pNext = &driverProps,
 	};
+
+	bool requiresProprietary = amfVersion < AMF_MAKE_FULL_VERSION(1, 4, 34, 0);
+
 	for (VkPhysicalDevice device : devices) {
 		vkGetPhysicalDeviceProperties2(device, &props);
-		if (driverProps.driverID == VK_DRIVER_ID_MESA_RADV ||
-		    driverProps.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE ||
-		    driverProps.driverID == VK_DRIVER_ID_AMD_PROPRIETARY) {
-			return device;
+
+		if (id && props.properties.deviceID != id)
+			continue;
+
+		VkDriverId &driverID = driverProps.driverID;
+
+		if (requiresProprietary) {
+			if (driverID == VK_DRIVER_ID_AMD_PROPRIETARY)
+				return device;
+		} else {
+			switch (driverID) {
+			case VK_DRIVER_ID_AMD_PROPRIETARY:
+			case VK_DRIVER_ID_AMD_OPEN_SOURCE:
+			case VK_DRIVER_ID_MESA_RADV:
+				return device;
+			}
 		}
 	}
 
-	throw "Failed to find Vulkan device";
-}
-
-static vector<const char *> getExtensions(AMFContext1Ptr amfContext, VkPhysicalDevice device)
-{
-	// Start with what we want
-	vector<const char *> want{
-		VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME,
-		VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME,
-		VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME,
-		VK_KHR_SAMPLER_YCBCR_CONVERSION_EXTENSION_NAME,
-	};
-	// Add what AMF wants
-	amf_size wantCount = 0;
-	AMF_CHECK(amfContext->GetVulkanDeviceExtensions(&wantCount, nullptr), "GetVulkanDeviceExtensions failed");
-	want.resize(want.size() + wantCount);
-	AMF_CHECK(amfContext->GetVulkanDeviceExtensions(&wantCount, &want[want.size() - wantCount]),
-		  "GetVulkanDeviceExtensions failed");
-
-	uint32_t count;
-	VK_CHECK(vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr));
-	vector<VkExtensionProperties> extensions(count);
-	VK_CHECK(vkEnumerateDeviceExtensionProperties(device, nullptr, &count, extensions.data()));
-
-	vector<const char *> result;
-	for (const char *name : want) {
-		auto it = find_if(extensions.begin(), extensions.end(),
-				  [name](VkExtensionProperties e) { return STR_EQ(e.extensionName, name); });
-		if (it != extensions.end())
-			result.push_back(name);
+	if (id) {
+		stringstream ss;
+		ss << "Failed to find Vulkan device with ID 0x" << std::hex << id;
+		throw ss.str();
 	}
-	return result;
+
+	throw "Failed to find Vulkan device";
 }
 
 static vector<VkQueueFamilyProperties2> getQueueFamilies(VkPhysicalDevice device)
@@ -127,8 +117,82 @@ static vector<VkQueueFamilyProperties2> getQueueFamilies(VkPhysicalDevice device
 	return result;
 }
 
-TextureEncoder::TextureEncoder(CodecType codec, obs_encoder_t *encoder, VideoInfo &videoInfo, string name)
-	: Encoder(codec, encoder, videoInfo, name)
+VulkanDevice::~VulkanDevice()
+{
+	if (hDevice) {
+		vkDeviceWaitIdle(hDevice);
+		vkDestroyDevice(hDevice, nullptr);
+		hDevice = nullptr;
+	}
+	if (hInstance) {
+		vkDestroyInstance(hInstance, nullptr);
+		hInstance = nullptr;
+	}
+	hPhysicalDevice = nullptr;
+}
+
+shared_ptr<VulkanDevice> createDevice(AMFContext1Ptr context, uint32_t id, const vector<const char *> &otherExtensions)
+{
+	shared_ptr<VulkanDevice> devicePtr(new VulkanDevice{});
+	VulkanDevice &device = *devicePtr.get();
+	device.cbSizeof = sizeof(AMFVulkanDevice);
+
+	VkInstance instance = createInstance();
+	device.hInstance = instance;
+
+	VkPhysicalDevice physicalDevice = getPhysicalDevice(instance, id);
+	device.hPhysicalDevice = physicalDevice;
+
+	vector<VkQueueFamilyProperties2> queueFamilies = getQueueFamilies(physicalDevice);
+	unsigned int queueFamilyCount = queueFamilies.size();
+
+	static const int REQUIRED_QUEUE_FLAGS = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT |
+						VK_QUEUE_VIDEO_DECODE_BIT_KHR;
+	vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+
+	for (unsigned int i = 0; i < queueFamilyCount; i++) {
+		VkQueueFamilyProperties &props = queueFamilies.at(i).queueFamilyProperties;
+		VkQueueFlags &queueFlags = props.queueFlags;
+
+		if (!(queueFlags & REQUIRED_QUEUE_FLAGS))
+			// Don't create queues not needed by us or AMF (like compute, encode, etc)
+			continue;
+
+		static const float PRIORITY = 1.0;
+		VkDeviceQueueCreateInfo info = {
+			.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+			.queueFamilyIndex = i,
+			.queueCount = 1,
+			.pQueuePriorities = &PRIORITY,
+		};
+		queueCreateInfos.push_back(info);
+	}
+
+	amf_size extensionCount = 0;
+	AMF_CHECK(context->GetVulkanDeviceExtensions(&extensionCount, nullptr), "GetVulkanDeviceExtensions failed");
+	vector<const char *> extensions(extensionCount);
+	AMF_CHECK(context->GetVulkanDeviceExtensions(&extensionCount, extensions.data()),
+		  "GetVulkanDeviceExtensions failed");
+
+	extensions.reserve(extensionCount + otherExtensions.size());
+	for (const char *name : otherExtensions)
+		extensions.push_back(name);
+
+	VkDeviceCreateInfo deviceInfo{
+		.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+		.queueCreateInfoCount = (uint32_t)queueCreateInfos.size(),
+		.pQueueCreateInfos = queueCreateInfos.data(),
+		.enabledExtensionCount = (uint32_t)extensions.size(),
+		.ppEnabledExtensionNames = extensions.data(),
+	};
+	VK_CHECK(vkCreateDevice(physicalDevice, &deviceInfo, nullptr, &device.hDevice));
+
+	return devicePtr;
+}
+
+TextureEncoder::TextureEncoder(obs_encoder_t *encoder, CodecType codec, VideoInfo &videoInfo, string name,
+			       uint32_t deviceID)
+	: Encoder(encoder, codec, videoInfo, name, deviceID)
 {
 	switch (videoInfo.format) {
 	case AMF_SURFACE_NV12:
@@ -140,89 +204,13 @@ TextureEncoder::TextureEncoder(CodecType codec, obs_encoder_t *encoder, VideoInf
 	default:
 		throw "Unsupported AMF_SURFACE_FORMAT";
 	}
-
-	vkInstance = nullptr;
-	vkDevice = nullptr;
-
-	try {
-		vkInstance = createInstance();
-		vkPhysicalDevice = getDevice(vkInstance);
-
-		vector<const char *> extensions = getExtensions(amfContext1, vkPhysicalDevice);
-
-		vector<VkQueueFamilyProperties2> queueFamilies = getQueueFamilies(vkPhysicalDevice);
-		unsigned int queueFamilyCount = queueFamilies.size();
-
-		static const int REQUIRED_QUEUE_FLAGS = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT |
-							VK_QUEUE_VIDEO_DECODE_BIT_KHR;
-		vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-		uint32_t graphicsQueueFamilyIndex = -1;
-
-		for (unsigned int i = 0; i < queueFamilyCount; i++) {
-			VkQueueFamilyProperties &props = queueFamilies.at(i).queueFamilyProperties;
-			VkQueueFlags &queueFlags = props.queueFlags;
-
-			if (!(queueFlags & REQUIRED_QUEUE_FLAGS))
-				// Don't create queues not needed by us or AMF (like compute, encode, etc)
-				continue;
-
-			if (graphicsQueueFamilyIndex == -1 && (queueFlags & VK_QUEUE_GRAPHICS_BIT))
-				graphicsQueueFamilyIndex = i;
-
-			static const float PRIORITY = 1.0;
-			VkDeviceQueueCreateInfo info = {
-				.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-				.queueFamilyIndex = i,
-				.queueCount = 1,
-				.pQueuePriorities = &PRIORITY,
-			};
-			queueCreateInfos.push_back(info);
-		}
-
-		if (graphicsQueueFamilyIndex == -1)
-			throw "Could not find graphics queue family index";
-
-		VkDeviceCreateInfo deviceInfo{
-			.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-			.queueCreateInfoCount = (uint32_t)queueCreateInfos.size(),
-			.pQueueCreateInfos = queueCreateInfos.data(),
-			.enabledExtensionCount = (uint32_t)extensions.size(),
-			.ppEnabledExtensionNames = extensions.data(),
-		};
-		VK_CHECK(vkCreateDevice(vkPhysicalDevice, &deviceInfo, nullptr, &vkDevice));
-		vkGetDeviceQueue(vkDevice, graphicsQueueFamilyIndex, 0, &vkQueue);
-
-		amfVulkanDevice = {
-			.cbSizeof = sizeof(AMFVulkanDevice),
-			.hInstance = vkInstance,
-			.hPhysicalDevice = vkPhysicalDevice,
-			.hDevice = vkDevice,
-		};
-
-#define GET(NAME) \
-		NAME = reinterpret_cast<decltype(NAME)>(vkGetDeviceProcAddr(vkDevice, #NAME)); \
-		if (!NAME) \
-			throw "Failed to resolve " #NAME;
-		GET(vkGetMemoryFdKHR);
-		GET(vkGetSemaphoreFdKHR);
-#undef GET
-
-		if (!gl) {
-			scoped_lock lock(glMutex);
-			if (!gl)
-				gl = new GLFunctions;
-		}
-	} catch (...) {
-		if (vkDevice)
-			vkDestroyDevice(vkDevice, nullptr);
-		if (vkInstance)
-			vkDestroyInstance(vkInstance, nullptr);
-		throw;
-	}
 }
 
 TextureEncoder::~TextureEncoder()
 {
+	if (!vkDevice)
+		return;
+
 	vkDeviceWaitIdle(vkDevice);
 	clearBuffers();
 	vkDestroyCommandPool(vkDevice, vkCommandPool, nullptr);
@@ -245,9 +233,41 @@ TextureEncoder::~TextureEncoder()
 	obs_leave_graphics();
 
 	terminate();
+}
 
-	vkDestroyDevice(vkDevice, nullptr);
-	vkDestroyInstance(vkInstance, nullptr);
+shared_ptr<VulkanDevice> Encoder::createDevice()
+{
+	return ::createDevice(amfContext1, deviceID);
+}
+
+shared_ptr<VulkanDevice> TextureEncoder::createDevice()
+{
+	vector<const char *> otherExtensions = {
+		VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME,
+		VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME,
+		VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME,
+		VK_KHR_SAMPLER_YCBCR_CONVERSION_EXTENSION_NAME,
+	};
+	shared_ptr<VulkanDevice> result = ::createDevice(amfContext1, deviceID, otherExtensions);
+
+	vkDevice = result->hDevice;
+	vkPhysicalDevice = result->hPhysicalDevice;
+
+#define GET(NAME) \
+	NAME = reinterpret_cast<decltype(NAME)>(vkGetDeviceProcAddr(vkDevice, #NAME)); \
+	if (!NAME) \
+		throw "Failed to resolve " #NAME;
+	GET(vkGetMemoryFdKHR);
+	GET(vkGetSemaphoreFdKHR);
+#undef GET
+
+	if (!gl) {
+		scoped_lock lock(glMutex);
+		if (!gl)
+			gl = new GLFunctions;
+	}
+
+	return result;
 }
 
 bool TextureEncoder::encode(encoder_texture *texture, int64_t pts, encoder_packet *packet, bool *receivedPacket)
@@ -293,11 +313,6 @@ bool TextureEncoder::encode(encoder_texture *texture, int64_t pts, encoder_packe
 	return true;
 }
 
-void *TextureEncoder::getVulkanDevice()
-{
-	return &amfVulkanDevice;
-}
-
 void TextureEncoder::createTextures(encoder_texture *from)
 {
 	planeCount = 0;
@@ -314,6 +329,9 @@ void TextureEncoder::createTextures(encoder_texture *from)
 	glDstLayoutsPtr = unique_ptr<GLenum[]>(glDstLayouts);
 	GLuint *glTextures = new GLuint[planeCount];
 	glTexturesPtr = unique_ptr<GLuint[]>(glTextures);
+
+	// Should always be the first queue index
+	vkGetDeviceQueue(vkDevice, 0, 0, &vkQueue);
 
 	VkCommandPoolCreateInfo poolInfo{
 		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,

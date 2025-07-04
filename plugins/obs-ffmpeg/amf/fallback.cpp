@@ -3,8 +3,9 @@
 
 #include <util/threading.h>
 
-FallbackEncoder::FallbackEncoder(CodecType codec, obs_encoder_t *encoder, VideoInfo &videoInfo, string name)
-	: Encoder(codec, encoder, videoInfo, name)
+FallbackEncoder::FallbackEncoder(obs_encoder_t *encoder, CodecType codec, VideoInfo &videoInfo, string name,
+				 uint32_t deviceID)
+	: Encoder(encoder, codec, videoInfo, name, deviceID)
 {
 }
 

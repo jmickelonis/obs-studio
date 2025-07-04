@@ -11,12 +11,14 @@ struct EncoderType {
 };
 
 struct AdapterCapabilities {
+	const char *const device;
+	const int deviceID;
 	const bool avc;
 	const bool hevc;
 	const bool av1;
-};
 
-bool adapterSupports(CodecType codec);
+	bool supports(CodecType codec);
+};
 
 obs_properties_t *createProperties(void *, void *typeData);
 void setPropertyDefaults(obs_data_t *data, void *);

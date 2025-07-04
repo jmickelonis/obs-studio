@@ -9,7 +9,7 @@ using HostBufferPtr = shared_ptr<uint8_t[]>;
 class FallbackEncoder : public Encoder, public AMFSurfaceObserver {
 
 public:
-	FallbackEncoder(CodecType codec, obs_encoder_t *encoder, VideoInfo &videoInfo, string name);
+	FallbackEncoder(obs_encoder_t *encoder, CodecType codec, VideoInfo &videoInfo, string name, uint32_t deviceID);
 	virtual ~FallbackEncoder();
 
 	void encode(encoder_frame *frame, encoder_packet *packet, bool *receivedPacket);

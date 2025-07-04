@@ -10,7 +10,7 @@
 #include <opts-parser.h>
 #include <util/platform.h>
 
-VideoInfo::VideoInfo(CodecType codec, obs_encoder_t *encoder)
+VideoInfo::VideoInfo(obs_encoder_t *encoder, CodecType codec)
 {
 	video_t *video = obs_encoder_video(encoder);
 	const video_output_info *voi = video_output_get_info(video);
@@ -148,11 +148,12 @@ static void enumROICallback(void *param, obs_encoder_roi *data)
 	roi->update(data);
 }
 
-Encoder::Encoder(CodecType codec, obs_encoder_t *encoder, VideoInfo &videoInfo, string name)
-	: codec(codec),
-	  encoder(encoder),
+Encoder::Encoder(obs_encoder_t *encoder, CodecType codec, VideoInfo &videoInfo, string name, uint32_t deviceID)
+	: encoder(encoder),
+	  codec(codec),
 	  videoInfo(videoInfo),
 	  name(name),
+	  deviceID(deviceID),
 	  width(obs_encoder_get_width(encoder)),
 	  height(obs_encoder_get_height(encoder))
 {
@@ -188,6 +189,12 @@ void Encoder::initialize(obs_data_t *data)
 
 void Encoder::updateSettings(obs_data_t *data)
 {
+	uint32_t deviceID = obs_data_get_int(data, settings::DEVICE);
+	if (deviceID && deviceID != this->deviceID) {
+		info("Ignoring settings update for other device (0x%d)", deviceID);
+		return;
+	}
+
 	bool preAnalysis;
 	AMF_GET(PRE_ANALYSIS_ENABLE, &preAnalysis);
 
@@ -310,12 +317,14 @@ template<typename T> void Encoder::setProperty(const wchar_t *name, const T &val
 
 void Encoder::createEncoder(obs_data_t *data, bool init)
 {
-	if (init)
+	if (init) {
 #ifdef _WIN32
 		AMF_CHECK(amf_context->InitDX11(getDX11Device(), AMF_DX11_1), "InitDX11 failed");
 #else
-		AMF_CHECK(amfContext1->InitVulkan(getVulkanDevice()), "InitVulkan failed");
+		vulkanDevice = createDevice();
+		AMF_CHECK(amfContext1->InitVulkan(vulkanDevice.get()), "InitVulkan failed");
 #endif
+	}
 
 	const wchar_t *id;
 	const wchar_t *extraDataProperty;
@@ -339,7 +348,7 @@ void Encoder::createEncoder(obs_data_t *data, bool init)
 
 	if (init) {
 		AMFCapsPtr caps;
-		const Capabilities *cachedCapabilities = getCapabilities(codec, false);
+		const Capabilities *cachedCapabilities = getCapabilities(deviceID, codec, false);
 
 		if (cachedCapabilities) {
 			// Capabilities were cached; just copy them
@@ -347,7 +356,7 @@ void Encoder::createEncoder(obs_data_t *data, bool init)
 		} else if (AMF_SUCCEEDED(amfEncoder->GetCaps(&caps))) {
 			// Process the caps and cache them for later
 			capabilities.set(codec, caps);
-			cacheCapabilities(codec, capabilities);
+			cacheCapabilities(deviceID, codec, capabilities);
 		}
 
 		if (capabilities.preAnalysis && videoInfo.format != AMF_SURFACE_NV12) {
@@ -714,7 +723,7 @@ int Encoder::getLevel(const Levels &levels, obs_data_t *data)
 	int maxLevel = capabilities.level;
 
 	const char *name = obs_data_get_string(data, settings::LEVEL);
-	if (STR_NE(name, "auto")) {
+	if (STR_NE(name, settings::AUTO)) {
 		const Level *info = levels.get(name);
 		if (info) {
 			int level = info->value;

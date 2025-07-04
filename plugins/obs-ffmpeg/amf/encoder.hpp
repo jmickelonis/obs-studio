@@ -35,7 +35,7 @@ struct VideoInfo {
 	AMF_COLOR_TRANSFER_CHARACTERISTIC_ENUM colorTransferCharacteristic;
 	AMFRate frameRate;
 
-	VideoInfo(CodecType codec, obs_encoder_t *encoder);
+	VideoInfo(obs_encoder_t *encoder, CodecType codec);
 
 	template<typename T> T multiplyByFrameRate(T value) const;
 };
@@ -60,10 +60,11 @@ public:
 	const CodecType codec;
 	obs_encoder_t *const encoder;
 	const string name;
+	const uint32_t deviceID;
 	const uint32_t width;
 	const uint32_t height;
 
-	Encoder(CodecType codec, obs_encoder_t *encoder, VideoInfo &videoInfo, string name);
+	Encoder(obs_encoder_t *encoder, CodecType codec, VideoInfo &videoInfo, string name, uint32_t deviceID);
 	virtual ~Encoder();
 
 	template<typename... Args> void log(int level, const char *format, Args... args)
@@ -92,8 +93,11 @@ protected:
 #ifdef _WIN32
 	virtual void *getDX11Device() { return nullptr; }
 #else
-	virtual void *getVulkanDevice() { return nullptr; }
+	shared_ptr<VulkanDevice> vulkanDevice;
+
+	virtual shared_ptr<VulkanDevice> createDevice();
 #endif
+
 	void submit(AMFSurfacePtr &surface, encoder_packet *packet, bool *receivedPacket);
 	int64_t timestampToAMF(int64_t ts);
 	int64_t timestampToOBS(int64_t ts);

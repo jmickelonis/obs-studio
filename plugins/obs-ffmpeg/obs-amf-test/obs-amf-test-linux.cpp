@@ -1,136 +1,262 @@
+
+#include <vulkan/vulkan.hpp>
+
 #include <AMF/core/Factory.h>
 #include <AMF/core/Trace.h>
+#include <AMF/core/VulkanAMF.h>
 #include <AMF/components/VideoEncoderVCE.h>
 #include <AMF/components/VideoEncoderHEVC.h>
 #include <AMF/components/VideoEncoderAV1.h>
 
-#include <dlfcn.h>
-#include <vulkan/vulkan.hpp>
-
-#include <string>
-#include <map>
+#include <iostream>
+#include <sstream>
+#include <vector>
 
 using namespace amf;
+using namespace std;
 
-struct AdapterCapabilities {
-	bool is_amd = false;
-	bool avc = false;
-	bool hevc = false;
-	bool av1 = false;
-};
+#define VK_CHECK(FN, MSG) \
+	{ \
+		VkResult res = FN; \
+		if (res != VK_SUCCESS) \
+			throw MSG; \
+	}
 
-static AMFFactory *amfFactory = nullptr;
-static std::map<uint32_t, AdapterCapabilities> adapter_info;
+#define AMF_CHECK(FN, MSG) \
+	{ \
+		AMF_RESULT res = FN; \
+		if (res != AMF_OK) \
+			throw MSG; \
+	}
+#define AMF_SUCCEEDED(FN) FN == AMF_OK
+#define AMF_FAILED(FN) FN != AMF_OK
 
-static bool has_encoder(AMFContextPtr &amf_context, const wchar_t *encoder_name)
+static VkInstance createInstance()
 {
-	AMFComponentPtr encoder;
-	AMF_RESULT res = amfFactory->CreateComponent(amf_context, encoder_name, &encoder);
-	return res == AMF_OK;
+	VkApplicationInfo appInfo{
+		.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+		.pApplicationName = "obs-amf-test",
+		.apiVersion = VK_API_VERSION_1_2,
+	};
+	vector<const char *> extensions{
+		VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
+		VK_KHR_SURFACE_EXTENSION_NAME,
+	};
+	VkInstanceCreateInfo info{
+		.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+		.pApplicationInfo = &appInfo,
+		.enabledExtensionCount = (uint32_t)extensions.size(),
+		.ppEnabledExtensionNames = extensions.data(),
+	};
+	VkInstance instance;
+	VK_CHECK(vkCreateInstance(&info, nullptr, &instance), "Failed to initialize Vulkan");
+	return instance;
 }
 
-static bool get_adapter_caps(uint32_t adapter_idx)
+static vector<VkPhysicalDevice> getPhysicalDevices(VkInstance instance)
 {
-	if (adapter_idx)
-		return false;
+	uint32_t count;
+	VK_CHECK(vkEnumeratePhysicalDevices(instance, &count, nullptr), "Failed to get Vulkan device count");
 
-	AdapterCapabilities &caps = adapter_info[adapter_idx];
+	if (!count)
+		throw "No Vulkan devices were found";
 
-	AMF_RESULT res;
-	AMFContextPtr amf_context;
-	res = amfFactory->CreateContext(&amf_context);
-	if (res != AMF_OK)
-		return true;
+	vector<VkPhysicalDevice> result(count);
+	VK_CHECK(vkEnumeratePhysicalDevices(instance, &count, result.data()), "Failed to enumerate Vulkan devices");
+	return result;
+}
 
-	AMFContext1 *context1 = NULL;
-	res = amf_context->QueryInterface(AMFContext1::IID(), (void **)&context1);
-	if (res != AMF_OK)
-		return false;
-	res = context1->InitVulkan(nullptr);
-	context1->Release();
-	if (res != AMF_OK)
-		return false;
+static AMFFactory *amfFactory;
 
-	caps.is_amd = true;
-	caps.avc = has_encoder(amf_context, AMFVideoEncoderVCE_AVC);
-	caps.hevc = has_encoder(amf_context, AMFVideoEncoder_HEVC);
-	caps.av1 = has_encoder(amf_context, AMFVideoEncoder_AV1);
+static vector<const char *> getExtensions(AMFContext1Ptr amfContext, VkPhysicalDevice device)
+{
+	amf_size wantCount = 0;
+	amfContext->GetVulkanDeviceExtensions(&wantCount, nullptr);
+	vector<const char *> want(wantCount);
+	amfContext->GetVulkanDeviceExtensions(&wantCount, want.data());
 
-	return true;
+	uint32_t count = 0;
+	vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr);
+	vector<VkExtensionProperties> extensions(count);
+	vkEnumerateDeviceExtensionProperties(device, nullptr, &count, extensions.data());
+
+	vector<const char *> result;
+	for (const char *name : want) {
+		auto it = find_if(extensions.begin(), extensions.end(),
+				  [name](VkExtensionProperties e) { return !strcmp(e.extensionName, name); });
+		if (it != extensions.end())
+			result.push_back(name);
+	}
+	return result;
+}
+
+static VkDevice createDevice(AMFContext1Ptr amfContext, VkPhysicalDevice physicalDevice)
+{
+	vector<const char *> extensions = getExtensions(amfContext, physicalDevice);
+
+	uint32_t queueFamilyCount = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties2(physicalDevice, &queueFamilyCount, nullptr);
+
+	vector<VkQueueFamilyProperties2> queueFamilies(queueFamilyCount);
+	vkGetPhysicalDeviceQueueFamilyProperties2(physicalDevice, &queueFamilyCount, queueFamilies.data());
+
+	vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+	for (unsigned int i = 0; i < queueFamilyCount; i++) {
+		VkQueueFamilyProperties &queueFamilyProps = queueFamilies.at(i).queueFamilyProperties;
+		static const float PRIORITY = 1.0;
+		VkDeviceQueueCreateInfo queueCreateInfo = {
+			.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+			.queueFamilyIndex = i,
+			.queueCount = 1,
+			.pQueuePriorities = &PRIORITY,
+		};
+		queueCreateInfos.push_back(queueCreateInfo);
+	}
+
+	VkDeviceCreateInfo createInfo{
+		.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+		.queueCreateInfoCount = (uint32_t)queueCreateInfos.size(),
+		.pQueueCreateInfos = queueCreateInfos.data(),
+		.enabledExtensionCount = (uint32_t)extensions.size(),
+		.ppEnabledExtensionNames = extensions.data(),
+	};
+	VkDevice device = nullptr;
+	vkCreateDevice(physicalDevice, &createInfo, nullptr, &device);
+	return device;
+}
+
+static bool hasEncoder(AMFContextPtr &amfContext, const wchar_t *id)
+{
+	AMFComponentPtr encoder;
+	return AMF_SUCCEEDED(amfFactory->CreateComponent(amfContext, id, &encoder));
 }
 
 int main(void)
-try {
-	AMF_RESULT res;
-	VkResult vkres;
+{
+	stringstream ss;
 
-	VkApplicationInfo app_info = {};
-	app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-	app_info.pApplicationName = "obs-amf-test";
-	app_info.apiVersion = VK_API_VERSION_1_2;
+	try {
+		VkInstance instance = createInstance();
+		vector<VkPhysicalDevice> physicalDevices = getPhysicalDevices(instance);
 
-	VkInstanceCreateInfo info = {};
-	info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-	info.pApplicationInfo = &app_info;
+		void *amfModule = dlopen(AMF_DLL_NAMEA, RTLD_LAZY);
+		if (!amfModule)
+			throw "Failed to load AMF lib";
 
-	VkInstance instance;
-	vkres = vkCreateInstance(&info, nullptr, &instance);
-	if (vkres != VK_SUCCESS)
-		throw "Failed to initialize Vulkan";
+		auto amfInit = (AMFInit_Fn)dlsym(amfModule, AMF_INIT_FUNCTION_NAME);
+		if (!amfInit)
+			throw "Failed to get init func";
 
-	uint32_t device_count;
-	vkres = vkEnumeratePhysicalDevices(instance, &device_count, nullptr);
-	if (vkres != VK_SUCCESS || !device_count)
-		throw "Failed to enumerate Vulkan devices";
+		AMF_CHECK(amfInit(AMF_FULL_VERSION, &amfFactory), "AMFInit failed");
 
-	VkPhysicalDevice *devices = new VkPhysicalDevice[device_count];
-	vkres = vkEnumeratePhysicalDevices(instance, &device_count, devices);
-	if (vkres != VK_SUCCESS)
-		throw "Failed to enumerate Vulkan devices";
+		AMFQueryVersion_Fn getVersion = (AMFQueryVersion_Fn)dlsym(amfModule, AMF_QUERY_VERSION_FUNCTION_NAME);
+		if (!getVersion)
+			throw "Failed to get AMFQueryVersion address";
 
-	VkPhysicalDeviceDriverProperties driver_props = {};
-	driver_props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES;
-	VkPhysicalDeviceProperties2 device_props = {};
-	device_props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-	device_props.pNext = &driver_props;
-	vkGetPhysicalDeviceProperties2(devices[0], &device_props);
+		amf_uint64 amfVersion;
+		AMF_CHECK(getVersion(&amfVersion), "AMFQueryVersion failed");
 
-	bool is_proprietary = !strcmp(driver_props.driverName, "AMD proprietary driver");
+		AMFTrace *amfTrace;
+		AMF_CHECK(amfFactory->GetTrace(&amfTrace), "GetTrace failed");
+		amfTrace->EnableWriter(AMF_TRACE_WRITER_DEBUG_OUTPUT, false);
+		amfTrace->EnableWriter(AMF_TRACE_WRITER_CONSOLE, false);
 
-	vkDestroyInstance(instance, nullptr);
+		VkPhysicalDeviceDriverProperties driverProps{
+			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES,
+		};
+		VkPhysicalDeviceProperties2 deviceProps{
+			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+			.pNext = &driverProps,
+		};
 
-	/* --------------------------------------------------------- */
-	/* try initializing amf, I guess                             */
+		auto field = [&](const char *name, const char *value) {
+			ss << name << "=" << value << "\n";
+		};
+		auto intField = [&](const char *name, int value) {
+			ss << name << "=" << value << "\n";
+		};
+		auto boolField = [&](const char *name, bool value) {
+			field(name, value ? "true" : "false");
+		};
+		auto error = [&](const char *s) {
+			field("error", s);
+		};
 
-	void *amf_module = dlopen(AMF_DLL_NAMEA, RTLD_LAZY);
-	if (!amf_module)
-		throw "Failed to load AMF lib";
+		for (int i = 0; i < physicalDevices.size(); i++) {
+			VkPhysicalDevice &physicalDevice = physicalDevices.at(i);
+			vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProps);
 
-	auto init = (AMFInit_Fn)dlsym(amf_module, AMF_INIT_FUNCTION_NAME);
-	if (!init)
-		throw "Failed to get init func";
+			VkPhysicalDeviceProperties &props = deviceProps.properties;
+			uint32_t vendorID = props.vendorID;
+			bool isAMD = vendorID == 0x1002;
 
-	res = init(AMF_FULL_VERSION, &amfFactory);
-	if (res != AMF_OK)
-		throw "AMFInit failed";
+			if (ss.tellp())
+				ss << "\n";
+			ss << "[" << i << "]\n";
+			field("device", props.deviceName);
+			intField("device_id", props.deviceID);
+			intField("vendor_id", vendorID);
+			boolField("is_amd", isAMD);
+			field("driver", driverProps.driverName);
 
-	if (AMF_FULL_VERSION < AMF_MAKE_FULL_VERSION(1, 4, 34, 0) && !is_proprietary)
-		throw "Not running AMD proprietary driver";
+			if (!isAMD)
+				continue;
 
-	uint32_t idx = 0;
-	while (get_adapter_caps(idx++))
-		;
+			VkDriverId &driverID = driverProps.driverID;
 
-	for (auto &[idx, caps] : adapter_info) {
-		printf("[%u]\n", idx);
-		printf("is_amd=%s\n", caps.is_amd ? "true" : "false");
-		printf("supports_avc=%s\n", caps.avc ? "true" : "false");
-		printf("supports_hevc=%s\n", caps.hevc ? "true" : "false");
-		printf("supports_av1=%s\n", caps.av1 ? "true" : "false");
+			if (amfVersion < AMF_MAKE_FULL_VERSION(1, 4, 34, 0)) {
+				if (driverID != VK_DRIVER_ID_AMD_PROPRIETARY) {
+					error("Not using AMD's proprietary driver");
+					continue;
+				}
+			} else {
+				switch (driverID) {
+				case VK_DRIVER_ID_AMD_PROPRIETARY:
+				case VK_DRIVER_ID_AMD_OPEN_SOURCE:
+				case VK_DRIVER_ID_MESA_RADV:
+					break;
+				default:
+					error("Not using Mesa/RADV or AMD's driver");
+					continue;
+				}
+			}
+
+			AMFContextPtr amfContext;
+			if (AMF_FAILED(amfFactory->CreateContext(&amfContext))) {
+				error("CreateContext failed");
+				continue;
+			}
+
+			AMFContext1Ptr amfContext1 = AMFContext1Ptr(amfContext);
+			VkDevice device = createDevice(amfContext1, physicalDevice);
+
+			if (!device) {
+				error("vkCreateDevice failed");
+				continue;
+			}
+
+			AMFVulkanDevice amfVulkanDevice{
+				.cbSizeof = sizeof(AMFVulkanDevice),
+				.hInstance = instance,
+				.hPhysicalDevice = physicalDevice,
+				.hDevice = device,
+			};
+
+			if (AMF_FAILED(amfContext1->InitVulkan(&amfVulkanDevice))) {
+				error("InitVulkan failed");
+				continue;
+			}
+
+			boolField("supports_avc", hasEncoder(amfContext, AMFVideoEncoderVCE_AVC));
+			boolField("supports_hevc", hasEncoder(amfContext, AMFVideoEncoder_HEVC));
+			boolField("supports_av1", hasEncoder(amfContext, AMFVideoEncoder_AV1));
+		}
+	} catch (const char *text) {
+		if (ss.tellp())
+			ss << "\n";
+		ss << "[error]\nstring=" << text << "\n";
 	}
 
-	return 0;
-} catch (const char *text) {
-	printf("[error]\nstring=%s\n", text);
+	cout << ss.str();
 	return 0;
 }
