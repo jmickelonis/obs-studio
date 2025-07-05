@@ -114,11 +114,14 @@ private:
 	void createTextures(encoder_texture *from);
 	GLuint getReadFBO(gs_texture *tex);
 	BufferPtr getBuffer();
+	BufferPtr createBuffer();
+	void clearBuffer(Buffer &buffer);
 	void clearBuffers();
 	void allocateCommandBuffer(VkCommandBuffer *buffer);
 	void beginCommandBuffer(VkCommandBuffer *buffer = nullptr);
 	void endCommandBuffer(VkCommandBuffer *buffer = nullptr);
 	void submitCommandBuffer(VkCommandBuffer *buffer = nullptr);
+	void waitForFence();
 	uint32_t getMemoryTypeIndex(VkMemoryPropertyFlags properties, uint32_t typeBits);
 
 	virtual void onReceivePacket(const int64_t &ts) override;

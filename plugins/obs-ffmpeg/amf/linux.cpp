@@ -294,10 +294,10 @@ bool TextureEncoder::encode(encoder_texture *texture, int64_t pts, encoder_packe
 	obs_leave_graphics();
 
 	BufferPtr bufferPtr = getBuffer();
-	Buffer &buffer = *bufferPtr;
+	Buffer &buffer = *bufferPtr.get();
 	vkCopySubmitInfo.pCommandBuffers = &buffer.copyCommandBuffer;
 	VK_CHECK(vkQueueSubmit(vkQueue, 1, &vkCopySubmitInfo, vkFence));
-	VK_CHECK(vkWaitForFences(vkDevice, 1, &vkFence, VK_TRUE, UINT64_MAX));
+	waitForFence();
 
 	if (!buffer.surface)
 		AMF_CHECK(amfContext1->CreateSurfaceFromVulkanNative(&buffer.vulkanSurface, &buffer.surface, nullptr),
@@ -502,7 +502,7 @@ void TextureEncoder::createTextures(encoder_texture *from)
 		.pCommandBuffers = &vkCommandBuffer,
 	};
 	VK_CHECK(vkQueueSubmit(vkQueue, 1, &submitInfo, vkFence));
-	VK_CHECK(vkWaitForFences(vkDevice, 1, &vkFence, VK_TRUE, UINT64_MAX));
+	waitForFence();
 
 	// Import semaphores
 	VkSemaphoreGetFdInfoKHR semFdInfo{
@@ -555,6 +555,13 @@ BufferPtr TextureEncoder::getBuffer()
 		return buffer;
 	}
 
+	BufferPtr buffer = createBuffer();
+	buffers.push_back(buffer);
+	return buffer;
+}
+
+BufferPtr TextureEncoder::createBuffer()
+{
 	BufferPtr bufferPtr = make_shared<Buffer>();
 	Buffer &buffer = *bufferPtr;
 
@@ -584,8 +591,13 @@ BufferPtr TextureEncoder::getBuffer()
 
 		VkMemoryRequirements memoryRequirements;
 		vkGetImageMemoryRequirements(vkDevice, vkImage, &memoryRequirements);
+		VkMemoryDedicatedAllocateInfo dedicatedAllocateInfo{
+			.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO,
+			.image = vkImage,
+		};
 		VkMemoryAllocateInfo memoryAllocateInfo{
 			.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+			.pNext = &dedicatedAllocateInfo,
 			.allocationSize = memoryRequirements.size,
 			.memoryTypeIndex = getMemoryTypeIndex(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 							      memoryRequirements.memoryTypeBits),
@@ -593,22 +605,22 @@ BufferPtr TextureEncoder::getBuffer()
 		VK_CHECK(vkAllocateMemory(vkDevice, &memoryAllocateInfo, nullptr, &vkMemory));
 		VK_CHECK(vkBindImageMemory(vkDevice, vkImage, vkMemory, 0));
 
-		beginCommandBuffer();
-		VkImageMemoryBarrier memoryBarrier{
-			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-			.newLayout = VK_IMAGE_LAYOUT_GENERAL,
-			.image = vkImage,
-			.subresourceRange =
-				{
-					.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-					.layerCount = 1,
-					.levelCount = 1,
-				},
-			.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
-		};
-		vkCmdPipelineBarrier(vkCommandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-				     0, 0, nullptr, 0, nullptr, 1, &memoryBarrier);
-		submitCommandBuffer();
+		// beginCommandBuffer();
+		// VkImageMemoryBarrier memoryBarrier{
+		// 	.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+		// 	.newLayout = VK_IMAGE_LAYOUT_GENERAL,
+		// 	.image = vkImage,
+		// 	.subresourceRange =
+		// 		{
+		// 			.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+		// 			.layerCount = 1,
+		// 			.levelCount = 1,
+		// 		},
+		// 	.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
+		// };
+		// vkCmdPipelineBarrier(vkCommandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+		// 		     0, 0, nullptr, 0, nullptr, 1, &memoryBarrier);
+		// submitCommandBuffer();
 
 		allocateCommandBuffer(&copyCommandBuffer);
 		beginCommandBuffer(&copyCommandBuffer);
@@ -687,7 +699,6 @@ BufferPtr TextureEncoder::getBuffer()
 		};
 
 		buffer.copyCommandBuffer = copyCommandBuffer;
-		buffers.push_back(bufferPtr);
 		return bufferPtr;
 	} catch (...) {
 		// Something went wrong
@@ -702,15 +713,18 @@ BufferPtr TextureEncoder::getBuffer()
 	}
 }
 
+void TextureEncoder::clearBuffer(Buffer &buffer)
+{
+	AMFVulkanSurface &vulkanSurface = buffer.vulkanSurface;
+	vkFreeCommandBuffers(vkDevice, vkCommandPool, 1, &buffer.copyCommandBuffer);
+	vkFreeMemory(vkDevice, vulkanSurface.hMemory, nullptr);
+	vkDestroyImage(vkDevice, vulkanSurface.hImage, nullptr);
+}
+
 void TextureEncoder::clearBuffers()
 {
-	for (BufferPtr &bufferPtr : buffers) {
-		Buffer &buffer = *bufferPtr.get();
-		AMFVulkanSurface &vulkanSurface = buffer.vulkanSurface;
-		vkFreeCommandBuffers(vkDevice, vkCommandPool, 1, &buffer.copyCommandBuffer);
-		vkFreeMemory(vkDevice, vulkanSurface.hMemory, nullptr);
-		vkDestroyImage(vkDevice, vulkanSurface.hImage, nullptr);
-	}
+	for (BufferPtr &bufferPtr : buffers)
+		clearBuffer(*bufferPtr.get());
 	activeBuffers.clear();
 	availableBuffers.clear();
 	buffers.clear();
@@ -757,6 +771,12 @@ void TextureEncoder::submitCommandBuffer(VkCommandBuffer *buffer)
 		.pCommandBuffers = buffer,
 	};
 	VK_CHECK(vkQueueSubmit(vkQueue, 1, &info, nullptr));
+}
+
+void TextureEncoder::waitForFence()
+{
+	VK_CHECK(vkWaitForFences(vkDevice, 1, &vkFence, VK_TRUE, UINT64_MAX));
+	VK_CHECK(vkResetFences(vkDevice, 1, &vkFence));
 }
 
 uint32_t TextureEncoder::getMemoryTypeIndex(VkMemoryPropertyFlags properties, uint32_t typeBits)
