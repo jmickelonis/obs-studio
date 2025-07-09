@@ -56,14 +56,6 @@ struct GLFunctions {
 		} \
 	}
 
-struct Buffer {
-	AMFVulkanSurface vulkanSurface = {};
-	AMFSurfacePtr surface;
-	VkCommandBuffer copyCommandBuffer;
-	int64_t ts;
-};
-typedef shared_ptr<Buffer> BufferPtr;
-
 struct Plane {
 	uint32_t w;
 	uint32_t h;
@@ -104,19 +96,13 @@ private:
 	unique_ptr<GLenum[]> glDstLayoutsPtr;
 	unique_ptr<GLuint[]> glTexturesPtr;
 	unordered_map<gs_texture *, GLuint> readFBOs;
-
-	vector<BufferPtr> buffers;
-	vector<BufferPtr> availableBuffers;
-	deque<BufferPtr> activeBuffers;
+	unordered_map<VkImage, VkCommandBuffer> copyCommandBuffers;
 
 	virtual shared_ptr<VulkanDevice> createDevice() override;
 
 	void createTextures(encoder_texture *from);
 	GLuint getReadFBO(gs_texture *tex);
-	BufferPtr getBuffer();
-	BufferPtr createBuffer();
-	void clearBuffer(Buffer &buffer);
-	void clearBuffers();
+	VkCommandBuffer getCopyCommandBuffer(AMFSurfacePtr &surface);
 	void allocateCommandBuffer(VkCommandBuffer *buffer);
 	void beginCommandBuffer(VkCommandBuffer *buffer = nullptr);
 	void endCommandBuffer(VkCommandBuffer *buffer = nullptr);
@@ -124,6 +110,5 @@ private:
 	void waitForFence();
 	uint32_t getMemoryTypeIndex(VkMemoryPropertyFlags properties, uint32_t typeBits);
 
-	virtual void onReceivePacket(const int64_t &ts) override;
-	virtual void onReinitialize(bool full) override;
+	virtual void onReinitialize() override;
 };

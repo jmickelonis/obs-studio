@@ -2,6 +2,7 @@
 
 #include "encoder.hpp"
 
+#include <mutex>
 #include <unordered_map>
 
 using HostBufferPtr = shared_ptr<uint8_t[]>;
@@ -27,6 +28,6 @@ private:
 
 	HostBufferPtr getBuffer(encoder_frame *frame);
 
-	virtual void onReinitialize(bool full) override;
+	virtual void onReinitialize() override;
 	void AMF_STD_CALL OnSurfaceDataRelease(AMFSurface *surface) override;
 };

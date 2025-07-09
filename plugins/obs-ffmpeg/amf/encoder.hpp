@@ -2,12 +2,9 @@
 
 #include "settings.hpp"
 
-#include <condition_variable>
 #include <deque>
-#include <mutex>
 #include <sstream>
 #include <string>
-#include <thread>
 
 #include <obs.h>
 
@@ -104,11 +101,7 @@ protected:
 
 	virtual void terminate();
 	virtual void terminateEncoder();
-
-#ifdef __linux__
-	virtual void onReceivePacket(const int64_t &ts) {}
-#endif
-	virtual void onReinitialize(bool full) {}
+	virtual void onReinitialize() {}
 
 private:
 	const wchar_t *outputDataTypeProperty;
@@ -117,12 +110,6 @@ private:
 	int64_t dtsOffset = 0;
 	deque<AMFDataPtr> queryQueue;
 	unique_ptr<ROI> roi;
-	deque<AMFSurfacePtr> submitQueue;
-	thread worker;
-	condition_variable workerCondition;
-	exception_ptr workerException;
-	mutex workerMutex;
-	volatile bool workerRunning = false;
 
 	AMFComponentPtr amfEncoder;
 	AMFBufferPtr extraData;
@@ -147,10 +134,6 @@ private:
 	int getLevel(const Levels &levels, obs_data_t *data);
 	bool setPreAnalysis(Settings &settings);
 	void applyOpts(const char *s);
-
-	void workerStart();
-	void workerRun();
-	void workerStop();
 
 	bool createROI();
 	void updateROI(AMFSurfacePtr &surface);

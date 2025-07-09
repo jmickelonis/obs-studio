@@ -1,6 +1,7 @@
 #include "linux.hpp"
 
 #include <algorithm>
+#include <mutex>
 
 #include <EGL/egl.h>
 
@@ -212,7 +213,6 @@ TextureEncoder::~TextureEncoder()
 		return;
 
 	vkDeviceWaitIdle(vkDevice);
-	clearBuffers();
 	vkDestroyCommandPool(vkDevice, vkCommandPool, nullptr);
 	vkDestroyFence(vkDevice, vkFence, nullptr);
 
@@ -293,21 +293,18 @@ bool TextureEncoder::encode(encoder_texture *texture, int64_t pts, encoder_packe
 	GL_CHECK(gl->SignalSemaphoreEXT(glSemaphore, 0, 0, planeCount, glTexturesPtr.get(), glDstLayoutsPtr.get()));
 	obs_leave_graphics();
 
-	BufferPtr bufferPtr = getBuffer();
-	Buffer &buffer = *bufferPtr.get();
-	vkCopySubmitInfo.pCommandBuffers = &buffer.copyCommandBuffer;
+	AMFSurfacePtr surface;
+	AMF_CHECK(amfContext1->AllocSurfaceEx(AMF_MEMORY_VULKAN, videoInfo.format, width, height,
+					      AMF_SURFACE_USAGE_DEFAULT, AMF_MEMORY_CPU_LOCAL, &surface),
+		  "AllocSurfaceEx failed");
+
+	VkCommandBuffer copyCommandBuffer = getCopyCommandBuffer(surface);
+	vkCopySubmitInfo.pCommandBuffers = &copyCommandBuffer;
 	VK_CHECK(vkQueueSubmit(vkQueue, 1, &vkCopySubmitInfo, vkFence));
 	waitForFence();
 
-	if (!buffer.surface)
-		AMF_CHECK(amfContext1->CreateSurfaceFromVulkanNative(&buffer.vulkanSurface, &buffer.surface, nullptr),
-			  "CreateSurfaceFromVulkanNative failed");
-
-	AMFSurfacePtr &surface = buffer.surface;
 	surface->SetPts(timestampToAMF(pts));
 	surface->SetProperty(L"PTS", pts);
-	buffer.ts = pts;
-	activeBuffers.push_back(bufferPtr);
 
 	submit(surface, packet, receivedPacket);
 	return true;
@@ -547,187 +544,76 @@ inline GLuint TextureEncoder::getReadFBO(gs_texture *tex)
 	return fbo;
 }
 
-BufferPtr TextureEncoder::getBuffer()
+inline VkCommandBuffer TextureEncoder::getCopyCommandBuffer(AMFSurfacePtr &surface)
 {
-	if (availableBuffers.size()) {
-		BufferPtr buffer = availableBuffers.back();
-		availableBuffers.pop_back();
-		return buffer;
-	}
+	VkImage vkImage = ((AMFVulkanView *)surface->GetPlaneAt(0)->GetNative())->pSurface->hImage;
+	auto it = copyCommandBuffers.find(vkImage);
 
-	BufferPtr buffer = createBuffer();
-	buffers.push_back(buffer);
-	return buffer;
-}
+	if (it != copyCommandBuffers.end())
+		return it->second;
 
-BufferPtr TextureEncoder::createBuffer()
-{
-	BufferPtr bufferPtr = make_shared<Buffer>();
-	Buffer &buffer = *bufferPtr;
+	VkCommandBuffer buffer;
+	allocateCommandBuffer(&buffer);
+	beginCommandBuffer(&buffer);
 
-	VkImage vkImage = nullptr;
-	VkDeviceMemory vkMemory = nullptr;
-	VkCommandBuffer copyCommandBuffer = nullptr;
+	const Plane *planes = planesPtr.get();
 
-	try {
-		VkImageCreateInfo imageInfo{
-			.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-			.imageType = VK_IMAGE_TYPE_2D,
-			.format = vkFormat,
-			.extent =
-				{
-					.width = width,
-					.height = height,
-					.depth = 1,
-				},
-			.arrayLayers = 1,
-			.mipLevels = 1,
-			.samples = VK_SAMPLE_COUNT_1_BIT,
-			.tiling = VK_IMAGE_TILING_LINEAR,
-			.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-			.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT,
-		};
-		VK_CHECK(vkCreateImage(vkDevice, &imageInfo, nullptr, &vkImage));
-
-		VkMemoryRequirements memoryRequirements;
-		vkGetImageMemoryRequirements(vkDevice, vkImage, &memoryRequirements);
-		VkMemoryDedicatedAllocateInfo dedicatedAllocateInfo{
-			.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO,
-			.image = vkImage,
-		};
-		VkMemoryAllocateInfo memoryAllocateInfo{
-			.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-			.pNext = &dedicatedAllocateInfo,
-			.allocationSize = memoryRequirements.size,
-			.memoryTypeIndex = getMemoryTypeIndex(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-							      memoryRequirements.memoryTypeBits),
-		};
-		VK_CHECK(vkAllocateMemory(vkDevice, &memoryAllocateInfo, nullptr, &vkMemory));
-		VK_CHECK(vkBindImageMemory(vkDevice, vkImage, vkMemory, 0));
-
-		// beginCommandBuffer();
-		// VkImageMemoryBarrier memoryBarrier{
-		// 	.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-		// 	.newLayout = VK_IMAGE_LAYOUT_GENERAL,
-		// 	.image = vkImage,
-		// 	.subresourceRange =
-		// 		{
-		// 			.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-		// 			.layerCount = 1,
-		// 			.levelCount = 1,
-		// 		},
-		// 	.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
-		// };
-		// vkCmdPipelineBarrier(vkCommandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-		// 		     0, 0, nullptr, 0, nullptr, 1, &memoryBarrier);
-		// submitCommandBuffer();
-
-		allocateCommandBuffer(&copyCommandBuffer);
-		beginCommandBuffer(&copyCommandBuffer);
-
-		Plane *planes = planesPtr.get();
-
-		VkImageMemoryBarrier memoryBarriers[planeCount];
-		for (int i = planeCount; i-- > 0;) {
-			memoryBarriers[i] = {
-				.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-				.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-				.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-				.image = planes[i].vkImage,
-				.subresourceRange =
-					{
-						.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-						.layerCount = 1,
-						.levelCount = 1,
-					},
-				.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT,
-				.srcQueueFamilyIndex = VK_QUEUE_FAMILY_EXTERNAL,
-			};
-		}
-		vkCmdPipelineBarrier(copyCommandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-				     VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, planeCount,
-				     memoryBarriers);
-
-		VkImageCopy imageCopy{
-			.srcSubresource =
+	VkImageMemoryBarrier memoryBarriers[planeCount];
+	for (int i = planeCount; i-- > 0;) {
+		memoryBarriers[i] = {
+			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+			.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+			.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+			.image = planes[i].vkImage,
+			.subresourceRange =
 				{
 					.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
 					.layerCount = 1,
+					.levelCount = 1,
 				},
-			.dstSubresource =
-				{
-					.layerCount = 1,
-				},
-			.extent =
-				{
-					.depth = 1,
-				},
+			.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT,
+			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_EXTERNAL,
 		};
-		for (int i = planeCount; i-- > 0;) {
-			auto &plane = planes[i];
-			auto &extent = imageCopy.extent;
-			extent.width = plane.w;
-			extent.height = plane.h;
-			imageCopy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_PLANE_0_BIT * (i + 1);
-			vkCmdCopyImage(copyCommandBuffer, plane.vkImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, vkImage,
-				       VK_IMAGE_LAYOUT_GENERAL, 1, &imageCopy);
-
-			auto &barrier = memoryBarriers[i];
-			barrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-			barrier.dstAccessMask = 0;
-			barrier.srcQueueFamilyIndex = 0;
-			barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_EXTERNAL;
-		}
-		vkCmdPipelineBarrier(copyCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
-				     VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, planeCount,
-				     memoryBarriers);
-
-		VK_CHECK(vkEndCommandBuffer(copyCommandBuffer));
-
-		AMFVulkanSurface &vulkanSurface = buffer.vulkanSurface;
-		vulkanSurface = {
-			.cbSizeof = sizeof(AMFVulkanSurface),
-			.hImage = vkImage,
-			.hMemory = vkMemory,
-			.iSize = (amf_int64)memoryAllocateInfo.allocationSize,
-			.eFormat = vkFormat,
-			.iWidth = (amf_int32)width,
-			.iHeight = (amf_int32)height,
-			.eUsage = AMF_SURFACE_USAGE_TRANSFER_DST | AMF_SURFACE_USAGE_NOSYNC |
-				  AMF_SURFACE_USAGE_NO_TRANSITION,
-			.eAccess = AMF_MEMORY_CPU_LOCAL,
-		};
-
-		buffer.copyCommandBuffer = copyCommandBuffer;
-		return bufferPtr;
-	} catch (...) {
-		// Something went wrong
-		// Clean up after ourselves and re-throw
-		if (copyCommandBuffer)
-			vkFreeCommandBuffers(vkDevice, vkCommandPool, 1, &copyCommandBuffer);
-		if (vkMemory)
-			vkFreeMemory(vkDevice, vkMemory, nullptr);
-		if (vkImage)
-			vkDestroyImage(vkDevice, vkImage, nullptr);
-		throw;
 	}
-}
+	vkCmdPipelineBarrier(buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr,
+			     0, nullptr, planeCount, memoryBarriers);
 
-void TextureEncoder::clearBuffer(Buffer &buffer)
-{
-	AMFVulkanSurface &vulkanSurface = buffer.vulkanSurface;
-	vkFreeCommandBuffers(vkDevice, vkCommandPool, 1, &buffer.copyCommandBuffer);
-	vkFreeMemory(vkDevice, vulkanSurface.hMemory, nullptr);
-	vkDestroyImage(vkDevice, vulkanSurface.hImage, nullptr);
-}
+	VkImageCopy imageCopy{
+		.srcSubresource =
+			{
+				.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+				.layerCount = 1,
+			},
+		.dstSubresource =
+			{
+				.layerCount = 1,
+			},
+		.extent =
+			{
+				.depth = 1,
+			},
+	};
+	for (int i = planeCount; i-- > 0;) {
+		auto &plane = planes[i];
+		auto &extent = imageCopy.extent;
+		extent.width = plane.w;
+		extent.height = plane.h;
+		imageCopy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_PLANE_0_BIT * (i + 1);
+		vkCmdCopyImage(buffer, plane.vkImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, vkImage,
+			       VK_IMAGE_LAYOUT_GENERAL, 1, &imageCopy);
 
-void TextureEncoder::clearBuffers()
-{
-	for (BufferPtr &bufferPtr : buffers)
-		clearBuffer(*bufferPtr.get());
-	activeBuffers.clear();
-	availableBuffers.clear();
-	buffers.clear();
+		auto &barrier = memoryBarriers[i];
+		barrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+		barrier.dstAccessMask = 0;
+		barrier.srcQueueFamilyIndex = 0;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_EXTERNAL;
+	}
+	vkCmdPipelineBarrier(buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0,
+			     nullptr, 0, nullptr, planeCount, memoryBarriers);
+
+	VK_CHECK(vkEndCommandBuffer(buffer));
+	copyCommandBuffers[vkImage] = buffer;
+	return buffer;
 }
 
 void TextureEncoder::allocateCommandBuffer(VkCommandBuffer *buffer)
@@ -789,23 +675,9 @@ uint32_t TextureEncoder::getMemoryTypeIndex(VkMemoryPropertyFlags properties, ui
 	return 0xFFFFFFFF;
 }
 
-/* Using Vulkan, we cache/re-use surfaces, so OnSurfaceDataRelease is never called.
- * Instead, we match input/output packets to decide what's available.
- */
-void TextureEncoder::onReceivePacket(const int64_t &ts)
+void TextureEncoder::onReinitialize()
 {
-	while (!activeBuffers.empty()) {
-		auto &buffer = activeBuffers.front();
-		if (buffer->ts > ts)
-			break;
-		activeBuffers.pop_front();
-		availableBuffers.push_back(buffer);
-	}
-}
-
-void TextureEncoder::onReinitialize(bool full)
-{
-	for (BufferPtr &buffer : activeBuffers)
-		availableBuffers.push_back(buffer);
-	activeBuffers.clear();
+	for (auto &[vkImage, buffer] : copyCommandBuffers)
+		vkFreeCommandBuffers(vkDevice, vkCommandPool, 1, &buffer);
+	copyCommandBuffers.clear();
 }

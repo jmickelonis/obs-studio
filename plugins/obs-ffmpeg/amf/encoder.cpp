@@ -203,25 +203,33 @@ void Encoder::updateSettings(obs_data_t *data)
 	PropertyValues oldValues = getPropertyValues(amfEncoder, properties);
 #endif
 
-	workerStop();
+	onReinitialize();
 
-	// Need to do a full re-init if using Pre-Analysis at any point
-	bool full = preAnalysis || obs_data_get_bool(data, settings::PRE_ANALYSIS) ||
-		    rate_control::isQuality(obs_data_get_string(data, settings::RATE_CONTROL));
-	onReinitialize(full);
-
-	AMF_CHECK(amfEncoder->Flush(), "Flush failed");
-
-	if (full) {
-		terminateEncoder();
-		createEncoder(data, false);
-	} else {
-		Settings settings(capabilities, data);
-		shared_ptr<char[]> opts = getUserOptions(data);
-		update(settings, opts.get(), false);
-		AMF_CHECK(amfEncoder->ReInit(width, height), "ReInit failed");
-		workerStart();
+	// Drain the existing output data,
+	// saving it all to the queue so we don't lose anything
+	AMF_CHECK(amfEncoder->Drain(), "Drain failed");
+	AMF_RESULT res;
+	AMFDataPtr dataPtr;
+	bool draining = true;
+	while (draining) {
+		res = amfEncoder->QueryOutput(&dataPtr);
+		switch (res) {
+		case AMF_OK:
+			queryQueue.push_back(dataPtr);
+			continue;
+		case AMF_REPEAT:
+			continue;
+		case AMF_EOF:
+			draining = false;
+			break;
+		default:
+			throw AMFException("Drain failed", res);
+		}
 	}
+
+	// Terminate the existing encoder and make a new one
+	terminateEncoder();
+	createEncoder(data, false);
 
 #if __OBS_AMF_SHOW_PROPERTIES
 	PropertyValues values = getPropertyValues(amfEncoder, properties);
@@ -244,36 +252,56 @@ bool Encoder::getExtraData(uint8_t **data, size_t *size)
 
 void Encoder::submit(AMFSurfacePtr &surface, encoder_packet *packet, bool *receivedPacket)
 {
-	AMFDataPtr data;
-
 	if (capabilities.roi)
 		updateROI(surface);
 
-	{
-		scoped_lock lock(workerMutex);
+	AMF_RESULT res;
+	AMFDataPtr data;
+	uint64_t startTime = os_gettime_ns();
+	bool submitting = true;
 
-		// Process any exception caught by the submit thread
-		if (workerException) {
-			auto e = workerException;
-			workerException = nullptr;
-			rethrow_exception(e);
+LOOP:
+	while (submitting) {
+		res = amfEncoder->SubmitInput(surface);
+
+		switch (res) {
+		case AMF_OK:
+		case AMF_NEED_MORE_INPUT:
+			submitting = false;
+			break;
+		case AMF_INPUT_FULL: {
+			os_sleep_ms(1);
+			if (os_gettime_ns() - startTime >= 5'000'000'000ULL)
+				// Time out after 5 seconds of full input
+				throw AMFException("SubmitInput timed out", res);
+			break;
+		}
+		default:
+			throw AMFException("SubmitInput failed", res);
 		}
 
-		submitQueue.push_back(surface);
-		workerCondition.notify_all();
+		while (true) {
+			res = amfEncoder->QueryOutput(&data);
 
-		if (queryQueue.size()) {
-			data = queryQueue.front();
-			queryQueue.pop_front();
+			switch (res) {
+			case AMF_OK:
+				queryQueue.push_back(data);
+				continue;
+			case AMF_REPEAT:
+				goto LOOP;
+			default:
+				throw AMFException("QueryOutput failed", res);
+			}
 		}
 	}
 
-	if (data) {
-		receivePacket(data, packet);
-		*receivedPacket = true;
-	} else {
-		*receivedPacket = false;
-	}
+	if (!queryQueue.size())
+		return;
+
+	data = queryQueue.front();
+	queryQueue.pop_front();
+	receivePacket(data, packet);
+	*receivedPacket = true;
 }
 
 int64_t Encoder::timestampToAMF(int64_t ts)
@@ -296,10 +324,8 @@ void Encoder::terminate()
 
 void Encoder::terminateEncoder()
 {
-	workerStop();
 	if (amfEncoder)
 		amfEncoder->Terminate();
-	submitQueue.clear();
 	roi.reset();
 }
 
@@ -426,8 +452,6 @@ void Encoder::createEncoder(obs_data_t *data, bool init)
 		info(ss.str().c_str());
 	}
 #endif
-
-	workerStart();
 }
 
 void Encoder::initializeAVC()
@@ -824,104 +848,6 @@ void Encoder::applyOpts(const char *s)
 	obs_free_options(opts);
 }
 
-void Encoder::workerStart()
-{
-	if (workerRunning)
-		return;
-
-	workerRunning = true;
-	workerException = nullptr;
-	worker = thread([this] { workerRun(); });
-}
-
-void Encoder::workerRun()
-{
-	AMF_RESULT res;
-	AMFDataPtr packet;
-
-	auto receive = [&]() {
-		res = amfEncoder->QueryOutput(&packet);
-
-		switch (res) {
-
-		case AMF_OK: {
-			scoped_lock lock(workerMutex);
-			queryQueue.push_back(packet);
-			return true;
-		}
-
-		case AMF_REPEAT:
-			return false;
-
-		default:
-			throw AMFException("QueryOutput failed", res);
-		}
-	};
-
-	auto submit = [&] {
-		scoped_lock lock(workerMutex);
-		if (submitQueue.empty())
-			return false;
-
-		AMFSurfacePtr &surface = submitQueue.front();
-
-		obs_enter_graphics();
-		res = amfEncoder->SubmitInput(surface);
-		obs_leave_graphics();
-
-		switch (res) {
-
-		case AMF_OK:
-		case AMF_NEED_MORE_INPUT:
-			submitQueue.pop_front();
-			return true;
-
-		case AMF_INPUT_FULL:
-			return false;
-
-		default:
-			throw AMFException("SubmitInput failed", res);
-		}
-	};
-
-	try {
-		// Have to submit something before doing anything else
-		// Wait for the first surface
-		{
-			unique_lock lock(workerMutex);
-			workerCondition.wait(lock, [&] { return !submitQueue.empty() || !workerRunning; });
-		}
-
-		while (workerRunning) {
-			while (workerRunning && submit())
-				;
-			os_sleep_ms(1);
-			while (workerRunning && receive())
-				;
-		}
-	} catch (...) {
-		scoped_lock lock(workerMutex);
-		if (workerRunning)
-			workerException = current_exception();
-	}
-#undef IS_RUNNING
-}
-
-void Encoder::workerStop()
-{
-	if (!workerRunning)
-		return;
-
-	{
-		scoped_lock lock(workerMutex);
-		workerRunning = false;
-		workerCondition.notify_all();
-	}
-
-	if (worker.joinable())
-		worker.join();
-}
-
 bool Encoder::createROI()
 {
 	uint32_t mbSize = codec == CodecType::AVC ? 16 : 64;
@@ -1027,10 +953,6 @@ void Encoder::receivePacket(AMFDataPtr &data, encoder_packet *packetPtr)
 	packet.type = OBS_ENCODER_VIDEO;
 	packet.dts = timestampToOBS(data->GetPts());
 	packet.keyframe = type == AMF_VIDEO_ENCODER_OUTPUT_DATA_TYPE_IDR;
-
-#ifdef __linux__
-	onReceivePacket(packet.dts);
-#endif
 
 	if (dtsOffset)
 		packet.dts -= dtsOffset;

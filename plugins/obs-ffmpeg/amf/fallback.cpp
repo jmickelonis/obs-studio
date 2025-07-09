@@ -76,7 +76,7 @@ inline HostBufferPtr FallbackEncoder::getBuffer(encoder_frame *frame)
 	return shared_ptr<uint8_t[]>(new uint8_t[frameSize]);
 }
 
-void FallbackEncoder::onReinitialize(bool full)
+void FallbackEncoder::onReinitialize()
 {
 	scoped_lock lock(bufferMutex);
 
