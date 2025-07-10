@@ -509,6 +509,12 @@ static bool shouldForceDarkScheme()
 	return value ? QVariant(value).toBool() : true;
 }
 
+static bool shouldForceFusionStyle()
+{
+	const char *value = getenv("OBS_FORCE_FUSION_STYLE");
+	return value ? QVariant(value).toBool() : true;
+}
+
 #if !defined(_WIN32) && !defined(__APPLE__)
 static QFileInfo GetAMDGPUProICDPath()
 {
@@ -688,6 +694,10 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 	 * and in the case of OBS it significantly slows down lists with many
 	 * elements (e.g. Hotkeys) and it is actually faster to disable it. */
 	qputenv("QT_NO_SUBTRACTOPAQUESIBLINGS", "1");
+
+	if (shouldForceFusionStyle())
+		// Use Fusion to improve cross-platform looks
+		qputenv("QT_STYLE_OVERRIDE", "Fusion");
 
 	OBSApp program(argc, argv, profilerNameStore.get());
 
