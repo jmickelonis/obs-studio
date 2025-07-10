@@ -28,7 +28,7 @@ void FallbackEncoder::encode(encoder_frame *frame, struct encoder_packet *packet
 		frameSize = 0;
 		planeCount = surface->GetPlanesCount();
 		planeSizes.reserve(planeCount);
-		for (int i = 0; i < planeCount; i++) {
+		for (amf_size i = 0; i < planeCount; i++) {
 			AMFPlane *plane = surface->GetPlaneAt(i);
 			uint32_t size = plane->GetWidth() * plane->GetHeight() * plane->GetPixelSizeInBytes();
 			planeSizes.push_back(make_pair(frameSize, size));
@@ -39,7 +39,7 @@ void FallbackEncoder::encode(encoder_frame *frame, struct encoder_packet *packet
 	HostBufferPtr buffer = getBuffer(frame);
 	uint8_t *data = buffer.get();
 	int offset = 0;
-	for (int i = planeCount; i-- > 0;) {
+	for (amf_size i = planeCount; i-- > 0;) {
 		auto &size = planeSizes.at(i);
 		memcpy(&data[size.first], frame->data[i], size.second);
 	}

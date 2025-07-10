@@ -45,6 +45,7 @@ const wchar_t *getEncoderID(CodecType codec)
 {
 	switch (codec) {
 	case CodecType::AVC:
+	default:
 		return AMFVideoEncoderVCE_AVC;
 	case CodecType::HEVC:
 		return AMFVideoEncoder_HEVC;

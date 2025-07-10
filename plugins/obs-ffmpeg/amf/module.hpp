@@ -12,7 +12,7 @@ struct EncoderType {
 
 struct AdapterCapabilities {
 	const char *const device;
-	const int deviceID;
+	const uint32_t deviceID;
 	const bool avc;
 	const bool hevc;
 	const bool av1;

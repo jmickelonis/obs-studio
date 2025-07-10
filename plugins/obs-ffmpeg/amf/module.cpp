@@ -21,6 +21,7 @@ bool AdapterCapabilities::supports(CodecType codec)
 {
 	switch (codec) {
 	case CodecType::AVC:
+	default:
 		return avc;
 	case CodecType::HEVC:
 		return hevc;
@@ -208,7 +209,7 @@ bool onPropertyModified(void *typeData, obs_properties_t *props, obs_property_t 
 
 	using namespace settings;
 
-	uint32_t device = obs_data_get_int(data, settings::DEVICE);
+	uint32_t device = (uint32_t)obs_data_get_int(data, settings::DEVICE);
 	const Capabilities &capabilities = *getCapabilities(device, codec);
 
 	const char *changedProperty = obs_property_name(prop);
@@ -384,7 +385,7 @@ void *createTextureEncoder(obs_data_t *data, obs_encoder_t *encoder)
 		if (videoInfo.format == AMF_SURFACE_BGRA)
 			throw "Cannot use textures with BGRA format";
 
-		uint32_t deviceID = getDeviceID(codec, obs_data_get_int(data, settings::DEVICE));
+		uint32_t deviceID = getDeviceID(codec, (uint32_t)obs_data_get_int(data, settings::DEVICE));
 
 		// Workaround alert:
 		// For some reason, on Linux, using multiple texture encoders at once doesn't work
@@ -419,7 +420,7 @@ void *createFallbackEncoder(obs_data_t *data, obs_encoder_t *encoder)
 	try {
 		CodecType codec = type->codec;
 		VideoInfo videoInfo(encoder, codec);
-		uint32_t deviceID = getDeviceID(codec, obs_data_get_int(data, settings::DEVICE));
+		uint32_t deviceID = getDeviceID(codec, (uint32_t)obs_data_get_int(data, settings::DEVICE));
 		unique_ptr<FallbackEncoder> enc =
 			make_unique<FallbackEncoder>(encoder, codec, videoInfo, name, deviceID);
 		enc->initialize(data);
@@ -433,28 +434,16 @@ void *createFallbackEncoder(obs_data_t *data, obs_encoder_t *encoder)
 }
 
 #ifdef _WIN32
-bool encodeTexture(void *data, uint32_t handle, int64_t pts, uint64_t lock_key, uint64_t *next_key,
-		   encoder_packet *packet, bool *received_packet)
-try {
-	amf_texencode *enc = (amf_texencode *)data;
-	return enc->encode(handle, pts, lock_key, next_key, packet, received_packet);
-
-} catch (const char *err) {
-	amf_texencode *enc = (amf_texencode *)data;
-	error("%s: %s", __FUNCTION__, err);
-	return false;
-
-} catch (const amf_error &err) {
-	amf_texencode *enc = (amf_texencode *)data;
-	error("%s: %s: %ls", __FUNCTION__, err.str, err.res_text);
-	*received_packet = false;
-	return false;
-
-} catch (const HRError &err) {
-	amf_texencode *enc = (amf_texencode *)data;
-	error("%s: %s: 0x%lX", __FUNCTION__, err.str, err.hr);
-	*received_packet = false;
-	return false;
+bool encodeTexture(void *encData, uint32_t handle, int64_t pts, uint64_t lockKey, uint64_t *nextKey,
+		   encoder_packet *packet, bool *receivedPacket)
+{
+	TextureEncoder *enc = (TextureEncoder *)encData;
+	try {
+		return enc->encode(handle, pts, lockKey, nextKey, packet, receivedPacket);
+	} catch (...) {
+		logEncoderError(enc, __func__);
+		return false;
+	}
 }
 #else
 bool encodeTexture2(void *encData, encoder_texture *texture, int64_t pts, uint64_t, uint64_t *, encoder_packet *packet,
@@ -515,7 +504,7 @@ static void registerEncoder(const char *codec, EncoderType &type)
 		stringstream ss;
 		ss << type.id << "_" << t << "_amf";
 		string s = ss.str();
-		int length = s.length();
+		size_t length = s.length();
 		char *id = (char *)malloc(length + 1);
 		strncpy(id, s.c_str(), length);
 		id[length] = '\0';
@@ -529,32 +518,32 @@ static void registerEncoder(const char *codec, EncoderType &type)
 	};
 
 	obs_encoder_info info = {
-		.type = OBS_ENCODER_VIDEO,
-		.caps = OBS_ENCODER_CAP_PASS_TEXTURE | CAPS,
 		.id = getID("texture"),
+		.type = OBS_ENCODER_VIDEO,
 		.codec = codec,
-		.type_data = getTypeData(),
-		.free_type_data = free,
 		.get_name = getName,
 		.create = createTextureEncoder,
 		.destroy = destroy,
+		.update = updateSettings,
+		.get_extra_data = getExtraData,
+		.type_data = getTypeData(),
+		.free_type_data = free,
+		.caps = OBS_ENCODER_CAP_PASS_TEXTURE | CAPS,
+		.get_defaults2 = setPropertyDefaults,
+		.get_properties2 = createProperties,
 #ifdef _WIN32
 		.encode_texture = encodeTexture,
 #else
 		.encode_texture2 = encodeTexture2,
 #endif
-		.get_defaults2 = setPropertyDefaults,
-		.get_extra_data = getExtraData,
-		.get_properties2 = createProperties,
-		.update = updateSettings,
 	};
 	obs_register_encoder(&info);
 
-	info.caps = OBS_ENCODER_CAP_INTERNAL | CAPS;
 	info.id = getID("fallback");
-	info.type_data = getTypeData();
 	info.create = createFallbackEncoder;
 	info.encode = encodeFallback;
+	info.type_data = getTypeData();
+	info.caps = OBS_ENCODER_CAP_INTERNAL | CAPS;
 #ifdef _WIN32
 	info.encode_texture = nullptr,
 #else
@@ -600,7 +589,7 @@ extern "C" void amf_load(void)
 #endif
 		BPtr<char> testPath = os_get_executable_path_ptr(OBS_AMF_TEST);
 		stringstream ss;
-		static int bufferSize = 2048;
+		static constexpr int bufferSize = 2048;
 
 #ifdef _WIN32
 		ss << '"';
@@ -613,6 +602,10 @@ extern "C" void amf_load(void)
 
 		// os_process_pipe_create() wasn't working at one point,
 		// but pipe() seems to work just fine
+#ifdef _WIN32
+#define popen _popen
+#define pclose _pclose
+#endif
 		FILE *pipe = popen(ss.str().c_str(), "r");
 
 		if (!pipe)
@@ -652,12 +645,12 @@ extern "C" void amf_load(void)
 			bool avc = SUPPORTS(avc);
 			bool hevc = SUPPORTS(hevc);
 			bool av1 = SUPPORTS(av1);
-			if (!(avc | hevc | av1))
+			if (!(avc || hevc || av1))
 				continue;
 #undef SUPPORTS
 
 			const char *device = strdup(config_get_string(config, section, "device"));
-			int deviceID = config_get_int(config, section, "device_id");
+			uint32_t deviceID = (uint32_t)config_get_int(config, section, "device_id");
 			AdapterCapabilities info{device, deviceID, avc, hevc, av1};
 			caps.push_back(info);
 

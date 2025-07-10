@@ -1,6 +1,7 @@
 
 #include "properties.hpp"
 
+#include <codecvt>
 #include <list>
 #include <mutex>
 #include <unordered_map>
@@ -9,6 +10,8 @@ using std::mutex;
 using std::scoped_lock;
 using std::unordered_map;
 using std::wstring;
+using std::wstring_convert;
+using std::codecvt_utf8;
 
 bool PropertyNameComparator::operator()(const wchar_t *a, const wchar_t *b) const
 {
@@ -399,6 +402,7 @@ const CodecProperties &getCodecProperties(CodecType codec)
 	CodecProperties *(*create)();
 	switch (codec) {
 	case CodecType::AVC:
+	default:
 		create = createAVCProperties;
 		break;
 	case CodecType::HEVC:
@@ -446,8 +450,8 @@ const PropertyTypes &getPreAnalysisProperties()
 
 static string nameToString(const wchar_t *name)
 {
-	wstring w = name;
-	return string(w.begin(), w.end());
+	wstring_convert<codecvt_utf8<wchar_t>> converter;
+	return converter.to_bytes(name);
 }
 
 template<typename T> static T getProperty(const AMFPropertyStorage *storage, const wchar_t *name)

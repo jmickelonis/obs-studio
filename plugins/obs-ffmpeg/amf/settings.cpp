@@ -16,7 +16,7 @@ int getValue(CodecType codec, const char *s)
 #define ITEM(NAME) STR_EQ(s, NAME) ? PRESET(NAME)
 	return ITEM(HIGH_QUALITY) : ITEM(QUALITY) : ITEM(SPEED) : PRESET(BALANCED);
 #undef PRESET
-#undef ITEM;
+#undef ITEM
 }
 
 } // namespace preset

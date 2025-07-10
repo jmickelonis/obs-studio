@@ -18,7 +18,7 @@ public:
 private:
 	uint32_t frameSize = 0;
 	uint32_t lineSize;
-	unsigned int planeCount;
+	amf_size planeCount;
 	vector<pair<unsigned int, unsigned int>> planeSizes;
 
 	mutex bufferMutex;

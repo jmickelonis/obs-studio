@@ -162,6 +162,7 @@ Encoder::Encoder(obs_encoder_t *encoder, CodecType codec, VideoInfo &videoInfo, 
 
 	switch (codec) {
 	case CodecType::AVC:
+	default:
 		outputDataTypeProperty = AMF_VIDEO_ENCODER_OUTPUT_DATA_TYPE;
 		break;
 	case CodecType::HEVC:
@@ -175,6 +176,8 @@ Encoder::Encoder(obs_encoder_t *encoder, CodecType codec, VideoInfo &videoInfo, 
 #if __OBS_AMF_SHOW_PROPERTIES
 	showProperties = !getenv("OBS_AMF_DISABLE_PROPERTIES");
 #endif
+
+	capabilities = {};
 }
 
 Encoder::~Encoder()
@@ -189,7 +192,7 @@ void Encoder::initialize(obs_data_t *data)
 
 void Encoder::updateSettings(obs_data_t *data)
 {
-	uint32_t deviceID = obs_data_get_int(data, settings::DEVICE);
+	uint32_t deviceID = (uint32_t)obs_data_get_int(data, settings::DEVICE);
 	if (deviceID && deviceID != this->deviceID) {
 		info("Ignoring settings update for other device (0x%d)", deviceID);
 		return;
@@ -345,7 +348,7 @@ void Encoder::createEncoder(obs_data_t *data, bool init)
 {
 	if (init) {
 #ifdef _WIN32
-		AMF_CHECK(amf_context->InitDX11(getDX11Device(), AMF_DX11_1), "InitDX11 failed");
+		AMF_CHECK(amfContext->InitDX11(getDX11Device(), AMF_DX11_1), "InitDX11 failed");
 #else
 		vulkanDevice = createDevice();
 		AMF_CHECK(amfContext1->InitVulkan(vulkanDevice.get()), "InitVulkan failed");
@@ -357,6 +360,7 @@ void Encoder::createEncoder(obs_data_t *data, bool init)
 
 	switch (codec) {
 	case CodecType::AVC:
+	default:
 		id = AMFVideoEncoderVCE_AVC;
 		extraDataProperty = AMF_VIDEO_ENCODER_EXTRADATA;
 		break;
@@ -536,6 +540,7 @@ void Encoder::update(Settings &settings, const char *opts, bool init)
 
 	switch (codec) {
 	case CodecType::AVC:
+	default:
 		gopSizeProperty = AVC_PROPERTY(IDR_PERIOD);
 		levelProperty = AVC_PROPERTY(PROFILE_LEVEL);
 		updateAVC(settings);
@@ -744,7 +749,7 @@ int Encoder::getLevel(const Levels &levels, obs_data_t *data)
 {
 	uint64_t size = width * height;
 	uint64_t rate = videoInfo.multiplyByFrameRate(size);
-	int maxLevel = capabilities.level;
+	int maxLevel = (int)capabilities.level;
 
 	const char *name = obs_data_get_string(data, settings::LEVEL);
 	if (STR_NE(name, settings::AUTO)) {
