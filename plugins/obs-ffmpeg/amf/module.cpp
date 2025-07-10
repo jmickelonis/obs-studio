@@ -439,7 +439,8 @@ bool encodeTexture(void *encData, uint32_t handle, int64_t pts, uint64_t lockKey
 {
 	TextureEncoder *enc = (TextureEncoder *)encData;
 	try {
-		return enc->encode(handle, pts, lockKey, nextKey, packet, receivedPacket);
+		enc->encode(handle, pts, lockKey, nextKey, packet, receivedPacket);
+		return true;
 	} catch (...) {
 		logEncoderError(enc, __func__);
 		return false;
@@ -551,16 +552,6 @@ static void registerEncoder(const char *codec, EncoderType &type)
 	obs_register_encoder(&info);
 }
 
-#ifdef _WIN32
-static bool enum_luids(void *param, uint32_t idx, uint64_t luid)
-{
-	stringstream &cmd = *(stringstream *)param;
-	cmd << " " << hex << luid;
-	UNUSED_PARAMETER(idx);
-	return true;
-}
-#endif
-
 extern "C" void amf_load(void)
 {
 	void *module = nullptr;
@@ -590,14 +581,7 @@ extern "C" void amf_load(void)
 		stringstream ss;
 		static constexpr int bufferSize = 2048;
 
-#ifdef _WIN32
-		ss << '"';
 		ss << testPath;
-		ss << '"';
-		enum_graphics_device_luids(enum_luids, &ss);
-#else
-		ss << testPath;
-#endif
 
 		// os_process_pipe_create() wasn't working at one point,
 		// but pipe() seems to work just fine

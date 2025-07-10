@@ -88,7 +88,8 @@ protected:
 	AMFContext1Ptr amfContext1;
 
 #ifdef _WIN32
-	virtual void *getDX11Device() { return nullptr; }
+	ComPtr<ID3D11Device> dxDevice;
+	ComPtr<ID3D11DeviceContext> dxContext;
 #else
 	shared_ptr<VulkanDevice> vulkanDevice;
 

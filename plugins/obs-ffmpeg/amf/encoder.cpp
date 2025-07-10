@@ -348,7 +348,10 @@ void Encoder::createEncoder(obs_data_t *data, bool init)
 {
 	if (init) {
 #ifdef _WIN32
-		AMF_CHECK(amfContext->InitDX11(getDX11Device(), AMF_DX11_1), "InitDX11 failed");
+		DirectXDevice device = createDevice(deviceID);
+		dxDevice = device.device;
+		dxContext = device.context;
+		AMF_CHECK(amfContext->InitDX11(dxDevice, AMF_DX11_1), "InitDX11 failed");
 #else
 		vulkanDevice = createDevice();
 		AMF_CHECK(amfContext1->InitVulkan(vulkanDevice.get()), "InitVulkan failed");

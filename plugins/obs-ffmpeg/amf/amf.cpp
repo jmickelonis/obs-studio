@@ -19,7 +19,13 @@ bool getCaps(uint32_t deviceID, CodecType codec, AMFCaps **caps)
 	if (AMF_FAILED(amfFactory->CreateContext(&context)))
 		return false;
 #ifdef _WIN32
-	if (AMF_FAILED(context->InitDX11(nullptr, AMF_DX11_1)))
+	ComPtr<ID3D11Device> device;
+	try {
+		device = createDevice(deviceID).device;
+	} catch (...) {
+		return false;
+	}
+	if (AMF_FAILED(context->InitDX11(device, AMF_DX11_1)))
 		return false;
 #elif defined(__linux__)
 	AMFContext1Ptr context1 = AMFContext1Ptr(context);

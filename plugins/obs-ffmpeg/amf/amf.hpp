@@ -10,7 +10,10 @@
 #include <AMF/core/Factory.h>
 #include <AMF/core/Trace.h>
 
-#ifdef __linux__
+#ifdef _WIN32
+#include <d3d11.h>
+#include <util/windows/ComPtr.hpp>
+#else
 #include <memory>
 #include <vector>
 #include <AMF/core/VulkanAMF.h>
@@ -45,14 +48,19 @@ public:
 	virtual const char *what();
 };
 
-#ifdef __linux__
+#ifdef _WIN32
+struct DirectXDevice {
+	ComPtr<ID3D11Device> device;
+	ComPtr<ID3D11DeviceContext> context;
+};
 
+DirectXDevice createDevice(uint32_t id);
+#else
 struct VulkanDevice : public AMFVulkanDevice {
 	~VulkanDevice();
 };
 
 shared_ptr<VulkanDevice> createDevice(AMFContext1Ptr context, uint32_t id, const vector<const char *> &extensions = {});
-
 #endif
 
 bool getCaps(uint32_t deviceID, CodecType codec, AMFCaps **caps);
