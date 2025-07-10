@@ -3,6 +3,7 @@
 
 #include <codecvt>
 #include <list>
+#include <locale>
 #include <mutex>
 #include <unordered_map>
 
