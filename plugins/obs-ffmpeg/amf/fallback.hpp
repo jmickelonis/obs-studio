@@ -26,7 +26,7 @@ private:
 	unordered_map<AMFSurface *, HostBufferPtr> activeBuffers;
 	volatile bool destroying = false;
 
-	HostBufferPtr getBuffer(encoder_frame *frame);
+	HostBufferPtr getBuffer();
 
 	virtual void onReinitialize() override;
 	void AMF_STD_CALL OnSurfaceDataRelease(AMFSurface *surface) override;
