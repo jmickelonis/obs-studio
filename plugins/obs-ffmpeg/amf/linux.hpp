@@ -83,7 +83,6 @@ private:
 	VkFormat vkFormat;
 	VkSubmitInfo vkCopySubmitInfo;
 
-	VkCommandBuffer vkCommandBuffer = nullptr;
 	VkCommandPool vkCommandPool = nullptr;
 	VkFence vkFence = nullptr;
 	VkQueue vkQueue = nullptr;
@@ -103,10 +102,9 @@ private:
 	void createTextures(encoder_texture *from);
 	GLuint getReadFBO(gs_texture *tex);
 	VkCommandBuffer getCopyCommandBuffer(AMFSurfacePtr &surface);
-	void allocateCommandBuffer(VkCommandBuffer *buffer);
-	void beginCommandBuffer(VkCommandBuffer *buffer = nullptr);
-	void endCommandBuffer(VkCommandBuffer *buffer = nullptr);
-	void submitCommandBuffer(VkCommandBuffer *buffer = nullptr);
+	void allocateCommandBuffer(VkCommandBuffer &buffer);
+	void beginCommandBuffer(VkCommandBuffer &buffer);
+	void endCommandBuffer(VkCommandBuffer &buffer);
 	void waitForFence();
 	uint32_t getMemoryTypeIndex(VkMemoryPropertyFlags properties, uint32_t typeBits);
 

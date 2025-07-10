@@ -336,9 +336,11 @@ void TextureEncoder::createTextures(encoder_texture *from)
 		.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
 	};
 	VK_CHECK(vkCreateCommandPool(vkDevice, &poolInfo, nullptr, &vkCommandPool));
-	allocateCommandBuffer(&vkCommandBuffer);
 
-	beginCommandBuffer();
+	VkCommandBuffer vkCommandBuffer;
+	allocateCommandBuffer(vkCommandBuffer);
+
+	beginCommandBuffer(vkCommandBuffer);
 	for (int i = planeCount; i-- > 0;) {
 		auto &plane = planes[i];
 
@@ -487,7 +489,7 @@ void TextureEncoder::createTextures(encoder_texture *from)
 	};
 	VK_CHECK(vkCreateSemaphore(vkDevice, &semaphoreInfo, nullptr, &vkSemaphore));
 
-	endCommandBuffer();
+	endCommandBuffer(vkCommandBuffer);
 
 	VkFenceCreateInfo fenceInfo{
 		.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
@@ -500,6 +502,8 @@ void TextureEncoder::createTextures(encoder_texture *from)
 	};
 	VK_CHECK(vkQueueSubmit(vkQueue, 1, &submitInfo, vkFence));
 	waitForFence();
+
+	vkFreeCommandBuffers(vkDevice, vkCommandPool, 1, &vkCommandBuffer);
 
 	// Import semaphores
 	VkSemaphoreGetFdInfoKHR semFdInfo{
@@ -553,8 +557,8 @@ inline VkCommandBuffer TextureEncoder::getCopyCommandBuffer(AMFSurfacePtr &surfa
 		return it->second;
 
 	VkCommandBuffer buffer;
-	allocateCommandBuffer(&buffer);
-	beginCommandBuffer(&buffer);
+	allocateCommandBuffer(buffer);
+	beginCommandBuffer(buffer);
 
 	const Plane *planes = planesPtr.get();
 
@@ -611,52 +615,33 @@ inline VkCommandBuffer TextureEncoder::getCopyCommandBuffer(AMFSurfacePtr &surfa
 	vkCmdPipelineBarrier(buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0,
 			     nullptr, 0, nullptr, planeCount, memoryBarriers);
 
-	VK_CHECK(vkEndCommandBuffer(buffer));
+	endCommandBuffer(buffer);
 	copyCommandBuffers[vkImage] = buffer;
 	return buffer;
 }
 
-void TextureEncoder::allocateCommandBuffer(VkCommandBuffer *buffer)
+void TextureEncoder::allocateCommandBuffer(VkCommandBuffer &buffer)
 {
-	if (!buffer)
-		buffer = &vkCommandBuffer;
 	VkCommandBufferAllocateInfo info{
 		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
 		.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
 		.commandPool = vkCommandPool,
 		.commandBufferCount = 1,
 	};
-	VK_CHECK(vkAllocateCommandBuffers(vkDevice, &info, buffer));
+	VK_CHECK(vkAllocateCommandBuffers(vkDevice, &info, &buffer));
 }
 
-void TextureEncoder::beginCommandBuffer(VkCommandBuffer *buffer)
+void TextureEncoder::beginCommandBuffer(VkCommandBuffer &buffer)
 {
-	if (!buffer)
-		buffer = &vkCommandBuffer;
 	static VkCommandBufferBeginInfo info{
 		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
 	};
-	VK_CHECK(vkBeginCommandBuffer(*buffer, &info));
+	VK_CHECK(vkBeginCommandBuffer(buffer, &info));
 }
 
-void TextureEncoder::endCommandBuffer(VkCommandBuffer *buffer)
+void TextureEncoder::endCommandBuffer(VkCommandBuffer &buffer)
 {
-	if (!buffer)
-		buffer = &vkCommandBuffer;
-	VK_CHECK(vkEndCommandBuffer(*buffer));
-}
-
-void TextureEncoder::submitCommandBuffer(VkCommandBuffer *buffer)
-{
-	if (!buffer)
-		buffer = &vkCommandBuffer;
-	endCommandBuffer(buffer);
-	VkSubmitInfo info{
-		.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-		.commandBufferCount = 1,
-		.pCommandBuffers = buffer,
-	};
-	VK_CHECK(vkQueueSubmit(vkQueue, 1, &info, nullptr));
+	VK_CHECK(vkEndCommandBuffer(buffer));
 }
 
 void TextureEncoder::waitForFence()
