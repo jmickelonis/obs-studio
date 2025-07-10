@@ -517,26 +517,25 @@ static void registerEncoder(const char *codec, EncoderType &type)
 		return data;
 	};
 
-	obs_encoder_info info = {
-		.id = getID("texture"),
-		.type = OBS_ENCODER_VIDEO,
-		.codec = codec,
-		.get_name = getName,
-		.create = createTextureEncoder,
-		.destroy = destroy,
-		.update = updateSettings,
-		.get_extra_data = getExtraData,
-		.type_data = getTypeData(),
-		.free_type_data = free,
-		.caps = OBS_ENCODER_CAP_PASS_TEXTURE | CAPS,
-		.get_defaults2 = setPropertyDefaults,
-		.get_properties2 = createProperties,
+	obs_encoder_info info{};
+	info.id = getID("texture");
+	info.type = OBS_ENCODER_VIDEO;
+	info.codec = codec;
+	info.get_name = getName;
+	info.create = createTextureEncoder;
+	info.destroy = destroy;
+	info.update = updateSettings;
+	info.get_extra_data = getExtraData;
+	info.type_data = getTypeData();
+	info.free_type_data = free;
+	info.caps = OBS_ENCODER_CAP_PASS_TEXTURE | CAPS;
+	info.get_defaults2 = setPropertyDefaults;
+	info.get_properties2 = createProperties;
 #ifdef _WIN32
-		.encode_texture = encodeTexture,
+	info.encode_texture = encodeTexture;
 #else
-		.encode_texture2 = encodeTexture2,
+	info.encode_texture2 = encodeTexture2;
 #endif
-	};
 	obs_register_encoder(&info);
 
 	info.id = getID("fallback");
@@ -694,29 +693,26 @@ extern "C" void amf_load(void)
 
 		// Register encoders
 		if (anyAVC) {
-			EncoderType type = {
-				.name = "AMD HW H.264 (AVC)",
-				.id = "h264",
-				.codec = CodecType::AVC,
-			};
+			EncoderType type{};
+			type.name = "AMD HW H.264 (AVC)";
+			type.id = "h264";
+			type.codec = CodecType::AVC;
 			registerEncoder("h264", type);
 		}
 #if ENABLE_HEVC
 		if (anyHEVC) {
-			EncoderType type = {
-				.name = "AMD HW H.265 (HEVC)",
-				.id = "h265",
-				.codec = CodecType::HEVC,
-			};
+			EncoderType type{};
+			type.name = "AMD HW H.265 (HEVC)";
+			type.id = "h265";
+			type.codec = CodecType::HEVC;
 			registerEncoder("hevc", type);
 		}
 #endif
 		if (anyAV1) {
-			EncoderType type = {
-				.name = "AMD HW AV1",
-				.id = "av1",
-				.codec = CodecType::AV1,
-			};
+			EncoderType type = {};
+			type.name = "AMD HW AV1";
+			type.id = "av1";
+			type.codec = CodecType::AV1;
 			registerEncoder("av1", type);
 		}
 
