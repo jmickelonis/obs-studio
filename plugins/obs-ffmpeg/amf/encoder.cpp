@@ -464,6 +464,9 @@ void Encoder::initializeAVC()
 	SET(FRAMESIZE, AMFConstructSize(width, height));
 	SET(FRAMERATE, videoInfo.frameRate);
 	SET(FULL_RANGE_COLOR, videoInfo.fullRangeColor);
+	SET(INPUT_COLOR_PRIMARIES, videoInfo.colorPrimaries);
+	SET(INPUT_COLOR_PROFILE, videoInfo.colorProfile);
+	SET(INPUT_TRANSFER_CHARACTERISTIC, videoInfo.colorTransferCharacteristic);
 	SET(OUTPUT_COLOR_PRIMARIES, videoInfo.colorPrimaries);
 	SET(OUTPUT_COLOR_PROFILE, videoInfo.colorProfile);
 	SET(OUTPUT_TRANSFER_CHARACTERISTIC, videoInfo.colorTransferCharacteristic);
@@ -483,6 +486,9 @@ void Encoder::initializeHEVC()
 	SET(FRAMESIZE, AMFConstructSize(width, height));
 	SET(FRAMERATE, videoInfo.frameRate);
 	SET(NOMINAL_RANGE, videoInfo.fullRangeColor);
+	SET(INPUT_COLOR_PRIMARIES, videoInfo.colorPrimaries);
+	SET(INPUT_COLOR_PROFILE, videoInfo.colorProfile);
+	SET(INPUT_TRANSFER_CHARACTERISTIC, videoInfo.colorTransferCharacteristic);
 	SET(OUTPUT_COLOR_PRIMARIES, videoInfo.colorPrimaries);
 	SET(OUTPUT_COLOR_PROFILE, videoInfo.colorProfile);
 	SET(OUTPUT_TRANSFER_CHARACTERISTIC, colorTransferCharacteristic);
@@ -521,6 +527,9 @@ void Encoder::initializeAV1()
 	SET(FRAMESIZE, AMFConstructSize(width, height));
 	SET(FRAMERATE, videoInfo.frameRate);
 	SET(NOMINAL_RANGE, videoInfo.fullRangeColor);
+	SET(INPUT_COLOR_PRIMARIES, videoInfo.colorPrimaries);
+	SET(INPUT_COLOR_PROFILE, videoInfo.colorProfile);
+	SET(INPUT_TRANSFER_CHARACTERISTIC, videoInfo.colorTransferCharacteristic);
 	SET(OUTPUT_COLOR_PRIMARIES, videoInfo.colorPrimaries);
 	SET(OUTPUT_COLOR_PROFILE, videoInfo.colorProfile);
 	SET(OUTPUT_TRANSFER_CHARACTERISTIC, videoInfo.colorTransferCharacteristic);
