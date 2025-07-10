@@ -1,170 +1,138 @@
+#include <iostream>
+#include <sstream>
+
+#include <d3d11.h>
+
 #include <AMF/core/Factory.h>
-#include <AMF/core/Trace.h>
 #include <AMF/components/VideoEncoderVCE.h>
 #include <AMF/components/VideoEncoderHEVC.h>
 #include <AMF/components/VideoEncoderAV1.h>
 
 #include <util/windows/ComPtr.hpp>
 
-#include <dxgi.h>
-#include <d3d11.h>
-#include <d3d11_1.h>
-
-#include <vector>
-#include <string>
-#include <map>
-
 using namespace amf;
+using namespace std;
 
 #ifdef _MSC_VER
 extern "C" __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 #endif
 
-#define AMD_VENDOR_ID 0x1002
+#define WIN_CHECK(FN, MSG) \
+	{ \
+		HRESULT res = FN; \
+		if (FAILED(res)) \
+			throw MSG; \
+	}
+#define WIN_FAILED(FN) FN < 0
 
-struct AdapterCapabilities {
-	bool is_amd = false;
-	bool avc = false;
-	bool hevc = false;
-	bool av1 = false;
-};
+#define AMF_CHECK(FN, MSG) \
+	{ \
+		AMF_RESULT res = FN; \
+		if (res != AMF_OK) \
+			throw MSG; \
+	}
+#define AMF_SUCCEEDED(FN) FN == AMF_OK
+#define AMF_FAILED(FN) FN != AMF_OK
 
-static AMFFactory *amfFactory = nullptr;
-static std::vector<uint64_t> luid_order;
-static std::map<uint32_t, AdapterCapabilities> adapter_info;
+static AMFFactory *amfFactory;
 
-static bool has_encoder(AMFContextPtr &amf_context, const wchar_t *encoder_name)
+static bool hasEncoder(AMFContextPtr &amfContext, const wchar_t *id)
 {
 	AMFComponentPtr encoder;
-	AMF_RESULT res = amfFactory->CreateComponent(amf_context, encoder_name, &encoder);
-	return res == AMF_OK;
-}
-
-static inline uint32_t get_adapter_idx(uint32_t adapter_idx, LUID luid)
-{
-	for (size_t i = 0; i < luid_order.size(); i++) {
-		if (luid_order[i] == *(uint64_t *)&luid) {
-			return (uint32_t)i;
-		}
-	}
-
-	return adapter_idx;
-}
-
-static bool get_adapter_caps(IDXGIFactory *factory, uint32_t adapter_idx)
-{
-	AMF_RESULT res;
-	HRESULT hr;
-
-	ComPtr<IDXGIAdapter> adapter;
-	hr = factory->EnumAdapters(adapter_idx, &adapter);
-	if (FAILED(hr))
-		return false;
-
-	DXGI_ADAPTER_DESC desc;
-	adapter->GetDesc(&desc);
-
-	uint32_t luid_idx = get_adapter_idx(adapter_idx, desc.AdapterLuid);
-	adapter_caps &caps = adapter_info[luid_idx];
-
-	if (desc.VendorId != AMD_VENDOR_ID)
-		return true;
-
-	caps.is_amd = true;
-
-	ComPtr<ID3D11Device> device;
-	ComPtr<ID3D11DeviceContext> context;
-	hr = D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, nullptr, 0, D3D11_SDK_VERSION, &device,
-			       nullptr, &context);
-	if (FAILED(hr))
-		return true;
-
-	AMFContextPtr amf_context;
-	res = amfFactory->CreateContext(&amf_context);
-	if (res != AMF_OK)
-		return true;
-
-	res = amf_context->InitDX11(device);
-	if (res != AMF_OK)
-		return true;
-
-	caps.supports_avc = has_encoder(amf_context, AMFVideoEncoderVCE_AVC);
-	caps.supports_hevc = has_encoder(amf_context, AMFVideoEncoder_HEVC);
-	caps.supports_av1 = has_encoder(amf_context, AMFVideoEncoder_AV1);
-
-	return true;
-}
-
-DWORD WINAPI TimeoutThread(LPVOID param)
-{
-	HANDLE hMainThread = (HANDLE)param;
-
-	DWORD ret = WaitForSingleObject(hMainThread, 2500);
-	if (ret == WAIT_TIMEOUT)
-		TerminateProcess(GetCurrentProcess(), STATUS_TIMEOUT);
-
-	CloseHandle(hMainThread);
-
-	return 0;
+	return AMF_SUCCEEDED(amfFactory->CreateComponent(amfContext, id, &encoder));
 }
 
 int main(int argc, char *argv[])
-try {
-	ComPtr<IDXGIFactory> factory;
-	AMF_RESULT res;
-	HRESULT hr;
+{
+	wstringstream ss;
 
-	HANDLE hMainThread;
-	DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &hMainThread, 0, FALSE,
-			DUPLICATE_SAME_ACCESS);
-	DWORD threadId;
-	HANDLE hThread;
-	hThread = CreateThread(NULL, 0, TimeoutThread, hMainThread, 0, &threadId);
-	CloseHandle(hThread);
+	try {
+		HMODULE amfModule = LoadLibraryW(AMF_DLL_NAME);
+		if (!amfModule)
+			throw "Failed to load AMF lib";
 
-	/* --------------------------------------------------------- */
-	/* try initializing amf, I guess                             */
+		auto amfInit = (AMFInit_Fn)GetProcAddress(amfModule, AMF_INIT_FUNCTION_NAME);
+		if (!amfInit)
+			throw "Failed to get init func";
 
-	HMODULE amf_module = LoadLibraryW(AMF_DLL_NAME);
-	if (!amf_module)
-		throw "Failed to load AMF lib";
+		AMF_CHECK(amfInit(AMF_FULL_VERSION, &amfFactory), "AMFInit failed");
 
-	auto init = (AMFInit_Fn)GetProcAddress(amf_module, AMF_INIT_FUNCTION_NAME);
-	if (!init)
-		throw "Failed to get init func";
+		auto field = [&](const char *name, const char *value) {
+			ss << name << "=" << value << endl;
+		};
+		auto wideField = [&](const char *name, const WCHAR *value) {
+			ss << name << "=" << value << endl;
+		};
+		auto intField = [&](const char *name, int value) {
+			ss << name << "=" << value << endl;
+		};
+		auto boolField = [&](const char *name, bool value) {
+			field(name, value ? "true" : "false");
+		};
+		auto error = [&](const char *s) {
+			field("error", s);
+		};
 
-	res = init(AMF_FULL_VERSION, &amfFactory);
-	if (res != AMF_OK)
-		throw "AMFInit failed";
+		ComPtr<IDXGIFactory> dxgiFactory;
+		WIN_CHECK(CreateDXGIFactory1(__uuidof(IDXGIFactory), (void **)&dxgiFactory),
+			  "CreateDXGIFactory1 failed");
 
-	/* --------------------------------------------------------- */
-	/* parse expected LUID order                                 */
+		ComPtr<IDXGIAdapter> dxgiAdapter;
+		uint32_t index = 0;
+		for (uint32_t index = 0; true; index++) {
+			if (WIN_FAILED(dxgiFactory->EnumAdapters(index, &dxgiAdapter)))
+				break;
 
-	for (int i = 1; i < argc; i++) {
-		luid_order.push_back(strtoull(argv[i], NULL, 16));
+			if (ss.tellp())
+				ss << endl;
+			ss << "[" << index << "]" << endl;
+
+			ComPtr<ID3D11Device> device;
+			ComPtr<ID3D11DeviceContext> context;
+			if (WIN_FAILED(D3D11CreateDevice(dxgiAdapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, nullptr, 0,
+							 D3D11_SDK_VERSION, &device, nullptr, &context))) {
+				error("D3D11CreateDevice failed");
+				continue;
+			}
+
+			DXGI_ADAPTER_DESC desc;
+			if (WIN_FAILED(dxgiAdapter->GetDesc(&desc))) {
+				error("GetDesc failed");
+				continue;
+			}
+
+			UINT vendorID = desc.VendorId;
+			bool isAMD = vendorID == 0x1002;
+
+			wideField("device", desc.Description);
+			intField("device_id", desc.DeviceId);
+			intField("vendor_id", vendorID);
+			boolField("is_amd", isAMD);
+
+			if (!isAMD)
+				continue;
+
+			AMFContextPtr amfContext;
+			if (AMF_FAILED(amfFactory->CreateContext(&amfContext))) {
+				error("CreateContext failed");
+				continue;
+			}
+
+			if (AMF_FAILED(amfContext->InitDX11(device))) {
+				error("InitDX11 failed");
+				continue;
+			}
+
+			boolField("supports_avc", hasEncoder(amfContext, AMFVideoEncoderVCE_AVC));
+			boolField("supports_hevc", hasEncoder(amfContext, AMFVideoEncoder_HEVC));
+			boolField("supports_av1", hasEncoder(amfContext, AMFVideoEncoder_AV1));
+		}
+	} catch (const char *text) {
+		if (ss.tellp())
+			ss << endl;
+		cout << "[error]\nstring=" << text << endl;
 	}
 
-	/* --------------------------------------------------------- */
-	/* obtain adapter compatibility information                  */
-
-	hr = CreateDXGIFactory1(__uuidof(IDXGIFactory), (void **)&factory);
-	if (FAILED(hr))
-		throw "CreateDXGIFactory1 failed";
-
-	uint32_t idx = 0;
-	while (get_adapter_caps(factory, idx++))
-		;
-
-	for (auto &[idx, caps] : adapter_info) {
-		printf("[%u]\n", idx);
-		printf("is_amd=%s\n", caps.is_amd ? "true" : "false");
-		printf("supports_avc=%s\n", caps.supports_avc ? "true" : "false");
-		printf("supports_hevc=%s\n", caps.supports_hevc ? "true" : "false");
-		printf("supports_av1=%s\n", caps.supports_av1 ? "true" : "false");
-	}
-
-	return 0;
-} catch (const char *text) {
-	printf("[error]\nstring=%s\n", text);
+	wcout << ss.str();
 	return 0;
 }
