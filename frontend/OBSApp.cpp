@@ -1229,6 +1229,19 @@ bool OBSApp::TranslateString(const char *lookupVal, const char **out) const
 
 static bool quitting = false;
 
+#ifdef _WIN32
+/* On Windows, using Qt::WA_NativeWindow disables compositing,
+ * which causes white flashes when windows are shown (and other artifacts).
+ * We can force it to be enabled, though.
+ * Should this have an environment variable for selectively disabling?
+ */
+void EnableCompositing(QWidget *widget)
+{
+	HWND wnd = (HWND)widget->winId();
+	SetWindowLongW(wnd, GWL_EXSTYLE, GetWindowLongW(wnd, GWL_EXSTYLE) | WS_EX_COMPOSITED);
+}
+#endif
+
 // Global handler to receive all QEvent::Show events so we can apply
 // display affinity on any newly created windows and dialogs without
 // caring where they are coming from (e.g. plugins).
@@ -1263,6 +1276,11 @@ bool OBSApp::notify(QObject *receiver, QEvent *e)
 
 	if (!w->isWindow())
 		goto skip;
+
+#ifdef _WIN32
+	// Make sure all top-level widgets are composited
+	EnableCompositing(w);
+#endif
 
 	window = w->windowHandle();
 	if (!window)
