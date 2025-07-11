@@ -14,9 +14,16 @@ int getValue(CodecType codec, const char *s)
 {
 #define PRESET(NAME) AMF_PROPERTY(QUALITY_PRESET_ ## NAME)
 #define ITEM(NAME) STR_EQ(s, NAME) ? PRESET(NAME)
-	return ITEM(HIGH_QUALITY) : ITEM(QUALITY) : ITEM(SPEED) : PRESET(BALANCED);
+	if (STR_EQ(s, HIGH_QUALITY))
+		return supportsHighQuality(codec) ? PRESET(HIGH_QUALITY) : PRESET(QUALITY);
+	return ITEM(QUALITY) : ITEM(SPEED) : PRESET(BALANCED);
 #undef PRESET
 #undef ITEM
+}
+
+bool supportsHighQuality(CodecType codec)
+{
+	return codec == CodecType::AV1 || amfVersion >= AMF_MAKE_FULL_VERSION(1, 4, 36, 0);
 }
 
 } // namespace preset

@@ -111,7 +111,8 @@ obs_properties_t *createProperties(void *, void *typeData)
 		return obs_module_text(s.c_str());
 	};
 #define ITEM(NAME) LIST_STRING(getPresetText(preset::NAME), preset::NAME)
-	ITEM(HIGH_QUALITY);
+	if (preset::supportsHighQuality(codec))
+		ITEM(HIGH_QUALITY);
 	ITEM(QUALITY);
 	ITEM(BALANCED);
 	ITEM(SPEED);

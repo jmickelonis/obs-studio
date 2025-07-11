@@ -49,6 +49,7 @@ const char *const BALANCED = "balanced";
 const char *const SPEED = "speed";
 
 int getValue(CodecType codec, const char *s);
+bool supportsHighQuality(CodecType codec);
 
 } // namespace preset
 
