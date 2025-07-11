@@ -119,8 +119,6 @@ void Capabilities::set(CodecType codec, AMFCaps *caps)
 
 	preAnalysis = AMF_GET_BOOL_CAP(PRE_ANALYSIS);
 	level = AMF_GET_INT_CAP(MAX_LEVEL);
-	throughput = AMF_GET_INT_CAP(MAX_THROUGHPUT);
-	requestedThroughput = AMF_GET_INT_CAP(REQUESTED_THROUGHPUT);
 
 	switch (codec) {
 	case CodecType::AVC:

@@ -132,8 +132,6 @@ struct Capabilities {
 	bool preAnalysis : 1;
 	bool roi : 1;
 	amf_int64 level;
-	amf_int64 throughput;
-	amf_int64 requestedThroughput;
 
 	void set(CodecType codec, AMFCaps *caps);
 };
