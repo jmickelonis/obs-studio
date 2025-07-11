@@ -46,6 +46,7 @@
 #include <sstream>
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <dwmapi.h>
 #else
 #include <unistd.h>
 #include <sys/socket.h>
@@ -1230,6 +1231,7 @@ bool OBSApp::TranslateString(const char *lookupVal, const char **out) const
 static bool quitting = false;
 
 #ifdef _WIN32
+
 /* On Windows, using Qt::WA_NativeWindow disables compositing,
  * which causes white flashes when windows are shown (and other artifacts).
  * We can force it to be enabled, though.
@@ -1240,7 +1242,22 @@ void EnableCompositing(QWidget *widget)
 	HWND wnd = (HWND)widget->winId();
 	SetWindowLongW(wnd, GWL_EXSTYLE, GetWindowLongW(wnd, GWL_EXSTYLE) | WS_EX_COMPOSITED);
 }
-#endif
+
+void UpdateCaptionAndBorder(QWidget *widget)
+{
+	HWND wnd = (HWND)widget->winId();
+	COLORREF color;
+
+	// Set the caption (title bar) color from the palette
+	color = widget->palette().color(QPalette::Base).rgb() & 0xFFFFFF;
+	DwmSetWindowAttribute(wnd, DWMWA_CAPTION_COLOR, &color, sizeof(color));
+
+	// Don't draw a native border
+	color = DWMWA_COLOR_NONE;
+	DwmSetWindowAttribute(wnd, DWMWA_BORDER_COLOR, &color, sizeof(color));
+}
+
+#endif // _WIN32
 
 // Global handler to receive all QEvent::Show events so we can apply
 // display affinity on any newly created windows and dialogs without
@@ -1278,8 +1295,10 @@ bool OBSApp::notify(QObject *receiver, QEvent *e)
 		goto skip;
 
 #ifdef _WIN32
-	// Make sure all top-level widgets are composited
+	// Make sure all top-level widgets are composited,
+	// and update the title bar/border styles
 	EnableCompositing(w);
+	UpdateCaptionAndBorder(w);
 #endif
 
 	window = w->windowHandle();

@@ -964,9 +964,9 @@ bool OBSApp::SetTheme(const QString &name)
 	setPalette(palette);
 	setStyleSheet(stylesheet);
 
-	// QLabel links don't pick up the style change automatically
-	// Iterate over them and reload their text if needed
 	for (QWidget *widget : QApplication::topLevelWidgets()) {
+		// QLabel links don't pick up the style change automatically
+		// Iterate over them and reload their text if needed
 		QList<QLabel *> labels = widget->findChildren<QLabel *>();
 		foreach(QLabel * label, labels)
 		{
@@ -976,6 +976,12 @@ bool OBSApp::SetTheme(const QString &name)
 			label->setText("");
 			label->setText(text);
 		}
+
+#ifdef _WIN32
+		// Update the title bar and border on Windows
+		if (widget->isWindow())
+			UpdateCaptionAndBorder(widget);
+#endif
 	}
 
 #ifdef _DEBUG
