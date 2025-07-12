@@ -184,6 +184,7 @@ void setPropertyDefaults(obs_data_t *data, void *)
 #define STRING(NAME, VALUE) SET(string, NAME, VALUE)
 	BOOL(ADAPTIVE_QUANTIZATION, true);
 	BOOL(DYNAMIC_B_FRAMES, true);
+	BOOL(LOW_LATENCY, true);
 	BOOL(PRE_ENCODE, true);
 	INT(B_FRAMES, 2);
 	INT(BITRATE, 2500);
