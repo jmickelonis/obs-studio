@@ -519,7 +519,8 @@ static void *screencast_portal_desktop_capture_create(obs_data_t *settings, obs_
 	capture->restore_token = bstrdup(obs_data_get_string(settings, "RestoreToken"));
 	capture->source = source;
 
-	init_screencast_capture(capture);
+	if (obs_source_active(source))
+		init_screencast_capture(capture);
 
 	return capture;
 }
@@ -533,7 +534,8 @@ static void *screencast_portal_window_capture_create(obs_data_t *settings, obs_s
 	capture->restore_token = bstrdup(obs_data_get_string(settings, "RestoreToken"));
 	capture->source = source;
 
-	init_screencast_capture(capture);
+	if (obs_source_active(source))
+		init_screencast_capture(capture);
 
 	return capture;
 }
@@ -548,7 +550,8 @@ static void *screencast_portal_capture_create(obs_data_t *settings, obs_source_t
 	capture->restore_token = bstrdup(obs_data_get_string(settings, "RestoreToken"));
 	capture->source = source;
 
-	init_screencast_capture(capture);
+	if (obs_source_active(source))
+		init_screencast_capture(capture);
 
 	return capture;
 }
@@ -633,6 +636,8 @@ static void screencast_portal_capture_show(void *data)
 
 	if (capture->obs_pw_stream)
 		obs_pipewire_stream_show(capture->obs_pw_stream);
+	else if (!capture->session_handle)
+		init_screencast_capture(capture);
 }
 
 static void screencast_portal_capture_hide(void *data)
