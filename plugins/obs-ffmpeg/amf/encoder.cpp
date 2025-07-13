@@ -192,6 +192,11 @@ void Encoder::initialize(obs_data_t *data)
 
 void Encoder::updateSettings(obs_data_t *data)
 {
+	// This is called with blank data after a connection attempt fails,
+	// and if we proceed, we'll end up deadlocked during the drain process
+	if (!obs_encoder_active(encoder))
+		return;
+
 	uint32_t deviceID = (uint32_t)obs_data_get_int(data, settings::DEVICE);
 	if (deviceID && deviceID != this->deviceID) {
 		info("Ignoring settings update for other device (0x%d)", deviceID);
