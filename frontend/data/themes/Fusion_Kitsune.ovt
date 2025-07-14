@@ -876,6 +876,7 @@ QAbstractSpinBox:!read-only:focus, QComboBox:!read-only:focus, QLineEdit:!read-o
 
 QPlainTextEdit, QTextEdit {
   border-radius: 3px;
+  min-height: 65px;
 }
 
 QToolButton,
@@ -1020,7 +1021,7 @@ SceneTree {
 }
 
 StatusBarWidget > QFrame {
-  margin-left: 15px;
+  margin-left: 10px;
 }
 
 VolControl QLabel {
