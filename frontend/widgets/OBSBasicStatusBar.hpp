@@ -1,6 +1,7 @@
 #pragma once
 
 #include "StatusBarWidget.hpp"
+#include "GPUUsage.hpp"
 
 #include <obs.hpp>
 
@@ -63,6 +64,8 @@ private:
 	QPointer<QTimer> refreshTimer;
 	QPointer<QTimer> messageTimer;
 
+	GPUUsage *gpuUsage;
+
 	obs_output_t *GetOutput();
 
 	void Activate();
@@ -104,4 +107,7 @@ public:
 	void RecordingUnpaused();
 
 	void ReconnectClear();
+
+protected:
+	virtual bool event(QEvent *event) override;
 };

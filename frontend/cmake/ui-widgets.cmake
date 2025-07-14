@@ -65,3 +65,11 @@ target_sources(
     widgets/VolumeMeter.cpp
     widgets/VolumeMeter.hpp
 )
+
+if(OS_LINUX)
+  target_sources(
+    obs-studio
+    PRIVATE
+      widgets/GPUUsage.cpp
+  )
+endif()

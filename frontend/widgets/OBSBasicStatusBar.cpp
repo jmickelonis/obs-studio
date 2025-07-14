@@ -5,8 +5,8 @@
 
 #include "moc_OBSBasicStatusBar.cpp"
 
-static constexpr int bitrateUpdateSeconds = 1;
-static constexpr int congestionUpdateSeconds = 2;
+static constexpr int bitrateUpdateSeconds = 2;
+static constexpr int congestionUpdateSeconds = 4;
 static constexpr float excellentThreshold = 0.0f;
 static constexpr float goodThreshold = 0.3333f;
 static constexpr float mediocreThreshold = 0.6667f;
@@ -47,6 +47,30 @@ OBSBasicStatusBar::OBSBasicStatusBar(QWidget *parent)
 	connect(messageTimer, &QTimer::timeout, this, &OBSBasicStatusBar::clearMessage);
 
 	clearMessage();
+
+#ifdef __linux__
+	gpuUsage = new GPUUsage(getpid());
+	if (!gpuUsage->pdev.empty()) {
+		gpuUsage->update();
+		// Hide GPU frames until they show usage
+#define HIDE(NAME) statusWidget->ui->NAME##Frame->setVisible(false)
+		HIDE(gpu);
+		HIDE(compute);
+		HIDE(enc);
+		HIDE(enc2);
+#undef HIDE
+	} else {
+		// Didn't find a supported GPU to monitor
+#define DELETE(NAME) delete statusWidget->ui->NAME##Frame
+		DELETE(gpu);
+		DELETE(compute);
+		DELETE(enc);
+		DELETE(enc2);
+#undef DELETE;
+		delete gpuUsage;
+		gpuUsage = nullptr;
+	}
+#endif // __linux__
 }
 
 void OBSBasicStatusBar::Activate()
@@ -199,19 +223,47 @@ void OBSBasicStatusBar::UpdateBandwidth()
 	seconds = 0;
 }
 
+/* Sets label text, and increases the minimum width so sizes don't jump around.
+ */
+static inline void setText(QLabel *label, QString &text)
+{
+	label->setText(text);
+	label->adjustSize();
+	label->setMinimumWidth(label->width());
+}
+
+/* Updates a usage label.
+ * If its frame is specified,
+ * it will be made visible as soon as a positive value is encountered.
+ */
+static inline void updateUsage(QLabel *label, const char *name, double value, QFrame *frame = nullptr)
+{
+	QString text = QString{} + name + ": " + QString::number(value, 'f', 1) + "%";
+	setText(label, text);
+	if (!frame)
+		return;
+	if (value && !frame->isVisible())
+		frame->setVisible(true);
+}
+
 void OBSBasicStatusBar::UpdateCPUUsage()
 {
 	OBSBasic *main = qobject_cast<OBSBasic *>(parent());
 	if (!main)
 		return;
 
-	QString text;
-	text += QString("CPU: ") + QString::number(main->GetCPUUsage(), 'f', 1) + QString("%");
-
-	statusWidget->ui->cpuUsage->setText(text);
-	statusWidget->ui->cpuUsage->setMinimumWidth(statusWidget->ui->cpuUsage->width());
-
+	updateUsage(statusWidget->ui->cpuUsage, "CPU", main->GetCPUUsage());
 	UpdateCurrentFPS();
+
+#ifdef __linux__
+	if (!gpuUsage)
+		return;
+	gpuUsage->update();
+	updateUsage(statusWidget->ui->gpuUsage, "GFX", gpuUsage->gfx * 100, statusWidget->ui->gpuFrame);
+	updateUsage(statusWidget->ui->computeUsage, "CMP", gpuUsage->compute * 100, statusWidget->ui->computeFrame);
+	updateUsage(statusWidget->ui->encUsage, "ENC", gpuUsage->enc * 100, statusWidget->ui->encFrame);
+	updateUsage(statusWidget->ui->enc2Usage, "ENC2", gpuUsage->enc1 * 100, statusWidget->ui->enc2Frame);
+#endif
 }
 
 void OBSBasicStatusBar::UpdateCurrentFPS()
@@ -220,10 +272,12 @@ void OBSBasicStatusBar::UpdateCurrentFPS()
 	obs_get_video_info(&ovi);
 	float targetFPS = (float)ovi.fps_num / (float)ovi.fps_den;
 
-	QString text = QString::asprintf("%.2f / %.2f FPS", obs_get_active_fps(), targetFPS);
+	double fps = obs_get_active_fps();
+	double percent = targetFPS ? (fps / targetFPS) : 0;
 
-	statusWidget->ui->fpsCurrent->setText(text);
-	statusWidget->ui->fpsCurrent->setMinimumWidth(statusWidget->ui->fpsCurrent->width());
+	QString percentText = QString::number(percent * 100, 'f', percent < 1 ? 1 : 0);
+	QString text = QString::asprintf("FPS: %.2f", fps) + " (" + percentText + "%)";
+	setText(statusWidget->ui->fpsCurrent, text);
 }
 
 void OBSBasicStatusBar::UpdateStreamTime()
@@ -236,7 +290,7 @@ void OBSBasicStatusBar::UpdateStreamTime()
 	int hours = totalMinutes / 60;
 
 	QString text = QString::asprintf("%02d:%02d:%02d", hours, minutes, seconds);
-	statusWidget->ui->streamTime->setText(text);
+	setText(statusWidget->ui->streamTime, text);
 	if (streamOutput && !statusWidget->ui->streamTime->isEnabled())
 		statusWidget->ui->streamTime->setDisabled(false);
 
@@ -292,11 +346,7 @@ void OBSBasicStatusBar::UpdateRecordTimeLabel()
 	int hours = totalMinutes / 60;
 
 	QString text = QString::asprintf("%02d:%02d:%02d", hours, minutes, seconds);
-	if (os_atomic_load_bool(&recording_paused)) {
-		text += QStringLiteral(" (PAUSED)");
-	}
-
-	statusWidget->ui->recordTime->setText(text);
+	setText(statusWidget->ui->recordTime, text);
 }
 
 void OBSBasicStatusBar::UpdateDroppedFrames()
@@ -508,6 +558,8 @@ void OBSBasicStatusBar::StreamStopped()
 		streamOutput = nullptr;
 		clearMessage();
 		Deactivate();
+
+		statusWidget->ui->streamTime->setMinimumWidth(0);
 	}
 }
 
@@ -521,6 +573,8 @@ void OBSBasicStatusBar::RecordingStopped()
 {
 	recordOutput = nullptr;
 	Deactivate();
+
+	statusWidget->ui->recordTime->setMinimumWidth(0);
 }
 
 void OBSBasicStatusBar::RecordingPaused()
@@ -587,4 +641,27 @@ void OBSBasicStatusBar::showMessage(const QString &message, int timeout)
 void OBSBasicStatusBar::clearMessage()
 {
 	statusWidget->ui->message->setText("");
+}
+
+bool OBSBasicStatusBar::event(QEvent *event)
+{
+	if (event->type() == QEvent::StyleChange) {
+		// Theme/style changed
+		// Have to undo minimum width adjustments as the proportions may have changed
+#define clearMinimumWidth(NAME) statusWidget->ui->NAME->setMinimumWidth(0);
+		clearMinimumWidth(streamTime);
+		clearMinimumWidth(recordTime);
+		clearMinimumWidth(fpsCurrent);
+#ifdef __linux__
+		if (gpuUsage) {
+			clearMinimumWidth(gpuUsage);
+			clearMinimumWidth(computeUsage);
+			clearMinimumWidth(encUsage);
+			clearMinimumWidth(enc2Usage);
+		}
+#endif
+#undef clearMinimumWidth
+	}
+
+	return QStatusBar::event(event);
 }
