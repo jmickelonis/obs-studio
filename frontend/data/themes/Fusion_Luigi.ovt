@@ -1,6 +1,6 @@
 @OBSThemeMeta {
-  name: "Mario";
-  id: "Fusion.Mario";
+  name: "Luigi";
+  id: "Fusion.Luigi";
   extends: "Fusion";
   author: "jmick";
   dark: "true";
@@ -10,11 +10,11 @@
   --palette_base: #141414;
   --palette_brightText: #FFFFFF;
   --palette_dark: #141414;
-  --palette_highlight: #BF0011;
+  --palette_highlight: #006D28;
   --palette_highlightedText: #FFFFFF;
   --palette_light: #3D3D3D;
-  --palette_link: #BF0011;
-  --palette_linkVisited: #BF0011;
+  --palette_link: #006D28;
+  --palette_linkVisited: #006D28;
   --palette_mid: #292929;
   --palette_midlight: #333333;
   --palette_shadow: #000000;
@@ -331,16 +331,16 @@ QDockWidget::close-button, QDockWidget::float-button {
 QWidget {
   color: #f8f8f8;
   selection-color: #ffffff;
-  selection-background-color: rgb(95.5, 95.5, 95.5);
+  selection-background-color: rgb(54.5, 54.5, 54.5);
   font-size: 13px;
 }
 QWidget::active {
-  selection-background-color: #BF0011;
+  selection-background-color: #006D28;
 }
 QWidget::disabled {
   color: rgba(248, 248, 248, 127);
   selection-color: rgba(255, 255, 255, 127);
-  selection-background-color: rgba(191, 0, 17, 127);
+  selection-background-color: rgba(0, 109, 40, 127);
 }
 
 *[frameShape="1"] {
@@ -379,13 +379,13 @@ QAbstractItemView::item:selected {
   background: rgb(27.336, 27.336, 27.336);
 }
 QAbstractItemView::item:selected:active {
-  background: #BF0011;
+  background: #006D28;
 }
 QAbstractItemView::item:hover {
-  background: rgba(191, 0, 17, 84);
+  background: rgba(0, 109, 40, 84);
 }
 QAbstractItemView::item:hover:selected {
-  background: #BF0011;
+  background: #006D28;
 }
 
 QDialog QAbstractItemView::item:selected:!active:!hover {
@@ -456,10 +456,10 @@ QDockWidget > QCefWidget {
   padding: 2px;
 }
 QDockWidget::window {
-  border: 1px solid rgb(115.9, 20.4, 28.9);
+  border: 1px solid rgb(20.4, 74.9, 40.4);
 }
 QDockWidget::active:window {
-  border-color: #BF0011;
+  border-color: #006D28;
 }
 QDockWidget QToolBar QAbstractButton {
   margin-top: 3px;
@@ -491,10 +491,10 @@ OBSDock #transitionsFrame {
   background: rgb(20.4, 20.4, 20.4);
 }
 #controlsDock QPushButton:hover {
-  background: rgb(210.1, 0, 18.7);
+  background: rgb(0, 119.9, 44);
 }
 #controlsDock QPushButton:pressed {
-  background: #BF0011;
+  background: #006D28;
 }
 #controlsDock QPushButton:disabled {
   background: transparent;
@@ -523,7 +523,7 @@ QMainWindow::separator {
   width: 5px;
 }
 QMainWindow::separator:hover {
-  background: #BF0011;
+  background: #006D28;
 }
 QMainWindow QToolBar {
   padding: 0px;
@@ -582,10 +582,10 @@ QSlider::add-page:disabled, QSlider::sub-page:disabled {
   background: rgba(30.6, 30.6, 30.6, 0.5);
 }
 QSlider::add-page:vertical, QSlider::sub-page:horizontal {
-  background: #BF0011;
+  background: #006D28;
 }
 QSlider::add-page:vertical:disabled, QSlider::sub-page:horizontal:disabled {
-  background: rgba(191, 0, 17, 127);
+  background: rgba(0, 109, 40, 127);
 }
 QSlider::handle {
   background: #d0d0d0;
@@ -634,7 +634,7 @@ QSplitter::handle:vertical {
   height: 3px;
 }
 QSplitter::handle:hover {
-  background: #BF0011;
+  background: #006D28;
 }
 
 QMainWindow > QTabBar {
@@ -807,10 +807,10 @@ QDialog QTabBar::tab:selected {
   background: rgb(40.8, 40.8, 40.8);
 }
 QDialog QTabBar::tab:hover {
-  background: rgba(191, 0, 17, 84);
+  background: rgba(0, 109, 40, 84);
 }
 QDialog QTabBar::tab:hover:selected {
-  background: #BF0011;
+  background: #006D28;
 }
 
 QTabWidget {
