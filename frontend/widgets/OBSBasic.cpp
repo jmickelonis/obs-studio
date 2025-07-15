@@ -491,7 +491,10 @@ OBSBasic::OBSBasic(QWidget *parent) : OBSMainWindow(parent), undo_s(ui), ui(new 
 	QPoint newPos = curPos + statsDockPos;
 	statsDock->move(newPos);
 
-	ui->actionReleaseNotes->setVisible(true);
+	// Hide these for now until we have our own links
+	ui->actionWebsite->setVisible(false);
+	ui->actionDiscord->setVisible(false);
+	ui->actionReleaseNotes->setVisible(false);
 
 	ui->previewDisabledWidget->setContextMenuPolicy(Qt::CustomContextMenu);
 	connect(ui->enablePreviewButton, &QPushButton::clicked, this, &OBSBasic::TogglePreview);

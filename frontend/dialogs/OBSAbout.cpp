@@ -47,14 +47,13 @@ OBSAbout::OBSAbout(QWidget *parent) : QDialog(parent), ui(new Ui::OBSAbout)
 	ui->getInvolved->setTextInteractionFlags(Qt::TextBrowserInteraction);
 	ui->getInvolved->setOpenExternalLinks(true);
 
-	ui->info->setVisible(false);
+	ui->info->setText("Modifications to stock © 2022-2025 John Mickelonis."
+			  "<br>Source code can be found at "
+			  "<a href='https://github.com/jmickelonis/obs-studio'>GitHub</a>.");
 	ui->contribute->setVisible(false);
 	ui->getInvolved->setVisible(false);
-	ui->donate->setText("All modifications to stock © 2022-2025 John Mickelonis."
-			    "<br>Donations are much appreciated and can be sent using "
-			    "<a href='https://paypal.me/jmickelonis'>PayPal</a>."
-			    "<br>Source code can be found at "
-			    "<a href='https://github.com/jmickelonis/obs-studio'>GitHub</a>.");
+	ui->donate->setText("Donations are much appreciated and can be sent using "
+			    "<a href='https://paypal.me/jmickelonis'>PayPal</a>.");
 
 	ui->about->setText("<a href='#'>" + QTStr("About") + "</a>");
 	ui->authors->setText("<a href='#'>" + QTStr("About.Authors") + "</a>");
