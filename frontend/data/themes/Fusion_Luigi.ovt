@@ -488,7 +488,7 @@ OBSDock #transitionsFrame {
   padding: 4px;
 }
 #controlsDock QPushButton:on {
-  background: rgb(20.4, 20.4, 20.4);
+  background: rgb(27.336, 27.336, 27.336);
 }
 #controlsDock QPushButton:hover {
   background: rgb(0, 119.9, 44);
@@ -500,7 +500,7 @@ OBSDock #transitionsFrame {
   background: transparent;
 }
 #controlsDock #modeSwitch:!hover:!pressed.state-active {
-  background: rgb(20.4, 20.4, 20.4);
+  background: rgb(27.336, 27.336, 27.336);
 }
 
 QGroupBox {
