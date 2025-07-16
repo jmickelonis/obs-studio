@@ -417,28 +417,20 @@ void OBSApp::FindThemes()
 		<< "*.oha" // OBS High-contrast Adjustment layer
 		;
 
-	{
-		string themeDir;
-		GetDataFilePath("themes/", themeDir);
+	auto loadThemes = [&](const string &themeDir) {
 		QDirIterator it(QString::fromStdString(themeDir), filters, QDir::Files);
 		while (it.hasNext()) {
 			auto theme = ParseThemeMeta(it.next());
 			if (theme && !themes.contains(theme->id))
 				themes[theme->id] = std::move(*theme);
 		}
-	}
+	};
 
-	{
-		const std::string themeDir = App()->userConfigLocation.u8string() + "/obs-studio/themes";
-
-		QDirIterator it(QString::fromStdString(themeDir), filters, QDir::Files);
-
-		while (it.hasNext()) {
-			auto theme = ParseThemeMeta(it.next());
-			if (theme && !themes.contains(theme->id))
-				themes[theme->id] = std::move(*theme);
-		}
-	}
+	// Let user themes take precedence over global ones
+	string themeDir = App()->userConfigLocation.u8string() + "/obs-studio/themes";
+	loadThemes(themeDir);
+	if (GetDataFilePath("themes/", themeDir))
+		loadThemes(themeDir);
 
 	/* Build dependency tree for all themes, removing ones that have items missing. */
 	QSet<QString> invalid;
