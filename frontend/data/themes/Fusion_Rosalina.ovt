@@ -332,7 +332,7 @@ QWidget {
   color: #f8f8f8;
   selection-color: #ffffff;
   selection-background-color: rgb(71.5, 71.5, 71.5);
-  font-size: 13px;
+  font-size: var(--fontSizeNormal);
 }
 QWidget::active {
   selection-background-color: #286766;
@@ -505,9 +505,9 @@ OBSDock #transitionsFrame {
 
 QGroupBox {
   border: none;
-  font-size: 15px;
+  font-size: var(--fontSizeLarge);
   font-weight: bold;
-  margin-top: 30px;
+  margin-top: 1.5em;
   padding: 5px;
 }
 QGroupBox::title {
@@ -532,7 +532,7 @@ QMainWindow QToolBar {
 
 QMenuBar {
   background: rgb(20.4, 20.4, 20.4);
-  font-size: 11px;
+  font-size: var(--fontSizeSmaller);
 }
 
 QScrollBar {
@@ -641,7 +641,7 @@ QMainWindow > QTabBar {
   alignment: center;
   background: transparent;
   border: none;
-  font-size: 10px;
+  font-size: var(--fontSizeSmallest);
   qproperty-expanding: 1;
 }
 QMainWindow > QTabBar::tab:top {
@@ -876,7 +876,7 @@ QAbstractSpinBox:!read-only:focus, QComboBox:!read-only:focus, QLineEdit:!read-o
 
 QPlainTextEdit, QTextEdit {
   border-radius: 3px;
-  min-height: 65px;
+  min-height: 4.5em;
 }
 
 QToolButton,
@@ -986,7 +986,7 @@ OBSBasicSettings OBSSourceLabel {
   font-weight: bold;
 }
 OBSBasicSettings #hotkeyPage OBSSourceLabel {
-  font-size: 15px;
+  font-size: var(--fontSizeLarge);
   padding: 5px;
 }
 
@@ -999,7 +999,7 @@ OBSQTDisplay {
 }
 
 SceneTree {
-  font-size: 11px;
+  font-size: var(--fontSizeSmaller);
   qproperty-gridItemHeight: 24;
   qproperty-gridItemWidth: 150;
 }
@@ -1017,7 +1017,7 @@ SceneTree {
 #sources QLabel {
   min-height: 22px;
   max-height: 22px;
-  font-size: 11px;
+  font-size: var(--fontSizeSmaller);
 }
 
 StatusBarWidget > QFrame {
@@ -1025,7 +1025,7 @@ StatusBarWidget > QFrame {
 }
 
 VolControl QLabel {
-  font-size: 11px;
+  font-size: var(--fontSizeSmaller);
 }
 VolControl VolumeMeter {
   qproperty-meterThickness: 3;
@@ -1052,14 +1052,14 @@ VolControl VolumeSlider::vertical {
   qproperty-verticalScrollBarPolicy: ScrollBarAsNeeded;
 }
 #hMixerScrollArea QLabel {
-  max-height: 15.4px;
+  max-height: 1em;
 }
 
 #vMixerScrollArea {
   qproperty-horizontalScrollBarPolicy: ScrollBarAsNeeded;
 }
 #vMixerScrollArea QLabel {
-  max-width: 15.4px;
+  max-width: 1em;
 }
 
 .label-preview-title {
