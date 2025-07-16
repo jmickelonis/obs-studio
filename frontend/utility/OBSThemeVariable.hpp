@@ -30,6 +30,10 @@ struct OBSThemeVariable {
 		Calc,   /* Simple calculation with two operands */
 		Min,    /* Get the smallest of two Size or Number */
 		Max,    /* Get the largest of two Size or Number */
+		Round,
+		Ceil,
+		Floor,
+		Unknown = -1,
 	};
 
 	/* Whether the variable should be editable in the UI */
