@@ -260,8 +260,11 @@ bool Encoder::getExtraData(uint8_t **data, size_t *size)
 
 void Encoder::submit(AMFSurfacePtr &surface, encoder_packet *packet, bool *receivedPacket)
 {
-	if (capabilities.roi)
-		updateROI(surface);
+	// Disable ROI until issues can be resolved:
+	// Map areas seem incorrect, bitrate is overshot,
+	// and doesn't work at all when Pre-Analysis is enabled.
+	// if (capabilities.roi)
+	// 	updateROI(surface);
 
 	AMF_RESULT res;
 	AMFDataPtr data;
