@@ -539,14 +539,16 @@ QMenuBar {
 }
 
 QScrollBar {
-  background: transparent;
+  background: rgba(0, 0, 0, 63);
   border: none;
+  border-radius: 3px;
+  margin: 1px;
 }
 QScrollBar:horizontal {
-  height: 6px;
+  height: 8px;
 }
 QScrollBar:vertical {
-  width: 6px;
+  width: 8px;
 }
 QScrollBar:add-line, QScrollBar:sub-line {
   background: transparent;
@@ -1076,10 +1078,12 @@ VolControl VolumeSlider::vertical {
   min-height: 20px;
 }
 
+#previewXScrollBar, #previewYScrollBar {
+  background: transparent;
+}
 #previewXScrollBar::handle, #previewYScrollBar::handle {
   background: #333333;
   border-radius: 3px;
-  margin: 1px;
 }
 #previewXScrollBar::handle:hover, #previewYScrollBar::handle:hover {
   background: rgb(61.2, 61.2, 61.2);
@@ -1090,9 +1094,10 @@ VolControl VolumeSlider::vertical {
 
 #previewXScrollBar {
   height: 20px;
+  margin-bottom: 12px;
 }
 #previewXScrollBar::handle {
-  margin-bottom: 13px;
+  margin-bottom: 1px;
 }
 
 #previewYScrollBar {
