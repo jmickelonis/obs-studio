@@ -40,13 +40,16 @@ struct VideoInfo {
 struct ROI {
 
 	const uint32_t mbSize;
-	const uint32_t mbWidth;
-	const uint32_t mbHeight;
-	const uint32_t pitch;
-	const AMFSurfacePtr surface;
-	const uint32_t bufferSize;
-	uint32_t *const buffer;
+	const uint32_t width;
+	const uint32_t height;
+	const wchar_t *const propertyName;
+
+	uint32_t *buffer = nullptr;
+	uint32_t bufferSize = 0;
+	uint32_t pitch = 0;
 	uint32_t increment = 0;
+
+	~ROI();
 
 	void update(obs_encoder_roi *data);
 };
@@ -136,7 +139,7 @@ private:
 	bool setPreAnalysis(Settings &settings);
 	void applyOpts(const char *s);
 
-	bool createROI();
 	void updateROI(AMFSurfacePtr &surface);
+	void updateROIData(uint32_t &increment);
 	void receivePacket(AMFDataPtr &data, encoder_packet *packet);
 };

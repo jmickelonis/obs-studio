@@ -111,34 +111,32 @@ template<typename T> inline T VideoInfo::multiplyByFrameRate(T value) const
 	return value * frameRate.num / frameRate.den;
 }
 
-void ROI::update(obs_encoder_roi *data)
+ROI::~ROI()
 {
+	delete[] buffer;
+}
+
+inline void ROI::update(obs_encoder_roi *dataPtr)
+{
+	obs_encoder_roi &data = *dataPtr;
+
 	// AMF does not support negative priority
-	if (data->priority < 0)
+	if (data.priority < 0)
 		return;
 
 	// Importance value range is 0..10
-	amf_uint32 priority = (amf_uint32)(data->priority * 10);
+	amf_uint32 priority = (amf_uint32)(data.priority * 10);
 
-	uint32_t left = data->left / mbSize;
-	uint32_t top = data->top / mbSize;
-	uint32_t right = (data->right - 1) / mbSize;
-	uint32_t bottom = (data->bottom - 1) / mbSize;
+	uint32_t left = data.left / mbSize;
+	uint32_t right = min((data.right - 1) / mbSize, width);
+	uint32_t top = data.top / mbSize;
+	uint32_t bottom = min((data.bottom - 1) / mbSize, height);
 
 	unsigned int yOffset;
-
-	for (uint32_t y = mbHeight; y-- > 0;) {
-		if (y < top || y > bottom)
-			continue;
-
+	for (uint32_t y = top; y <= bottom; y++) {
 		yOffset = y * pitch;
-
-		for (uint32_t x = mbWidth; x-- > 0;) {
-			if (x < left || x > right)
-				continue;
-
+		for (uint32_t x = left; x <= right; x++)
 			buffer[yOffset + x] = priority;
-		}
 	}
 }
 
@@ -260,11 +258,8 @@ bool Encoder::getExtraData(uint8_t **data, size_t *size)
 
 void Encoder::submit(AMFSurfacePtr &surface, encoder_packet *packet, bool *receivedPacket)
 {
-	// Disable ROI until issues can be resolved:
-	// Map areas seem incorrect, bitrate is overshot,
-	// and doesn't work at all when Pre-Analysis is enabled.
-	// if (capabilities.roi)
-	// 	updateROI(surface);
+	if (capabilities.roi)
+		updateROI(surface);
 
 	AMF_RESULT res;
 	AMFDataPtr data;
@@ -822,8 +817,17 @@ bool Encoder::setPreAnalysis(Settings &settings)
 	AMF_GET(PRE_ANALYSIS_ENABLE, &wasEnabled);
 	if (enabled != wasEnabled)
 		AMF_SET(PRE_ANALYSIS_ENABLE, enabled);
-	if (!enabled)
+
+	if (!enabled) {
+		if (!capabilities.roi) {
+			// Re-enable ROI if it's available
+			const Capabilities *cachedCapabilities = getCapabilities(deviceID, codec);
+			capabilities.roi = cachedCapabilities->roi;
+		}
 		return false;
+	}
+
+	roi.reset();
 
 	setProperty(AMF_PA_ENGINE_TYPE, MEMORY_TYPE);
 	setProperty(AMF_PA_LOOKAHEAD_BUFFER_DEPTH, pa_lookahead::getValue(settings.paLookahead));
@@ -873,57 +877,69 @@ void Encoder::applyOpts(const char *s)
 	obs_free_options(opts);
 }
 
-bool Encoder::createROI()
-{
-	uint32_t mbSize = codec == CodecType::AVC ? 16 : 64;
-	uint32_t mbWidth = (width + mbSize - 1) / mbSize;
-	uint32_t mbHeight = (height + mbSize - 1) / mbSize;
-
-	AMFSurfacePtr surface;
-	if (AMF_FAILED(amfContext1->AllocSurfaceEx(AMF_MEMORY_HOST, AMF_SURFACE_GRAY32, mbWidth, mbHeight,
-						   AMF_SURFACE_USAGE_DEFAULT | AMF_SURFACE_USAGE_LINEAR,
-						   AMF_MEMORY_CPU_DEFAULT, &surface))) {
-		warn("Failed allocating surface for ROI map!");
-		capabilities.roi = false;
-		return false;
-	}
-
-	AMFPlane &plane = *surface->GetPlaneAt(0);
-	amf_int32 pitch = plane.GetHPitch();
-	ROI *roi = new ROI{mbSize,
-			   mbWidth,
-			   mbHeight,
-			   (uint32_t)(pitch / sizeof(uint32_t)),
-			   surface,
-			   pitch * mbHeight,
-			   (uint32_t *)plane.GetNative()};
-	this->roi.reset(roi);
-	return true;
-}
-
-void Encoder::updateROI(AMFSurfacePtr &surface)
+inline void Encoder::updateROI(AMFSurfacePtr &surface)
 {
 	if (!obs_encoder_has_roi(encoder)) {
-		if (roi) {
+		if (roi)
 			// We had an ROI at one point; clear out everything
 			roi.reset();
-			surface->SetProperty(AMF_PROPERTY(ROI_DATA), (AMFSurface *)nullptr);
-		}
 		return;
 	}
 
+	if (!roi) {
+		bool preAnalysisEnabled = false;
+		AMF_GET(PRE_ANALYSIS_ENABLE, &preAnalysisEnabled);
+
+		if (preAnalysisEnabled) {
+			// Temporarily disable ROI (it cannot work with PA)
+			capabilities.roi = false;
+			warn("Region-of-interest (ROI) is not available while Pre-Analysis is active");
+			return;
+		}
+
+		uint32_t mbSize = codec == CodecType::AVC ? 16 : 64;
+		roi.reset(new ROI{
+			mbSize,
+			(width + mbSize - 1) / mbSize,
+			(height + mbSize - 1) / mbSize,
+			AMF_PROPERTY(ROI_DATA),
+		});
+	}
+
+	ROI &roi = *this->roi;
+
+	AMFSurfacePtr roiSurface;
+	AMF_CHECK(amfContext1->AllocSurfaceEx(AMF_MEMORY_HOST, AMF_SURFACE_GRAY32, roi.width, roi.height,
+					      AMF_SURFACE_USAGE_DEFAULT | AMF_SURFACE_USAGE_LINEAR,
+					      AMF_MEMORY_CPU_READ | AMF_MEMORY_CPU_WRITE, &roiSurface),
+		  "AllocSurfaceEx failed");
+
+	AMFPlane &plane = *roiSurface->GetPlaneAt(0);
 	uint32_t increment = obs_encoder_get_roi_increment(encoder);
 
-	if (roi && roi->increment == increment)
-		return; // Nothing changed
+	if (!roi.buffer) {
+		// Need to consult the surface for the h pitch value
+		amf_int32 pitch = plane.GetHPitch();
 
-	if (!roi && !createROI())
-		return;
+		roi.bufferSize = pitch * roi.height;
+		roi.buffer = new uint32_t[roi.bufferSize];
+		roi.pitch = pitch / 4;
 
-	roi->increment = increment;
-	memset(roi->buffer, 0, roi->bufferSize);
-	obs_encoder_enum_roi(encoder, enumROICallback, roi.get());
-	surface->SetProperty(AMF_PROPERTY(ROI_DATA), roi->surface);
+		updateROIData(increment);
+	} else if (increment != roi.increment) {
+		updateROIData(increment);
+	}
+
+	memcpy((void *)plane.GetNative(), roi.buffer, roi.bufferSize);
+	surface->SetProperty(roi.propertyName, roiSurface);
+}
+
+inline void Encoder::updateROIData(uint32_t &increment)
+{
+	ROI &roi = *this->roi;
+	roi.increment = increment;
+	memset(roi.buffer, 0, roi.bufferSize);
+	obs_encoder_enum_roi(encoder, enumROICallback, &roi);
 }
 
 void Encoder::receivePacket(AMFDataPtr &data, encoder_packet *packetPtr)
