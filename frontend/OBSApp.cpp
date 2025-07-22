@@ -1087,7 +1087,8 @@ bool OBSApp::OBSInit()
 #endif
 #endif
 
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__linux__)
+	// Need this since we use a native window in OBSQTDisplay
 	setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
 #endif
 
