@@ -963,6 +963,7 @@ void Encoder::receivePacket(AMFDataPtr &data, encoder_packet *packetPtr)
 			packet.priority = OBS_NAL_PRIORITY_HIGHEST;
 			break;
 		case AMF_VIDEO_ENCODER_OUTPUT_DATA_TYPE_I:
+		case AMF_VIDEO_ENCODER_OUTPUT_DATA_TYPE_P:
 			packet.priority = OBS_NAL_PRIORITY_HIGH;
 			break;
 		default:
