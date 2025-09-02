@@ -428,6 +428,8 @@ static vector<OBSThemeVariable> ParseThemeVariables(const char *themeData)
 	return vars;
 }
 
+#include <iostream>
+
 void OBSApp::FindThemes()
 {
 
@@ -449,8 +451,8 @@ void OBSApp::FindThemes()
 	// Let user themes take precedence over global ones
 	string themeDir = App()->userConfigLocation.u8string() + "/obs-studio/themes";
 	loadThemes(themeDir);
-	if (GetDataFilePath("themes/", themeDir))
-		loadThemes(themeDir);
+	GetDataFilePath("themes/", themeDir);
+	loadThemes(themeDir);
 
 	/* Build dependency tree for all themes, removing ones that have items missing. */
 	QSet<QString> invalid;
