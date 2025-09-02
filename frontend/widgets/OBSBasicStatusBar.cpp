@@ -48,6 +48,8 @@ OBSBasicStatusBar::OBSBasicStatusBar(QWidget *parent)
 
 	clearMessage();
 
+#define DELETE(NAME) delete statusWidget->ui->NAME##Frame
+
 #ifdef __linux__
 	gpuUsage = new GPUUsage(getpid());
 	if (!gpuUsage->pdev.empty()) {
@@ -61,16 +63,22 @@ OBSBasicStatusBar::OBSBasicStatusBar(QWidget *parent)
 #undef HIDE
 	} else {
 		// Didn't find a supported GPU to monitor
-#define DELETE(NAME) delete statusWidget->ui->NAME##Frame
 		DELETE(gpu);
 		DELETE(compute);
 		DELETE(enc);
 		DELETE(enc2);
-#undef DELETE;
 		delete gpuUsage;
 		gpuUsage = nullptr;
 	}
-#endif // __linux__
+#else
+	// GPU Usage not currently supported
+	DELETE(gpu);
+	DELETE(compute);
+	DELETE(enc);
+	DELETE(enc2);
+#endif
+
+#undef DELETE
 }
 
 void OBSBasicStatusBar::Activate()
