@@ -657,7 +657,7 @@
          </sizepolicy>
         </property>
         <property name="text">
-         <string>&lt;a href='https://paypal.me/jmickelonis'&gt;PayPal.me/jmickelonis&lt;/a&gt;</string>
+         <string>&lt;a href='https://ko-fi.com/softprawn'&gt;Ko-fi.com/SoftPrawn&lt;/a&gt;</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignCenter</set>

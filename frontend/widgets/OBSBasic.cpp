@@ -1912,7 +1912,7 @@ void OBSBasic::UpdateEditMenu()
 void OBSBasic::UpdateTitleBar()
 {
 	stringstream name;
-	name << "OBS Studio (jmick's Mod)";
+	name << "OBS Studio (SoftPrawn Edition)";
 
 	const char *profile = config_get_string(App()->GetUserConfig(), "Basic", "Profile");
 	const char *sceneCollection = config_get_string(App()->GetUserConfig(), "Basic", "SceneCollection");
