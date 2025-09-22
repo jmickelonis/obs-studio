@@ -129,3 +129,13 @@ void OBSProxyStyle::drawControl(ControlElement element, const QStyleOption *opti
 
 	QProxyStyle::drawControl(element, option, painter, widget);
 }
+
+int OBSInvisibleCursorProxyStyle::pixelMetric(PixelMetric metric, const QStyleOption *option,
+					      const QWidget *widget) const
+{
+
+	if (metric == PM_TextCursorWidth)
+		return 0;
+
+	return QProxyStyle::pixelMetric(metric, option, widget);
+}

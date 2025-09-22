@@ -64,6 +64,7 @@ struct QuickTransition;
 namespace OBS {
 class SceneCollection;
 struct Rect;
+enum class LogFileType;
 } // namespace OBS
 
 #define DESKTOP_AUDIO_1 Str("DesktopAudioDevice1")
@@ -260,6 +261,7 @@ private:
 
 	bool loaded = false;
 	bool closing = false;
+	bool handledShutdown = false;
 
 	// TODO: Remove, orphaned variable
 	bool copyVisible = true;
@@ -301,6 +303,7 @@ private:
 public slots:
 	void UpdatePatronJson(const QString &text, const QString &error);
 	void UpdateEditMenu();
+	void applicationShutdown() noexcept;
 
 public:
 	/* `undo_s` needs to be declared after `ui` to prevent an uninitialized
@@ -427,8 +430,6 @@ public slots:
 	 * -------------------------------------
 	 */
 private:
-	QList<QPointer<QDockWidget>> oldExtraDocks;
-	QStringList oldExtraDockNames;
 	QPointer<QDockWidget> statsDock;
 	QByteArray startingDockLayout;
 	QStringList extraDockNames;
@@ -440,7 +441,6 @@ private:
 	QPointer<OBSDock> controlsDock;
 
 public:
-	QAction *AddDockWidget(QDockWidget *dock);
 	void AddDockWidget(QDockWidget *dock, Qt::DockWidgetArea area, bool extraBrowser = false);
 	void RemoveDockWidget(const QString &name);
 	bool IsDockObjectNameUsed(const QString &name);
@@ -451,7 +451,6 @@ private slots:
 	void on_lockDocks_toggled(bool lock);
 	void on_sideDocks_toggled(bool side);
 
-	void RepairOldExtraDockName();
 	void RepairCustomExtraDockName();
 
 	/* -------------------------------------
@@ -584,7 +583,6 @@ private:
 
 	QList<QPoint> visDlgPositions;
 
-	void UploadLog(const char *subdir, const char *file, const bool crash);
 	void CloseDialogs();
 	void EnumDialogs();
 
@@ -633,12 +631,11 @@ private slots:
 
 	void on_autoConfigure_triggered();
 	void on_stats_triggered();
+	void on_idianPlayground_triggered();
 
 	void on_resetUI_triggered();
 
-	void logUploadFinished(const QString &text, const QString &error);
-	void crashUploadFinished(const QString &text, const QString &error);
-	void openLogDialog(const QString &text, const bool crash);
+	void logUploadFinished(const QString &text, const QString &error, OBS::LogFileType uploadType);
 
 	void updateCheckFinished();
 
@@ -649,6 +646,15 @@ public:
 	void CreateFiltersWindow(obs_source_t *source);
 	void CreateEditTransformWindow(obs_sceneitem_t *item);
 	void CreatePropertiesWindow(obs_source_t *source);
+
+	void UploadLog(const char *subdir, const char *file, OBS::LogFileType uploadType);
+
+	/* -------------------------------------
+	 * MARK: - OBSBasic_MainMenu
+	 * -------------------------------------
+	 */
+private:
+	void setupMenuItemStateHandlers();
 
 	/* -------------------------------------
 	 * MARK: - OBSBasic_OutputHandler
@@ -756,6 +762,9 @@ public:
 
 private slots:
 	void ResizeOutputSizeOfSource();
+
+private slots:
+	void on_actionOpenPluginManager_triggered();
 
 	/* -------------------------------------
 	 * MARK: - OBSBasic_Preview
@@ -1471,6 +1480,14 @@ private:
 	std::vector<OBSDataAutoRelease> safeModeTransitions;
 	QPointer<QPushButton> transitionButton;
 	QPointer<QMenu> perSceneTransitionMenu;
+
+	std::unordered_map<std::string, OBSSource> transitions;
+	// FIXME: Any code accessing this collection relies on order of insertion
+	std::vector<std::string> transitionUuids;
+	// FIXME: Replace usages of a name to identify a transition
+	std::unordered_map<std::string, std::string> transitionNameToUuids;
+	int transitionDuration;
+	std::string currentTransitionUuid;
 	obs_source_t *fadeTransition;
 	obs_source_t *cutTransition;
 	std::vector<QuickTransition> quickTransitions;
@@ -1524,6 +1541,8 @@ private:
 
 	void PasteShowHideTransition(obs_sceneitem_t *item, bool show, obs_source_t *tr, int duration);
 
+	void UpdateCurrentTransition(const std::string &uuid, bool setTransition);
+
 public slots:
 	void SetCurrentScene(OBSSource scene, bool force = false);
 
@@ -1532,6 +1551,10 @@ public slots:
 	void TransitionToScene(OBSScene scene, bool force = false);
 	void TransitionToScene(OBSSource scene, bool force = false, bool quickTransition = false, int quickDuration = 0,
 			       bool black = false, bool manual = false);
+
+	void SetCurrentTransition(const QString &uuid);
+
+	void SetTransitionDuration(int duration);
 
 private slots:
 	void AddTransition(const char *id);
@@ -1545,14 +1568,22 @@ private slots:
 	void TBarChanged(int value);
 	void TBarReleased();
 
-	void on_transitions_currentIndexChanged(int index);
 	void on_transitionAdd_clicked();
 	void on_transitionRemove_clicked();
 	void on_transitionProps_clicked();
-	void on_transitionDuration_valueChanged();
 
 	void ShowTransitionProperties();
 	void HideTransitionProperties();
+
+signals:
+	void TransitionAdded(const QString &name, const QString &uuid);
+	void TransitionRenamed(const QString &uuid, const QString &newName);
+	void TransitionRemoved(const QString &uuid);
+	void TransitionsCleared();
+
+	void CurrentTransitionChanged(const QString &uuid);
+
+	void TransitionDurationChanged(const int &duration);
 
 public:
 	int GetTransitionDuration();
