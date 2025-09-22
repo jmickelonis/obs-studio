@@ -94,7 +94,15 @@ void PluginManager::loadModules_()
 	auto modulesFile = getConfigFilePath_();
 	if (std::filesystem::exists(modulesFile)) {
 		std::ifstream jsonFile(modulesFile);
-		nlohmann::json data = nlohmann::json::parse(jsonFile);
+		nlohmann::json data;
+		try {
+			data = nlohmann::json::parse(jsonFile);
+		} catch (const nlohmann::json::parse_error &error) {
+			modules_.clear();
+			blog(LOG_ERROR, "Error loading modules config file: %s", error.what());
+			blog(LOG_ERROR, "Generating new config file.");
+			return;
+		}
 		modules_.clear();
 		for (auto it : data) {
 			ModuleInfo obsModule;
@@ -191,7 +199,7 @@ void PluginManager::addModuleTypes_()
 	i = 0;
 	while (obs_enum_output_types(i, &output_id)) {
 		i += 1;
-		obs_module_t *obsModule = obs_source_get_module(output_id);
+		obs_module_t *obsModule = obs_output_get_module(output_id);
 		if (!obsModule) {
 			continue;
 		}
@@ -208,7 +216,7 @@ void PluginManager::addModuleTypes_()
 	i = 0;
 	while (obs_enum_encoder_types(i, &encoder_id)) {
 		i += 1;
-		obs_module_t *obsModule = obs_source_get_module(encoder_id);
+		obs_module_t *obsModule = obs_encoder_get_module(encoder_id);
 		if (!obsModule) {
 			continue;
 		}
@@ -225,7 +233,7 @@ void PluginManager::addModuleTypes_()
 	i = 0;
 	while (obs_enum_service_types(i, &service_id)) {
 		i += 1;
-		obs_module_t *obsModule = obs_source_get_module(service_id);
+		obs_module_t *obsModule = obs_service_get_module(service_id);
 		if (!obsModule) {
 			continue;
 		}
@@ -289,8 +297,8 @@ void PluginManager::open()
 		}
 
 		if (changed) {
-			QMessageBox::StandardButton button = OBSMessageBox::question(
-				main, QTStr("PluginManager.Restart"), QTStr("PluginManager.NeedsRestart"));
+			QMessageBox::StandardButton button =
+				OBSMessageBox::question(main, QTStr("Restart"), QTStr("NeedsRestart"));
 
 			if (button == QMessageBox::Yes) {
 				restart = true;

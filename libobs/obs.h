@@ -165,11 +165,12 @@ enum obs_bounds_type {
  */
 enum obs_module_load_state {
 	OBS_MODULE_INVALID,
-	OBS_MODULE_MISSING,
 	OBS_MODULE_ENABLED,
+	OBS_MODULE_MISSING,
 	OBS_MODULE_DISABLED,
 	OBS_MODULE_DISABLED_SAFE,
-	OBS_MODULE_ERROR
+	OBS_MODULE_FAILED_TO_OPEN,
+	OBS_MODULE_FAILED_TO_INITIALIZE,
 };
 
 struct obs_transform_info {
@@ -482,7 +483,7 @@ EXPORT bool obs_get_audio_info2(struct obs_audio_info2 *oai2);
  *                    data files are stored.
  * @returns           MODULE_SUCCESS if successful
  *                    MODULE_ERROR if a generic error occurred
- *                    MODULE_FILE_NOT_FOUND if the module was not found
+ *                    MODULE_FAILED_TO_OPEN if the module failed to open, e.g. because it was not found or had missing symbols
  *                    MODULE_MISSING_EXPORTS if required exports are missing
  *                    MODULE_INCOMPATIBLE_VER if incompatible version
  */
@@ -1710,6 +1711,7 @@ EXPORT bool obs_scene_reorder_items2(obs_scene_t *scene, struct obs_sceneitem_or
 				     size_t item_order_size);
 
 EXPORT bool obs_source_is_scene(const obs_source_t *source);
+EXPORT bool obs_source_type_is_scene(const char *id);
 
 /** Adds/creates a new scene item for a source */
 EXPORT obs_sceneitem_t *obs_scene_add(obs_scene_t *scene, obs_source_t *source);
@@ -1839,6 +1841,7 @@ EXPORT void obs_sceneitem_group_remove_item(obs_sceneitem_t *group, obs_sceneite
 EXPORT obs_sceneitem_t *obs_sceneitem_get_group(obs_scene_t *scene, obs_sceneitem_t *item);
 
 EXPORT bool obs_source_is_group(const obs_source_t *source);
+EXPORT bool obs_source_type_is_group(const char *id);
 EXPORT bool obs_scene_is_group(const obs_scene_t *scene);
 
 EXPORT void obs_sceneitem_group_enum_items(obs_sceneitem_t *group,

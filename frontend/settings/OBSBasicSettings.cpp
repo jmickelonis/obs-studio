@@ -1,17 +1,17 @@
 /******************************************************************************
  Copyright (C) 2023 by Lain Bailey <lain@obsproject.com>
  Philippe Groarke <philippe.groarke@gmail.com>
- 
+
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
  the Free Software Foundation, either version 2 of the License, or
  (at your option) any later version.
- 
+
  This program is distributed in the hope that it will be useful,
  but WITHOUT ANY WARRANTY; without even the implied warranty of
  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  GNU General Public License for more details.
- 
+
  You should have received a copy of the GNU General Public License
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
@@ -615,10 +615,23 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 		ui->hideOBSFromCapture = nullptr;
 	}
 #else
+#if defined(__APPLE__) && defined(__aarch64__)
+	delete ui->adapterLabel;
+	delete ui->adapter;
+
+	ui->adapterLabel = nullptr;
+	ui->adapter = nullptr;
+#else
 	delete ui->rendererLabel;
 	delete ui->renderer;
 	delete ui->adapterLabel;
 	delete ui->adapter;
+
+	ui->rendererLabel = nullptr;
+	ui->renderer = nullptr;
+	ui->adapterLabel = nullptr;
+	ui->adapter = nullptr;
+#endif
 	delete ui->enableNewSocketLoop;
 	delete ui->enableLowLatencyMode;
 	delete ui->hideOBSFromCapture;
@@ -628,10 +641,6 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 #endif
 	delete ui->disableAudioDucking;
 
-	ui->rendererLabel = nullptr;
-	ui->renderer = nullptr;
-	ui->adapterLabel = nullptr;
-	ui->adapter = nullptr;
 	ui->enableNewSocketLoop = nullptr;
 	ui->enableLowLatencyMode = nullptr;
 	ui->hideOBSFromCapture = nullptr;
@@ -1386,16 +1395,21 @@ void OBSBasicSettings::LoadGeneralSettings()
 
 void OBSBasicSettings::LoadRendererList()
 {
-#ifdef _WIN32
+#if defined(_WIN32) || (defined(__APPLE__) && defined(__aarch64__))
 	const char *renderer = config_get_string(App()->GetAppConfig(), "Video", "Renderer");
-
-	ui->renderer->addItem(QT_UTF8("Direct3D 11"));
-	if (opt_allow_opengl || strcmp(renderer, "OpenGL") == 0)
-		ui->renderer->addItem(QT_UTF8("OpenGL"));
-
-	int idx = ui->renderer->findText(QT_UTF8(renderer));
-	if (idx == -1)
-		idx = 0;
+#ifdef _WIN32
+	ui->renderer->addItem(QString("Direct3D 11"), QString("Direct3D 11"));
+	if (opt_allow_opengl || strcmp(renderer, "OpenGL") == 0) {
+		ui->renderer->addItem(QString("OpenGL"), QString("OpenGL"));
+	}
+#else
+	ui->renderer->addItem(QString("OpenGL"), QString("OpenGL"));
+	ui->renderer->addItem(QTStr("Basic.Settings.Video.Renderer.Experimental").arg("Metal"), QString("Metal"));
+#endif
+	int index = ui->renderer->findData(QString(renderer));
+	if (index == -1) {
+		index = 0;
+	}
 
 	// the video adapter selection is not currently implemented, hide for now
 	// to avoid user confusion. was previously protected by
@@ -1405,7 +1419,7 @@ void OBSBasicSettings::LoadRendererList()
 	ui->adapter = nullptr;
 	ui->adapterLabel = nullptr;
 
-	ui->renderer->setCurrentIndex(idx);
+	ui->renderer->setCurrentIndex(index);
 #endif
 }
 
@@ -3134,6 +3148,13 @@ void OBSBasicSettings::SaveAdvancedSettings()
 {
 	QString lastMonitoringDevice = config_get_string(main->Config(), "Audio", "MonitoringDeviceId");
 
+#if defined(_WIN32) || (defined(__APPLE__) && defined(__aarch64__))
+	if (WidgetChanged(ui->renderer)) {
+		config_set_string(App()->GetAppConfig(), "Video", "Renderer",
+				  QT_TO_UTF8(ui->renderer->currentData().toString()));
+	}
+#endif
+
 #if defined(_WIN32) || defined(__linux__)
 	std::string priority = QT_TO_UTF8(ui->processPriority->currentData().toString());
 	config_set_string(App()->GetAppConfig(), "General", "ProcessPriority", priority.c_str());
@@ -3142,9 +3163,6 @@ void OBSBasicSettings::SaveAdvancedSettings()
 #endif
 
 #ifdef _WIN32
-	if (WidgetChanged(ui->renderer))
-		config_set_string(App()->GetAppConfig(), "Video", "Renderer", QT_TO_UTF8(ui->renderer->currentText()));
-
 	SaveCheckBox(ui->enableNewSocketLoop, "Output", "NewSocketLoopEnable");
 	SaveCheckBox(ui->enableLowLatencyMode, "Output", "LowLatencyEnable");
 #endif

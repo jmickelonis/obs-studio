@@ -160,7 +160,7 @@ int obs_open_module(obs_module_t **module, const char *path, const char *data_pa
 	mod.module = os_dlopen(path);
 	if (!mod.module) {
 		blog(LOG_WARNING, "Module '%s' not loaded", path);
-		return MODULE_FILE_NOT_FOUND;
+		return MODULE_FAILED_TO_OPEN;
 	}
 
 	errorcode = load_module_exports(&mod, path);
@@ -442,7 +442,7 @@ void obs_add_disabled_module(const char *name)
 	da_push_back(obs->disabled_modules, &item);
 }
 
-extern void get_plugin_info(const char *path, bool *is_obs_plugin, bool *can_load);
+extern void get_plugin_info(const char *path, bool *is_obs_plugin);
 
 struct fail_info {
 	struct dstr fail_modules;
@@ -497,9 +497,8 @@ static void load_all_callback(void *param, const struct obs_module_info2 *info)
 	obs_module_t *disabled_module;
 
 	bool is_obs_plugin;
-	bool can_load_obs_plugin;
 
-	get_plugin_info(info->bin_path, &is_obs_plugin, &can_load_obs_plugin);
+	get_plugin_info(info->bin_path, &is_obs_plugin);
 
 	if (!is_obs_plugin) {
 		blog(LOG_WARNING, "Skipping module '%s', not an OBS plugin", info->bin_path);
@@ -518,27 +517,23 @@ static void load_all_callback(void *param, const struct obs_module_info2 *info)
 		return;
 	}
 
-	if (!can_load_obs_plugin) {
-		blog(LOG_WARNING,
-		     "Skipping module '%s' due to possible "
-		     "import conflicts",
-		     info->bin_path);
-		goto load_failure;
-	}
-
 	int code = obs_open_module(&module, info->bin_path, info->data_path);
 	switch (code) {
 	case MODULE_MISSING_EXPORTS:
 		blog(LOG_DEBUG, "Failed to load module file '%s', not an OBS plugin", info->bin_path);
 		return;
-	case MODULE_FILE_NOT_FOUND:
-		blog(LOG_DEBUG, "Failed to load module file '%s', file not found", info->bin_path);
-		return;
+	case MODULE_FAILED_TO_OPEN:
+		blog(LOG_DEBUG, "Failed to load module file '%s', module failed to open", info->bin_path);
+		obs_create_disabled_module(&disabled_module, info->bin_path, info->data_path,
+					   OBS_MODULE_FAILED_TO_OPEN);
+		goto load_failure;
 	case MODULE_ERROR:
-		blog(LOG_DEBUG, "Failed to load module file '%s'", info->bin_path);
+		blog(LOG_DEBUG, "Failed to load module file '%s' (unknown error)", info->bin_path);
 		goto load_failure;
 	case MODULE_INCOMPATIBLE_VER:
 		blog(LOG_DEBUG, "Failed to load module file '%s', incompatible version", info->bin_path);
+		obs_create_disabled_module(&disabled_module, info->bin_path, info->data_path,
+					   OBS_MODULE_FAILED_TO_OPEN);
 		goto load_failure;
 	case MODULE_HARDCODED_SKIP:
 		return;
@@ -546,7 +541,8 @@ static void load_all_callback(void *param, const struct obs_module_info2 *info)
 
 	if (!obs_init_module(module)) {
 		free_module(module);
-		obs_create_disabled_module(&disabled_module, info->bin_path, info->data_path, OBS_MODULE_ERROR);
+		obs_create_disabled_module(&disabled_module, info->bin_path, info->data_path,
+					   OBS_MODULE_FAILED_TO_INITIALIZE);
 	}
 
 	UNUSED_PARAMETER(param);
@@ -990,7 +986,6 @@ void obs_register_source_s(const struct obs_source_info *info, size_t size)
 
 	/* NOTE: The assignment of data.module must occur before memcpy! */
 	if (loadingModule) {
-		data.module = loadingModule;
 		char *source_id = bstrdup(info->id);
 		da_push_back(loadingModule->sources, &source_id);
 	}
@@ -1115,6 +1110,11 @@ void obs_register_output_s(const struct obs_output_info *info, size_t size)
 			da_push_back(obs->data.protocols, &new_prtcl);
 		}
 		strlist_free(protocols);
+	}
+
+	if (loadingModule) {
+		char *output_id = bstrdup(info->id);
+		da_push_back(loadingModule->outputs, &output_id);
 	}
 
 	return;
