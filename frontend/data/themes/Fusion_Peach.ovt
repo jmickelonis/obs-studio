@@ -1111,3 +1111,13 @@ VolControl VolumeSlider::vertical {
 .preview-program-spacer {
   min-height: 20px;
 }
+
+QSizeGrip {
+  max-width: 0px;
+  max-height: 0px;
+}
+
+#PluginManagerWindow #label {
+  font-size: var(--fontSizeLarge);
+  font-weight: bold;
+}
