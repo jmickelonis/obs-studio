@@ -5597,8 +5597,6 @@ void OBSBasicSettings::UpdateAdvNetworkGroup()
 #endif
 }
 
-extern bool MultitrackVideoDeveloperModeEnabled();
-
 void OBSBasicSettings::UpdateMultitrackVideo()
 {
 	// Technically, it should currently be safe to toggle multitrackVideo
@@ -5621,15 +5619,6 @@ void OBSBasicSettings::UpdateMultitrackVideo()
 			ui->enableMultitrackVideo->setChecked(false);
 	}
 
-	// Enhanced Broadcasting works on Windows, Apple Silicon Macs, and Linux.
-	// For other OS variants, only enable the GUI controls if developer mode was invoked.
-#if !defined(_WIN32) && !(defined(__APPLE__) && defined(__aarch64__)) && !defined(__linux__)
-	available = available && MultitrackVideoDeveloperModeEnabled();
-#endif
-
-	if (IsCustomService())
-		available = available && MultitrackVideoDeveloperModeEnabled();
-
 	ui->multitrackVideoGroupBox->setVisible(available);
 
 	ui->enableMultitrackVideo->setEnabled(toggle_available);
@@ -5650,10 +5639,10 @@ void OBSBasicSettings::UpdateMultitrackVideo()
 							  !ui->multitrackVideoMaximumVideoTracksAuto->isChecked());
 	ui->multitrackVideoAdditionalCanvas->setEnabled(toggle_available && ui->enableMultitrackVideo->isChecked());
 
-	ui->multitrackVideoStreamDumpEnable->setVisible(available && MultitrackVideoDeveloperModeEnabled());
-	ui->multitrackVideoConfigOverrideEnable->setVisible(available && MultitrackVideoDeveloperModeEnabled());
-	ui->multitrackVideoConfigOverrideLabel->setVisible(available && MultitrackVideoDeveloperModeEnabled());
-	ui->multitrackVideoConfigOverride->setVisible(available && MultitrackVideoDeveloperModeEnabled());
+	ui->multitrackVideoStreamDumpEnable->setVisible(available && IsCustomService());
+	ui->multitrackVideoConfigOverrideEnable->setVisible(available && IsCustomService());
+	ui->multitrackVideoConfigOverrideLabel->setVisible(available && IsCustomService());
+	ui->multitrackVideoConfigOverride->setVisible(available && IsCustomService());
 
 	ui->multitrackVideoStreamDumpEnable->setEnabled(toggle_available && ui->enableMultitrackVideo->isChecked());
 	ui->multitrackVideoConfigOverrideEnable->setEnabled(toggle_available && ui->enableMultitrackVideo->isChecked());
