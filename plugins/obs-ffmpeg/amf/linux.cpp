@@ -332,8 +332,8 @@ void TextureEncoder::createTextures(encoder_texture *from)
 
 	VkCommandPoolCreateInfo poolInfo{
 		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-		.queueFamilyIndex = 0,
 		.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+		.queueFamilyIndex = 0,
 	};
 	VK_CHECK(vkCreateCommandPool(vkDevice, &poolInfo, nullptr, &vkCommandPool));
 
@@ -390,8 +390,8 @@ void TextureEncoder::createTextures(encoder_texture *from)
 					.height = plane.h,
 					.depth = 1,
 				},
-			.arrayLayers = 1,
 			.mipLevels = 1,
+			.arrayLayers = 1,
 			.samples = VK_SAMPLE_COUNT_1_BIT,
 			.tiling = VK_IMAGE_TILING_OPTIMAL,
 			.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
@@ -407,12 +407,12 @@ void TextureEncoder::createTextures(encoder_texture *from)
 		};
 		VkMemoryDedicatedAllocateInfo dedicatedAllocateInfo{
 			.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO,
-			.image = plane.vkImage,
 			.pNext = &exportMemoryAllocateInfo,
+			.image = plane.vkImage,
 		};
 		VkMemoryAllocateInfo memoryAllocInfo{
-			.pNext = &dedicatedAllocateInfo,
 			.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+			.pNext = &dedicatedAllocateInfo,
 			.allocationSize = memoryRequirements.size,
 			.memoryTypeIndex = getMemoryTypeIndex(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 							      memoryRequirements.memoryTypeBits),
@@ -427,8 +427,8 @@ void TextureEncoder::createTextures(encoder_texture *from)
 			.subresourceRange =
 				{
 					.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-					.layerCount = 1,
 					.levelCount = 1,
+					.layerCount = 1,
 				},
 		};
 		vkCmdPipelineBarrier(vkCommandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -566,17 +566,17 @@ inline VkCommandBuffer TextureEncoder::getCopyCommandBuffer(AMFSurfacePtr &surfa
 	for (int i = planeCount; i-- > 0;) {
 		memoryBarriers[i] = {
 			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+			.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT,
 			.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 			.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_EXTERNAL,
 			.image = planes[i].vkImage,
 			.subresourceRange =
 				{
 					.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-					.layerCount = 1,
 					.levelCount = 1,
+					.layerCount = 1,
 				},
-			.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT,
-			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_EXTERNAL,
 		};
 	}
 	vkCmdPipelineBarrier(buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr,
@@ -624,8 +624,8 @@ void TextureEncoder::allocateCommandBuffer(VkCommandBuffer &buffer)
 {
 	VkCommandBufferAllocateInfo info{
 		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-		.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
 		.commandPool = vkCommandPool,
+		.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
 		.commandBufferCount = 1,
 	};
 	VK_CHECK(vkAllocateCommandBuffers(vkDevice, &info, &buffer));
