@@ -48,37 +48,27 @@ OBSBasicStatusBar::OBSBasicStatusBar(QWidget *parent)
 
 	clearMessage();
 
-#define DELETE(NAME) delete statusWidget->ui->NAME##Frame
+#define DELETE_USAGE_WIDGET(NAME) delete statusWidget->ui->NAME##Usage; \
+	statusWidget->ui->NAME##Usage = nullptr; \
+	delete statusWidget->ui->NAME##Frame; \
+	statusWidget->ui->NAME##Frame = nullptr
 
 #ifdef __linux__
-	gpuUsage = new GPUUsage(getpid());
-	if (!gpuUsage->pdev.empty()) {
-		gpuUsage->update();
-		// Hide GPU frames until they show usage
+	gpuUsage = new GPUUsage;
+	// Hide GPU frames until they show usage
 #define HIDE(NAME) statusWidget->ui->NAME##Frame->setVisible(false)
-		HIDE(gpu);
-		HIDE(compute);
-		HIDE(enc);
-		HIDE(enc2);
+	HIDE(gpu);
+	HIDE(compute);
+	HIDE(enc);
+	HIDE(enc2);
 #undef HIDE
-	} else {
-		// Didn't find a supported GPU to monitor
-		DELETE(gpu);
-		DELETE(compute);
-		DELETE(enc);
-		DELETE(enc2);
-		delete gpuUsage;
-		gpuUsage = nullptr;
-	}
 #else
 	// GPU Usage not currently supported
-	DELETE(gpu);
-	DELETE(compute);
-	DELETE(enc);
-	DELETE(enc2);
+	DELETE_USAGE_WIDGET(gpu);
+	DELETE_USAGE_WIDGET(compute);
+	DELETE_USAGE_WIDGET(enc);
+	DELETE_USAGE_WIDGET(enc2);
 #endif
-
-#undef DELETE
 }
 
 void OBSBasicStatusBar::Activate()
@@ -266,6 +256,25 @@ void OBSBasicStatusBar::UpdateCPUUsage()
 #ifdef __linux__
 	if (!gpuUsage)
 		return;
+
+	if (!gpuUsage->found) {
+		gpuUsage->init(getpid());
+
+		if (!gpuUsage->found)
+			return; // Try again next time
+
+		if (gpuUsage->pdev.empty()) {
+			// Didn't find a supported GPU to monitor
+			DELETE_USAGE_WIDGET(gpu);
+			DELETE_USAGE_WIDGET(compute);
+			DELETE_USAGE_WIDGET(enc);
+			DELETE_USAGE_WIDGET(enc2);
+			delete gpuUsage;
+			gpuUsage = nullptr;
+			return;
+		}
+	}
+
 	gpuUsage->update();
 	updateUsage(statusWidget->ui->gpuUsage, "GFX", gpuUsage->gfx * 100, statusWidget->ui->gpuFrame);
 	updateUsage(statusWidget->ui->computeUsage, "CMP", gpuUsage->compute * 100, statusWidget->ui->computeFrame);
@@ -273,6 +282,8 @@ void OBSBasicStatusBar::UpdateCPUUsage()
 	updateUsage(statusWidget->ui->enc2Usage, "ENC2", gpuUsage->enc1 * 100, statusWidget->ui->enc2Frame);
 #endif
 }
+
+#undef DELETE_USAGE_WIDGET
 
 void OBSBasicStatusBar::UpdateCurrentFPS()
 {

@@ -27,28 +27,28 @@ struct FDInfo {
 
 class GPUUsage {
 public:
-    string pdev = "";
+	bool found = false;
+	string pdev = "";
 
-    double gfx;
-    double compute;
-    double enc;
-    double enc1;
+	double gfx;
+	double compute;
+	double enc;
+	double enc1;
 
-    GPUUsage(pid_t pid);
-
+	void init(pid_t pid);
 	void update();
 
 private:
 	path driDirectory{"/dev/dri"};
 	path fdDirectory;
 	path fdInfoDirectory;
-    regex driverPattern{R"(^drm-driver:\s+(\S+)$)", regex_constants::multiline};
-    regex clientIDPattern{R"(^drm-client-id:\s+(\d+)$)", regex_constants::multiline};
-    regex pdevPattern{R"(^drm-pdev:\s+(\S+)$)", regex_constants::multiline};
-    regex enginePattern{R"(^drm-engine-(\S+):\s+(\d+) ns$)", regex_constants::multiline};
-    smatch match;
-    set<uint32_t> clientIDs;
-    unordered_map<uint32_t, FDInfo> fdInfoMap;
+	regex driverPattern{R"(^drm-driver:\s+(\S+)$)", regex_constants::multiline};
+	regex clientIDPattern{R"(^drm-client-id:\s+(\d+)$)", regex_constants::multiline};
+	regex pdevPattern{R"(^drm-pdev:\s+(\S+)$)", regex_constants::multiline};
+	regex enginePattern{R"(^drm-engine-(\S+):\s+(\d+) ns$)", regex_constants::multiline};
+	smatch match;
+	set<uint32_t> clientIDs;
+	unordered_map<uint32_t, FDInfo> fdInfoMap;
 
-    void parse(FDInfo &fdInfo, const string &s, uint64_t &timestamp);
+	void parse(FDInfo &fdInfo, const string &s, uint64_t &timestamp);
 };

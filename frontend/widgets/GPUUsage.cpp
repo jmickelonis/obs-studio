@@ -18,7 +18,7 @@ static inline string getFileContents(const string &path)
 	return string(istreambuf_iterator<char>(file), istreambuf_iterator<char>());
 }
 
-GPUUsage::GPUUsage(pid_t pid)
+void GPUUsage::init(pid_t pid)
 {
 	path rootDirectory{"/proc"};
 	path procDirectory{rootDirectory / std::to_string(pid)};
@@ -43,6 +43,8 @@ GPUUsage::GPUUsage(pid_t pid)
 	if (fd.empty())
 		return; // Couldn't find one
 
+	found = true;
+
 	path fdInfoFile = fdInfoDirectory / fd;
 	const string s = getFileContents(fdInfoFile.string());
 
@@ -65,7 +67,7 @@ void GPUUsage::update()
 	gfx = 0;
 	compute = 0;
 	enc = 0;
-    enc1 = 0;
+	enc1 = 0;
 
 	for (const auto &child : directory_iterator(fdDirectory)) {
 		const path &file = child.path();
@@ -105,7 +107,7 @@ void GPUUsage::update()
 			fdInfoPtr = &fdInfoMap[clientID];
 		}
 
-        parse(*fdInfoPtr, s, timestamp);
+		parse(*fdInfoPtr, s, timestamp);
 	}
 }
 
