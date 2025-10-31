@@ -158,8 +158,8 @@ int main(void)
 
 		AMFTrace *amfTrace;
 		AMF_CHECK(amfFactory->GetTrace(&amfTrace), "GetTrace failed");
-		amfTrace->EnableWriter(AMF_TRACE_WRITER_DEBUG_OUTPUT, false);
-		amfTrace->EnableWriter(AMF_TRACE_WRITER_CONSOLE, false);
+		// amfTrace->EnableWriter(AMF_TRACE_WRITER_DEBUG_OUTPUT, false);
+		// amfTrace->EnableWriter(AMF_TRACE_WRITER_CONSOLE, false);
 
 		VkPhysicalDeviceDriverProperties driverProps{
 			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES,
