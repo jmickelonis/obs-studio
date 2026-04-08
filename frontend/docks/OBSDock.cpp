@@ -7,6 +7,11 @@
 
 #include "moc_OBSDock.cpp"
 
+OBSDock::OBSDock(const QString &title, QWidget *parent) : QDockWidget(title, parent)
+{
+	installEventFilter(this);
+}
+
 void OBSDock::closeEvent(QCloseEvent *event)
 {
 	auto msgBox = []() {
@@ -43,4 +48,23 @@ void OBSDock::closeEvent(QCloseEvent *event)
 void OBSDock::showEvent(QShowEvent *event)
 {
 	QDockWidget::showEvent(event);
+}
+
+bool OBSDock::eventFilter(QObject *o, QEvent *e)
+{
+	if (e->type() == QEvent::MouseButtonRelease && hasMouseTracking()) {
+		/* Disable animations temporarily when docking, to make things look snappier.
+		 * This immediately snaps docks into place
+		 * (animations only occur while dragging/re-positioning).
+		 */
+		QMainWindow *mainWindow = App()->GetMainWindow();
+		mainWindow->setAnimated(false);
+
+		QTimer::singleShot(1, this, [this, mainWindow]() {
+			releaseMouse();
+			mainWindow->setAnimated(true);
+		});
+	}
+
+	return QDockWidget::eventFilter(o, e);
 }

@@ -4,14 +4,19 @@
 int OBSProxyStyle::styleHint(StyleHint hint, const QStyleOption *option, const QWidget *widget,
 			     QStyleHintReturn *returnData) const
 {
-	if (hint == SH_ComboBox_AllowWheelScrolling)
+	switch (hint) {
+	case SH_ComboBox_AllowWheelScrolling:
 		return 0;
+	case SH_Widget_Animation_Duration:
+		// Make widget animations a little faster
+		return 125;
 #ifdef __APPLE__
-	if (hint == SH_ComboBox_UseNativePopup)
+	case SH_ComboBox_UseNativePopup:
 		return 1;
 #endif
-
-	return QProxyStyle::styleHint(hint, option, widget, returnData);
+	default:
+		return QProxyStyle::styleHint(hint, option, widget, returnData);
+	}
 }
 
 int OBSInvisibleCursorProxyStyle::pixelMetric(PixelMetric metric, const QStyleOption *option,
