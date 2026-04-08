@@ -1224,7 +1224,10 @@ bool OBSApp::OBSInit()
 #endif
 #endif
 
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__linux__)
+	/* Set this on Linux, too.
+	 * Fixes graphical issues when moving docks around, among other things.
+	 */
 	setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
 #endif
 
