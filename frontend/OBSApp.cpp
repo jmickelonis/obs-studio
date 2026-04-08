@@ -38,6 +38,7 @@
 
 #include <QCheckBox>
 #include <QDesktopServices>
+#include <QAbstractSpinBox>
 #if defined(_WIN32) || defined(ENABLE_SPARKLE_UPDATER)
 #include <QFile>
 #endif
@@ -1445,6 +1446,29 @@ QStyle *OBSApp::GetInvisibleCursorStyle()
 	return invisibleCursorStyle.get();
 }
 
+class SpinBoxEventFilter : public QObject {
+public:
+	SpinBoxEventFilter(QObject *parent = nullptr) : QObject(parent) {}
+
+protected:
+	bool eventFilter(QObject *o, QEvent *e) override;
+};
+
+bool SpinBoxEventFilter::eventFilter(QObject *o, QEvent *e)
+{
+	if (e->type() == QEvent::Wheel) {
+		QAbstractSpinBox *spinBox = qobject_cast<QAbstractSpinBox *>(o);
+		if (!spinBox->hasFocus()) {
+			e->ignore();
+			return true;
+		}
+	}
+
+	return QObject::eventFilter(o, e);
+}
+
+static SpinBoxEventFilter *spinBoxEventFilter = nullptr;
+
 // Global handler to receive all QEvent::Show events so we can apply
 // display affinity on any newly created windows and dialogs without
 // caring where they are coming from (e.g. plugins).
@@ -1456,6 +1480,23 @@ bool OBSApp::notify(QObject *receiver, QEvent *e)
 
 	if (!receiver->isWidgetType())
 		goto skip;
+
+	if (e->type() == QEvent::Show) {
+		QAbstractSpinBox *spinBox = qobject_cast<QAbstractSpinBox *>(receiver);
+		if (spinBox) {
+			/* Stop the scroll wheel from adjusting this spin box
+			 * when it doesn't have full focus (hasn't been clicked on)
+			 */
+			if (spinBox->focusPolicy() == Qt::WheelFocus)
+				spinBox->setFocusPolicy(Qt::StrongFocus);
+
+			if (!spinBoxEventFilter)
+				spinBoxEventFilter = new SpinBoxEventFilter();
+			spinBox->installEventFilter(spinBoxEventFilter);
+		}
+
+		goto skip;
+	}
 
 	if (e->type() != QEvent::Show)
 		goto skip;
