@@ -9,7 +9,27 @@
 
 OBSDock::OBSDock(const QString &title, QWidget *parent) : QDockWidget(title, parent)
 {
+	mouseState = NotPressed;
+	settingFlags = false;
 	installEventFilter(this);
+}
+
+void OBSDock::setVisible(bool visible)
+{
+	if (!settingFlags) {
+		/* Remove the bypass flag that the base class sets.
+		 * This way, all drags act the same, and transparency works.
+		 */
+		Qt::WindowFlags flags = windowFlags();
+		Qt::WindowFlags newFlags = flags & ~Qt::BypassWindowManagerHint;
+		if (newFlags != flags) {
+			settingFlags = true;
+			setWindowFlags(newFlags);
+			settingFlags = false;
+		}
+	}
+
+	QDockWidget::setVisible(visible);
 }
 
 void OBSDock::closeEvent(QCloseEvent *event)
@@ -52,19 +72,59 @@ void OBSDock::showEvent(QShowEvent *event)
 
 bool OBSDock::eventFilter(QObject *o, QEvent *e)
 {
-	if (e->type() == QEvent::MouseButtonRelease && hasMouseTracking()) {
-		/* Disable animations temporarily when docking, to make things look snappier.
-		 * This immediately snaps docks into place
-		 * (animations only occur while dragging/re-positioning).
-		 */
-		QMainWindow *mainWindow = App()->GetMainWindow();
-		mainWindow->setAnimated(false);
+	switch (e->type()) {
 
-		QTimer::singleShot(1, this, [this, mainWindow]() {
-			releaseMouse();
-			mainWindow->setAnimated(true);
-		});
+	case QEvent::MouseButtonPress: {
+		if (mouseState != NotPressed)
+			break;
+
+		QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(e);
+		if (mouseEvent->button() != Qt::LeftButton)
+			break;
+
+		mouseState = Pressed;
+		break;
+	}
+
+	case QEvent::Move:
+		if (mouseState == Pressed && mouseGrabber() && isFloating()) {
+			mouseState = Dragging;
+			setTranslucent(true);
+		}
+		break;
+
+	case QEvent::MouseButtonRelease: {
+		if (mouseState == NotPressed)
+			break;
+
+		QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(e);
+		if (mouseEvent->button() != Qt::LeftButton)
+			break;
+
+		if (mouseState == Dragging) {
+			setTranslucent(false);
+
+			/* Disable animations temporarily when docking, to make things look snappier.
+				* This immediately snaps docks into place
+				* (animations only occur while dragging/re-positioning).
+				*/
+			QMainWindow *mainWindow = App()->GetMainWindow();
+			mainWindow->setAnimated(false);
+			QTimer::singleShot(1, this, [mainWindow]() { mainWindow->setAnimated(true); });
+		}
+
+		mouseState = NotPressed;
+		break;
+	}
+
+	default:
+		break;
 	}
 
 	return QDockWidget::eventFilter(o, e);
+}
+
+void OBSDock::setTranslucent(bool value)
+{
+	setWindowOpacity(value ? .8 : 1);
 }
