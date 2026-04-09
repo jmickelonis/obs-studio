@@ -207,7 +207,6 @@ OBSDock::OBSDock(const QString &title, QWidget *parent) : QDockWidget(title, par
 {
 	mouseState = NotPressed;
 	settingFlags = false;
-	installEventFilter(this);
 
 	TitleBarWidget *titleBar = new TitleBarWidget(this);
 	setTitleBarWidget(titleBar);
@@ -274,7 +273,7 @@ void OBSDock::showEvent(QShowEvent *event)
 	QDockWidget::showEvent(event);
 }
 
-bool OBSDock::eventFilter(QObject *o, QEvent *e)
+bool OBSDock::event(QEvent *e)
 {
 	switch (e->type()) {
 
@@ -309,9 +308,9 @@ bool OBSDock::eventFilter(QObject *o, QEvent *e)
 			setTranslucent(false);
 
 			/* Disable animations temporarily when docking, to make things look snappier.
-				* This immediately snaps docks into place
-				* (animations only occur while dragging/re-positioning).
-				*/
+			 * This immediately snaps docks into place
+			 * (animations only occur while dragging/re-positioning).
+			 */
 			QMainWindow *mainWindow = App()->GetMainWindow();
 			mainWindow->setAnimated(false);
 			QTimer::singleShot(1, this, [mainWindow]() { mainWindow->setAnimated(true); });
@@ -325,7 +324,7 @@ bool OBSDock::eventFilter(QObject *o, QEvent *e)
 		break;
 	}
 
-	return QDockWidget::eventFilter(o, e);
+	return QDockWidget::event(e);
 }
 
 void OBSDock::paintEvent(QPaintEvent *)

@@ -76,7 +76,7 @@ protected:
 	friend class TitleBarLayout;
 	friend class TitleBarWidget;
 
-	virtual bool eventFilter(QObject *o, QEvent *e) override;
+	virtual bool event(QEvent *event) override;
 	virtual void paintEvent(QPaintEvent *event) override;
 
 private:
