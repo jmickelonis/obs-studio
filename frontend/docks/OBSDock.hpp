@@ -60,6 +60,10 @@ private:
 	OBSDock *getDock() const;
 };
 
+#if defined(_WIN32) || defined(__linux__)
+#define __QT_SUPPORTS_SYSTEM_RESIZE
+#endif
+
 class OBSDock : public QDockWidget {
 	Q_OBJECT
 
@@ -68,6 +72,7 @@ public:
 	inline OBSDock(QWidget *parent = nullptr) : OBSDock("", parent) {}
 
 	bool hasFeature(QDockWidget::DockWidgetFeature feature);
+	Qt::Edges getResizeEdges(const QPoint &position);
 	virtual void setVisible(bool visible) override;
 	virtual void closeEvent(QCloseEvent *event);
 	virtual void showEvent(QShowEvent *event);
@@ -80,9 +85,21 @@ protected:
 	virtual void paintEvent(QPaintEvent *event) override;
 
 private:
-	enum MouseState { NotPressed, Pressed, Dragging };
+	enum MouseState { NotPressed, Pressed, CtrlPressed, Dragging, CtrlDragging, Resizing };
 	MouseState mouseState;
+
+#ifdef __QT_SUPPORTS_SYSTEM_RESIZE
+	Qt::Edges pressEdges;
+#endif
+	QPoint pressPosition;
 	bool settingFlags;
 
 	void setTranslucent(bool value);
+	void fixBounds();
+	bool isOverTitleBar(const QPoint &point);
+	bool shouldStartDrag(QMouseEvent *event);
+	void temporarilyDisableAnimations();
+
+private slots:
+	void onVisibilityChanged(bool visible);
 };
