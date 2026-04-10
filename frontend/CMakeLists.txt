@@ -68,6 +68,10 @@ include(cmake/feature-idian-playground.cmake)
 
 add_subdirectory(plugins)
 
+if(OS_LINUX)
+  add_subdirectory(linux-process-priority)
+endif()
+
 configure_file(cmake/templates/ui-config.h.in ui-config.h)
 
 target_sources(
