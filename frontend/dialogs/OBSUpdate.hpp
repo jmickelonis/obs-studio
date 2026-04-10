@@ -2,7 +2,7 @@
 
 #include <QDialog>
 
-class Ui_OBSUpdate;
+#include "ui_OBSUpdate.h"
 
 class OBSUpdate : public QDialog {
 	Q_OBJECT
