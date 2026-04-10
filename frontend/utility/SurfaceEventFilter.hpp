@@ -31,6 +31,9 @@ protected:
 				break;
 			}
 			break;
+		case QEvent::Expose:
+			display->CreateDisplay();
+			break;
 		default:
 			break;
 		}
