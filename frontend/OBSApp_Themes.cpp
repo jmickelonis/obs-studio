@@ -937,6 +937,12 @@ bool OBSApp::SetTheme(const QString &name)
 			label->setText("");
 			label->setText(text);
 		}
+
+#ifdef _WIN32
+		// Update the title bar and border on Windows
+		if (widget->isWindow())
+			UpdateCaptionAndBorder(widget);
+#endif
 	}
 
 #ifdef _DEBUG

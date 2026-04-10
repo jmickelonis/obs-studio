@@ -36,6 +36,7 @@
 #include <QFontDatabase>
 #include <QProcess>
 #include <QPushButton>
+#include <QStyleHints>
 #include <curl/curl.h>
 
 #include <fstream>
@@ -488,6 +489,12 @@ QAccessibleInterface *accessibleFactory(const QString &classname, QObject *objec
 	return nullptr;
 }
 
+static bool shouldForceFusionStyle()
+{
+	const char *value = getenv("OBS_FORCE_FUSION_STYLE");
+	return value ? QVariant(value).toBool() : true;
+}
+
 static const char *run_program_init = "run_program_init";
 static int run_program(fstream &logFile, int argc, char *argv[])
 {
@@ -534,6 +541,10 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 	 * and in the case of OBS it significantly slows down lists with many
 	 * elements (e.g. Hotkeys) and it is actually faster to disable it. */
 	qputenv("QT_NO_SUBTRACTOPAQUESIBLINGS", "1");
+
+	if (shouldForceFusionStyle())
+		// Use Fusion to improve cross-platform looks
+		qputenv("QT_STYLE_OVERRIDE", "Fusion");
 
 	OBSApp program(argc, argv, profilerNameStore.get());
 	try {

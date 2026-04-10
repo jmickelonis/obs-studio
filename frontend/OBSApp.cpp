@@ -54,6 +54,8 @@
 #include <sstream>
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <dwmapi.h>
+#pragma comment (lib, "dwmapi")
 #else
 #include <unistd.h>
 #include <sys/socket.h>
@@ -1225,12 +1227,13 @@ bool OBSApp::OBSInit()
 #endif
 #endif
 
-#if defined(__APPLE__) || defined(__linux__)
-	/* Set this on Linux, too.
-	 * Fixes graphical issues when moving docks around, among other things.
+	/* Set this on all platforms.
+	 * Fixes many issues:
+	 * - Graphical issues when moving docks around on Linux
+	 * - Certain dock buttons not being clickable on Windows
+	 * - Choppiness and performance issues
 	 */
 	setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
-#endif
 
 	if (!StartupOBS(locale.c_str(), GetProfilerNameStore()))
 		return false;
@@ -1469,6 +1472,33 @@ bool SpinBoxEventFilter::eventFilter(QObject *o, QEvent *e)
 
 static SpinBoxEventFilter *spinBoxEventFilter = nullptr;
 
+#ifdef _WIN32
+
+/* Force compositing.
+ * Avoids white flashes when windows are shown (and other artifacts).
+ */
+void EnableCompositing(QWidget *widget)
+{
+	HWND wnd = (HWND)widget->winId();
+
+	SetWindowLongW(wnd, GWL_EXSTYLE, GetWindowLongW(wnd, GWL_EXSTYLE) | WS_EX_COMPOSITED);
+}
+
+void UpdateCaptionAndBorder(QWidget *widget)
+{
+	HWND wnd = (HWND)widget->winId();
+
+	// Set the caption (title bar) color from the palette
+	COLORREF color = widget->palette().color(QPalette::Base).rgb() & 0xFFFFFF;
+	DwmSetWindowAttribute(wnd, DWMWA_CAPTION_COLOR, &color, sizeof(color));
+
+	// Don't draw a native border
+	color = DWMWA_COLOR_NONE;
+	DwmSetWindowAttribute(wnd, DWMWA_BORDER_COLOR, &color, sizeof(color));
+}
+
+#endif
+
 // Global handler to receive all QEvent::Show events so we can apply
 // display affinity on any newly created windows and dialogs without
 // caring where they are coming from (e.g. plugins).
@@ -1493,18 +1523,25 @@ bool OBSApp::notify(QObject *receiver, QEvent *e)
 			if (!spinBoxEventFilter)
 				spinBoxEventFilter = new SpinBoxEventFilter();
 			spinBox->installEventFilter(spinBoxEventFilter);
-		}
 
+			goto skip;
+		}
+	}
+	else {
 		goto skip;
 	}
-
-	if (e->type() != QEvent::Show)
-		goto skip;
 
 	w = qobject_cast<QWidget *>(receiver);
 
 	if (!w->isWindow())
 		goto skip;
+
+#ifdef _WIN32
+	// Make sure all top-level widgets are composited
+	EnableCompositing(w);
+	// Update the title bar/border styles
+	UpdateCaptionAndBorder(w);
+#endif
 
 	window = w->windowHandle();
 	if (!window)

@@ -259,6 +259,11 @@ signals:
 int GetAppConfigPath(char *path, size_t size, const char *name);
 char *GetAppConfigPathPtr(const char *name);
 
+#ifdef _WIN32
+void EnableCompositing(QWidget *widget);
+void UpdateCaptionAndBorder(QWidget *widget);
+#endif
+
 inline OBSApp *App()
 {
 	return static_cast<OBSApp *>(qApp);
