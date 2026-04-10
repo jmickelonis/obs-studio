@@ -82,6 +82,9 @@ protected:
 
 	virtual bool event(QEvent *event) override;
 	virtual void paintEvent(QPaintEvent *event) override;
+#ifdef _WIN32
+	virtual bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override;
+#endif
 
 private:
 	enum MouseState { NotPressed, Pressed, CtrlPressed, Dragging, CtrlDragging, Resizing };
@@ -100,6 +103,9 @@ private:
 	void updateCursor(Qt::CursorShape cursor);
 	void clearCursor();
 
+#ifdef _WIN32
+	void setDropShadow(bool value);
+#endif
 	void setTranslucent(bool value);
 	void fixBounds();
 	bool isOverTitleBar(const QPoint &point);

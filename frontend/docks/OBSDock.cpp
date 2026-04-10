@@ -8,6 +8,12 @@
 
 #include "moc_OBSDock.cpp"
 
+#ifdef _WIN32
+#include <windowsx.h>
+#include <dwmapi.h>
+#pragma comment (lib, "dwmapi")
+#endif
+
 TitleBarWidget::TitleBarWidget(OBSDock *dock) : QWidget(dock)
 {
 	// Don't cover up the dock widget
@@ -56,6 +62,11 @@ void TitleBarWidget::onTopLevelChanged(bool floating)
 
 	OBSDock *dock = getDock();
 	dock->clearCursor();
+
+#ifdef _WIN32
+	if (dock->isFloating() && dock->mouseState == OBSDock::MouseState::NotPressed)
+		dock->setDropShadow(true);
+#endif
 
 	// Stop from showing hover after setting floatable
 	dock->floatButton->setAttribute(Qt::WA_UnderMouse, false);
@@ -347,7 +358,8 @@ bool OBSDock::event(QEvent *e)
 	}
 
 	case QEvent::HoverLeave:
-		clearCursor();
+		if (mouseState != Dragging)
+			clearCursor();
 		break;
 
 	case QEvent::MouseButtonPress: {
@@ -391,6 +403,13 @@ bool OBSDock::event(QEvent *e)
 			// Make the window transparent when we're dragging
 			mouseState = Dragging;
 			setTranslucent(true);
+
+#ifdef _WIN32
+			/* Disable the drop shadow when moving the dock around.
+			 * This prevents a lot of glitches (like when moving between screens).
+			 */
+			setDropShadow(false);
+#endif
 		}
 		break;
 
@@ -404,6 +423,10 @@ bool OBSDock::event(QEvent *e)
 			if (!shouldStartDrag(mouseEvent))
 				return false;
 
+#ifdef _WIN32
+			setDropShadow(false);
+#endif
+
 			mouseState = OBSApp::IsWayland() ? NotPressed : CtrlDragging;
 			window()->windowHandle()->startSystemMove();
 			return true;
@@ -416,6 +439,10 @@ bool OBSDock::event(QEvent *e)
 		QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(e);
 		if (!shouldStartDrag(mouseEvent))
 			return false;
+
+#ifdef _WIN32
+		setDropShadow(false);
+#endif
 
 		mouseState = OBSApp::IsWayland() ? NotPressed : Resizing;
 		window()->windowHandle()->startSystemResize(pressEdges);
@@ -451,11 +478,15 @@ bool OBSDock::event(QEvent *e)
 			setTranslucent(false);
 			temporarilyDisableAnimations();
 #ifdef _WIN32
+			setDropShadow(true);
 			fixBounds();
 #endif
-		} else if (mouseState == CtrlDragging || mouseState == Resizing) {
+		}
+#ifndef _WIN32
+		else if (mouseState == CtrlDragging || mouseState == Resizing) {
 			fixBounds();
 		}
+#endif
 
 		mouseState = NotPressed;
 		updateCursor(mouseEvent->pos());
@@ -488,6 +519,87 @@ void OBSDock::paintEvent(QPaintEvent *)
 	}
 	painter.drawControl(QStyle::CE_DockWidgetTitle, opt);
 }
+
+#ifdef _WIN32
+bool OBSDock::nativeEvent(const QByteArray &eventType, void *message, qintptr *result)
+{
+	if (!isFloating())
+		return false;
+
+	MSG *msg = reinterpret_cast<MSG *>(message);
+
+	switch (msg->message) {
+
+	case WM_SHOWWINDOW: {
+		HWND handle = (HWND)winId();
+
+		// Don't allow rounded corners
+		DWM_WINDOW_CORNER_PREFERENCE corner = DWMWCP_DONOTROUND;
+		DwmSetWindowAttribute(handle, DWMWA_WINDOW_CORNER_PREFERENCE, &corner, sizeof(corner));
+
+		// Don't draw a native border
+		COLORREF color = DWMWA_COLOR_NONE;
+		DwmSetWindowAttribute(handle, DWMWA_BORDER_COLOR, &color, sizeof(color));
+
+		break;
+	}
+
+	case WM_NCCALCSIZE:
+		// Causes the window to be drawn over the frame
+		return true;
+
+	case WM_SIZING: {
+		// Notifies us that we're about to resize,
+		// allowing us to prevent illegal resize operations
+
+		WPARAM edge = msg->wParam;
+		RECT &rect = *reinterpret_cast<RECT *>(msg->lParam);
+
+		HMONITOR monitor = MonitorFromWindow(HWND(winId()), MONITOR_DEFAULTTONEAREST);
+		MONITORINFO monitorInfo;
+		monitorInfo.cbSize = sizeof(MONITORINFO);
+		GetMonitorInfo(monitor, &monitorInfo);
+		RECT &screenBounds = monitorInfo.rcMonitor;
+
+		int xMin = screenBounds.left;
+		int yMin = screenBounds.top;
+
+		if (edge == WMSZ_TOPLEFT || edge == WMSZ_LEFT || edge == WMSZ_BOTTOMLEFT)
+			if (rect.left < xMin)
+				// Don't let the left border be dragged out of bounds
+				rect.left = xMin;
+
+		if (edge == WMSZ_TOPLEFT || edge == WMSZ_TOP || edge == WMSZ_TOPRIGHT) {
+			if (rect.top < yMin) {
+				// Don't let the top border be dragged out of bounds
+				rect.top = yMin;
+			} else {
+				// Keep the title bar completely on screen
+				TitleBarWidget *titleBar = findChild<TitleBarWidget *>();
+				int yMax = screenBounds.bottom -
+					   (int)((titleBar->y() + titleBar->height()) * devicePixelRatioF());
+				if (rect.top > yMax)
+					rect.top = yMax;
+			}
+		}
+
+		break;
+	}
+
+	case WM_EXITSIZEMOVE:
+		mouseState = NotPressed;
+		fixBounds();
+		setDropShadow(true);
+		setTranslucent(false);
+		break;
+
+	default:
+		break;
+	}
+
+	return false;
+}
+#endif
 
 Qt::Edges OBSDock::getResizeEdges(const QPoint &position)
 {
@@ -580,6 +692,25 @@ void OBSDock::clearCursor()
 	updateCursor(Qt::BlankCursor);
 }
 
+#ifdef _WIN32
+void OBSDock::setDropShadow(bool value)
+{
+	HWND hwnd = (HWND)winId();
+	DWORD style = GetWindowLong(hwnd, GWL_STYLE);
+	auto flags = WS_THICKFRAME | WS_CAPTION | WS_CLIPCHILDREN;
+
+	if (value) {
+		style |= flags;
+		const MARGINS shadow = {1, 1, 1, 1};
+		DwmExtendFrameIntoClientArea(hwnd, &shadow);
+	} else {
+		style &= ~flags;
+	}
+
+	SetWindowLong(hwnd, GWL_STYLE, style);
+}
+#endif
+
 void OBSDock::setTranslucent(bool value)
 {
 	setWindowOpacity(value ? .8 : 1);
@@ -645,4 +776,10 @@ void OBSDock::onVisibilityChanged(bool visible)
 	if (visible && !isFloating())
 		// This fixes browser docks disappearing when tabbed
 		raise();
+
+	/* This fixes the button layout being wrong for already-floating docks
+	 * (on Windows at the very least)
+	 */
+	TitleBarWidget *titleBar = findChild<TitleBarWidget *>();
+	titleBar->layout()->invalidate();
 }
