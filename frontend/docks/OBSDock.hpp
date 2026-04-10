@@ -25,9 +25,6 @@ protected:
 private:
 	OBSDock *getDock() const;
 
-	QAbstractButton *closeButton;
-	QAbstractButton *floatButton;
-
 private slots:
 	void onFeaturesChanged(QDockWidget::DockWidgetFeatures features);
 	void onTopLevelChanged(bool value);
@@ -72,7 +69,6 @@ public:
 	inline OBSDock(QWidget *parent = nullptr) : OBSDock("", parent) {}
 
 	bool hasFeature(QDockWidget::DockWidgetFeature feature);
-	Qt::Edges getResizeEdges(const QPoint &position);
 	virtual void setVisible(bool visible) override;
 	virtual void closeEvent(QCloseEvent *event);
 	virtual void showEvent(QShowEvent *event);
@@ -81,6 +77,9 @@ protected:
 	friend class TitleBarLayout;
 	friend class TitleBarWidget;
 
+	QAbstractButton *closeButton;
+	QAbstractButton *floatButton;
+
 	virtual bool event(QEvent *event) override;
 	virtual void paintEvent(QPaintEvent *event) override;
 
@@ -88,11 +87,18 @@ private:
 	enum MouseState { NotPressed, Pressed, CtrlPressed, Dragging, CtrlDragging, Resizing };
 	MouseState mouseState;
 
+	Qt::CursorShape cursor;
 #ifdef __QT_SUPPORTS_SYSTEM_RESIZE
 	Qt::Edges pressEdges;
 #endif
 	QPoint pressPosition;
 	bool settingFlags;
+
+	Qt::Edges getResizeEdges(const QPoint &position);
+	Qt::CursorShape getCursor(const QPoint &position);
+	void updateCursor(const QPoint &position);
+	void updateCursor(Qt::CursorShape cursor);
+	void clearCursor();
 
 	void setTranslucent(bool value);
 	void fixBounds();

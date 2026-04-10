@@ -14,13 +14,9 @@ TitleBarWidget::TitleBarWidget(OBSDock *dock) : QWidget(dock)
 	setAttribute(Qt::WA_NoSystemBackground);
 	setAttribute(Qt::WA_TransparentForMouseEvents);
 
-	// Get the dock's buttons (hopefully these will never be null!)
-	floatButton = dock->findChild<QAbstractButton *>("qt_dockwidget_floatbutton");
-	closeButton = dock->findChild<QAbstractButton *>("qt_dockwidget_closebutton");
-
 	TitleBarLayout *layout = new TitleBarLayout(this);
-	layout->setWidget(TitleBarLayout::FloatButton, floatButton);
-	layout->setWidget(TitleBarLayout::CloseButton, closeButton);
+	layout->setWidget(TitleBarLayout::FloatButton, dock->floatButton);
+	layout->setWidget(TitleBarLayout::CloseButton, dock->closeButton);
 
 	connect(dock, &QDockWidget::featuresChanged, this, &TitleBarWidget::onFeaturesChanged);
 	connect(dock, &QDockWidget::topLevelChanged, this, &TitleBarWidget::onTopLevelChanged);
@@ -58,8 +54,11 @@ void TitleBarWidget::onTopLevelChanged(bool floating)
 {
 	layout()->invalidate();
 
+	OBSDock *dock = getDock();
+	dock->clearCursor();
+
 	// Stop from showing hover after setting floatable
-	floatButton->setAttribute(Qt::WA_UnderMouse, false);
+	dock->floatButton->setAttribute(Qt::WA_UnderMouse, false);
 
 	// Activate the window when [un]floating
 	QWindow *window = this->window()->windowHandle();
@@ -68,7 +67,7 @@ void TitleBarWidget::onTopLevelChanged(bool floating)
 
 	if (!floating)
 		// Stock doesn't normally bring it to the top for some reason
-		getDock()->raise();
+		dock->raise();
 }
 
 TitleBarLayout::TitleBarLayout(QWidget *parent) : QLayout(parent), items(2, nullptr) {}
@@ -209,8 +208,13 @@ OBSDock *TitleBarLayout::getDock() const
 
 OBSDock::OBSDock(const QString &title, QWidget *parent) : QDockWidget(title, parent)
 {
+	cursor = Qt::BlankCursor;
 	mouseState = NotPressed;
 	settingFlags = false;
+
+	// Get the dock's buttons (hopefully these will never be null!)
+	floatButton = findChild<QAbstractButton *>("qt_dockwidget_floatbutton");
+	closeButton = findChild<QAbstractButton *>("qt_dockwidget_closebutton");
 
 	TitleBarWidget *titleBar = new TitleBarWidget(this);
 	setTitleBarWidget(titleBar);
@@ -229,42 +233,6 @@ OBSDock::OBSDock(const QString &title, QWidget *parent) : QDockWidget(title, par
 bool OBSDock::hasFeature(QDockWidget::DockWidgetFeature feature)
 {
 	return features() & feature;
-}
-
-Qt::Edges OBSDock::getResizeEdges(const QPoint &position)
-{
-	Qt::Edges edges;
-
-	if (!isFloating())
-		return edges;
-
-	const int x = position.x();
-	const int y = position.y();
-	const int w = width();
-	const int h = height();
-
-	if (x < 0 || x >= w || y < 0 || y >= h)
-		// Position is not within this window
-		return edges;
-
-	/* Try to match the default implementation.
-	 * A little extra space is given inside the title bar.
-	 */
-	const QWidget *titleBar = titleBarWidget();
-	bool inTitleBar = y < titleBar->y() + titleBar->height();
-	int borderSize = inTitleBar ? 5 : 3;
-
-	if (x < borderSize)
-		edges |= Qt::LeftEdge;
-	else if (x >= w - (inTitleBar ? borderSize - 1 : borderSize))
-		edges |= Qt::RightEdge;
-
-	if (y < borderSize)
-		edges |= Qt::TopEdge;
-	else if (y >= h - borderSize)
-		edges |= Qt::BottomEdge;
-
-	return edges;
 }
 
 void OBSDock::setVisible(bool visible)
@@ -355,6 +323,7 @@ bool OBSDock::event(QEvent *e)
 			 */
 			return false;
 
+		clearCursor();
 		QMenu *menu = App()->GetMainWindow()->findChild<QMenu *>("menuDocks");
 		menu->exec(contextMenuEvent->globalPos());
 		return true;
@@ -365,6 +334,20 @@ bool OBSDock::event(QEvent *e)
 		if (isFloating())
 			// Update the window border
 			update();
+		break;
+
+	case QEvent::HoverEnter:
+	case QEvent::HoverMove: {
+		if (mouseState != NotPressed)
+			break;
+
+		QHoverEvent *hoverEvent = static_cast<QHoverEvent *>(e);
+		updateCursor(hoverEvent->position().toPoint());
+		break;
+	}
+
+	case QEvent::HoverLeave:
+		clearCursor();
 		break;
 
 	case QEvent::MouseButtonPress: {
@@ -393,11 +376,13 @@ bool OBSDock::event(QEvent *e)
 				     !hasFeature(QDockWidget::DockWidgetFloatable))) {
 			// Will do a system move on drag
 			mouseState = CtrlPressed;
+			updateCursor(pressPosition);
 			return true;
 		}
 
 		// Stock implementation will handle a drag
 		mouseState = Pressed;
+		updateCursor(pressPosition);
 		break;
 	}
 
@@ -455,6 +440,7 @@ bool OBSDock::event(QEvent *e)
 
 			temporarilyDisableAnimations();
 			mouseState = NotPressed;
+			updateCursor(mouseEvent->pos());
 			break;
 		}
 
@@ -472,6 +458,7 @@ bool OBSDock::event(QEvent *e)
 		}
 
 		mouseState = NotPressed;
+		updateCursor(mouseEvent->pos());
 		break;
 	}
 
@@ -500,6 +487,97 @@ void OBSDock::paintEvent(QPaintEvent *)
 		painter.setFont(font);
 	}
 	painter.drawControl(QStyle::CE_DockWidgetTitle, opt);
+}
+
+Qt::Edges OBSDock::getResizeEdges(const QPoint &position)
+{
+	Qt::Edges edges;
+
+	if (!isFloating())
+		return edges;
+
+	const int x = position.x();
+	const int y = position.y();
+	const int w = width();
+	const int h = height();
+
+	if (x < 0 || x >= w || y < 0 || y >= h)
+		// Position is not within this window
+		return edges;
+
+	/* Try to match the default implementation.
+	 * A little extra space is given inside the title bar.
+	 */
+	const QWidget *titleBar = titleBarWidget();
+	bool inTitleBar = y < titleBar->y() + titleBar->height();
+	static int borderSize = 4;
+
+	if (x < borderSize)
+		edges |= Qt::LeftEdge;
+	else if (x >= w - (inTitleBar ? borderSize - 1 : borderSize))
+		edges |= Qt::RightEdge;
+
+	if (y < borderSize)
+		edges |= Qt::TopEdge;
+	else if (y >= h - borderSize)
+		edges |= Qt::BottomEdge;
+
+	return edges;
+}
+
+Qt::CursorShape OBSDock::getCursor(const QPoint &position)
+{
+	if (floatButton->underMouse() || closeButton->underMouse())
+		return Qt::BlankCursor;
+
+	if (isFloating()) {
+		Qt::Edges edges = getResizeEdges(position);
+
+		if (edges & Qt::LeftEdge)
+			return edges & Qt::TopEdge      ? Qt::SizeFDiagCursor
+			       : edges & Qt::BottomEdge ? Qt::SizeBDiagCursor
+							: Qt::SizeHorCursor;
+		else if (edges & Qt::RightEdge)
+			return edges & Qt::TopEdge      ? Qt::SizeBDiagCursor
+			       : edges & Qt::BottomEdge ? Qt::SizeFDiagCursor
+							: Qt::SizeHorCursor;
+		else if (edges & (Qt::TopEdge | Qt::BottomEdge))
+			return Qt::SizeVerCursor;
+	}
+
+	switch (mouseState) {
+	case MouseState::Pressed:
+	case MouseState::CtrlPressed:
+		return Qt::ClosedHandCursor;
+	default:
+		return (isFloating() || hasFeature(QDockWidget::DockWidgetMovable)) && isOverTitleBar(position)
+			       ? Qt::OpenHandCursor
+			       : Qt::BlankCursor;
+	}
+}
+
+void OBSDock::updateCursor(const QPoint &position)
+{
+	updateCursor(getCursor(position));
+}
+
+void OBSDock::updateCursor(Qt::CursorShape cursor)
+{
+	OBSApp *app = App();
+	if (cursor != Qt::BlankCursor) {
+		if (this->cursor != Qt::BlankCursor)
+			app->changeOverrideCursor(cursor);
+		else
+			app->setOverrideCursor(cursor);
+	} else if (this->cursor != Qt::BlankCursor) {
+		app->restoreOverrideCursor();
+	}
+	this->cursor = cursor;
+}
+
+void OBSDock::clearCursor()
+{
+	updateCursor(Qt::BlankCursor);
 }
 
 void OBSDock::setTranslucent(bool value)
