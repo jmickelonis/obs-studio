@@ -219,6 +219,8 @@ OBSDock *TitleBarLayout::getDock() const
 
 OBSDock::OBSDock(const QString &title, QWidget *parent) : QDockWidget(title, parent)
 {
+	setAttribute(Qt::WA_TranslucentBackground);
+
 	cursor = Qt::BlankCursor;
 	mouseState = NotPressed;
 	settingFlags = false;
@@ -662,9 +664,10 @@ Qt::CursorShape OBSDock::getCursor(const QPoint &position)
 	case MouseState::CtrlPressed:
 		return Qt::ClosedHandCursor;
 	default:
-		return (isFloating() || hasFeature(QDockWidget::DockWidgetMovable)) && isOverTitleBar(position)
-			       ? Qt::OpenHandCursor
-			       : Qt::BlankCursor;
+		// return (isFloating() || hasFeature(QDockWidget::DockWidgetMovable)) && isOverTitleBar(position)
+		// 	       ? Qt::OpenHandCursor
+		// 	       : Qt::BlankCursor;
+		return Qt::BlankCursor;
 	}
 }
 
