@@ -162,8 +162,8 @@ QSize TitleBarLayout::sizeHint() const
 	bool floatable = dock->hasFeature(QDockWidget::DockWidgetFloatable);
 	bool closable = dock->hasFeature(QDockWidget::DockWidgetClosable);
 
-	QWidget *floatButton = items[FloatButton]->widget();
-	QWidget *closeButton = items[CloseButton]->widget();
+	QAbstractButton *floatButton = dock->floatButton;
+	QAbstractButton *closeButton = dock->closeButton;
 
 	/* Since the default updateButtons implementation can't be overridden,
 	 * we can set button visibility here.
@@ -171,8 +171,23 @@ QSize TitleBarLayout::sizeHint() const
 	floatButton->setVisible(floatable);
 	closeButton->setVisible(closable);
 
-	QSize floatSize = floatable ? floatButton->sizeHint() : QSize(0, 0);
-	QSize closeSize = closable ? closeButton->sizeHint() : QSize(0, 0);
+	QStyle *style = dock->style();
+	QStyleOptionDockWidget opt;
+	dock->initStyleOption(&opt);
+
+	/*
+	 * Retrieve and force the sizes.
+	 * For some reason, normally the buttons end up larger than returned here,
+	 * so they overlap or fall outside the title bar bounds.
+	 */
+	QSize floatSize = floatable ? style->subElementRect(QStyle::SE_DockWidgetFloatButton, &opt, dock).size()
+				    : QSize(0, 0);
+	if (floatable)
+		floatButton->setFixedSize(floatSize);
+	QSize closeSize = closable ? style->subElementRect(QStyle::SE_DockWidgetCloseButton, &opt, dock).size()
+				   : QSize(0, 0);
+	if (closable)
+		closeButton->setFixedSize(closeSize);
 
 	bool vertical = dock->hasFeature(QDockWidget::DockWidgetVerticalTitleBar);
 	int buttonHeight, w;
