@@ -164,6 +164,7 @@
     --border_radius: 4px;
     --border_radius_small: 2px;
     --border_radius_large: 6px;
+    --border_radius_dock: calc(var(--border_radius) * 1.25);
 
     --input_font_scale: calc(var(--font_base_value) * 2.2);
     --input_font_padding: calc(var(--padding_base_value) * 2);
@@ -856,6 +857,16 @@ QDockWidget {
 
     titlebar-close-icon: url(theme:Dark/close.svg);
     titlebar-normal-icon: url(theme:Dark/popout.svg);
+}
+
+QDockWidget::window {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--border_radius_dock);
+}
+
+QDockWidget::window:active {
+    border-color: var(--primary);
 }
 
 QDockWidget::title {
