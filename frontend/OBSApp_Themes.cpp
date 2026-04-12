@@ -426,7 +426,9 @@ void OBSApp::FindThemes()
 	// Let user themes take precedence over global ones
 	string themeDir = App()->userConfigLocation.u8string() + "/obs-studio/themes";
 	loadThemes(themeDir);
-	if (GetDataFilePath("themes/", themeDir))
+	themeDir = "";
+	GetDataFilePath("themes/", themeDir);
+	if (themeDir != "")
 		loadThemes(themeDir);
 
 	/* Build dependency tree for all themes, removing ones that have items missing. */
