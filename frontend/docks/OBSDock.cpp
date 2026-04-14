@@ -437,6 +437,9 @@ bool OBSDock::event(QEvent *e)
 			return true;
 		}
 
+		if (!hasFeature(QDockWidget::DockWidgetMovable))
+			return false;
+
 		// Stock implementation will handle a drag
 		mouseState = Pressed;
 		updateCursor(pressPosition);
