@@ -858,11 +858,13 @@ QDockWidget {
 
     titlebar-close-icon: url(theme:Dark/close.svg);
     titlebar-normal-icon: url(theme:Dark/popout.svg);
+
+    qproperty-dropShadow: true;
 }
 
 QDockWidget::window {
-    background: var(--border_color);
-    border: 1px solid var(--border_color);
+    background: transparent;
+    border: 1px solid transparent;
     border-radius: var(--border_radius_dock);
 }
 
