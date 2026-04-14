@@ -191,7 +191,7 @@ QSize TitleBarLayout::sizeHint() const
 	return vertical ? QSize(h, w) : QSize(w, h);
 }
 
-void TitleBarLayout::setGeometry(const QRect &)
+void TitleBarLayout::setGeometry(const QRect &geometry)
 {
 	OBSDock *dock = getDock();
 
@@ -199,23 +199,28 @@ void TitleBarLayout::setGeometry(const QRect &)
 	dock->initStyleOption(&opt);
 
 	QStyle *style = dock->style();
-	QRect rect = style->subElementRect(QStyle::SE_DockWidgetCloseButton, &opt, dock);
-	if (!rect.isNull()) {
-		QAbstractButton *button = dock->closeButton;
+	int frameThickness = dock->isFloating() ? style->pixelMetric(QStyle::PM_DockWidgetFrameWidth, nullptr, dock)
+						: 0;
+
+	auto handleButton = [&](QAbstractButton *button, QStyle::SubElement subElement) {
+		QRect rect = style->subElementRect(subElement, &opt, dock);
+		if (rect.isNull())
+			return;
+		int w = rect.width();
+		int h = rect.height();
 		/*
          * Force the button sizes before setting the geometry.
          * For some reason, normally the buttons end up larger than returned here,
          * so they overlap or fall outside the title bar bounds.
          */
-		button->setFixedSize(rect.size());
+		button->setFixedSize(w, h);
+		// Fix vertical centering
+		rect.setY(frameThickness + (geometry.height() - h) / 2);
 		button->setGeometry(rect);
-	}
-	rect = style->subElementRect(QStyle::SE_DockWidgetFloatButton, &opt, dock);
-	if (!rect.isNull()) {
-		QAbstractButton *button = dock->floatButton;
-		button->setFixedSize(rect.size());
-		button->setGeometry(rect);
-	}
+	};
+
+	handleButton(dock->closeButton, QStyle::SE_DockWidgetCloseButton);
+	handleButton(dock->floatButton, QStyle::SE_DockWidgetFloatButton);
 }
 
 QSize TitleBarLayout::minimumSize() const
