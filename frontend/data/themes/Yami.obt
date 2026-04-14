@@ -852,6 +852,7 @@ OBSDock QLabel {
 }
 
 QDockWidget {
+    background: transparent;
     font-size: var(--font_base);
     font-weight: bold;
 
