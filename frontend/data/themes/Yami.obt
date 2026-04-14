@@ -861,12 +861,13 @@ QDockWidget {
 }
 
 QDockWidget::window {
-    background: transparent;
-    border: 3px solid var(--border_color);
+    background: var(--border_color);
+    border: 1px solid var(--border_color);
     border-radius: var(--border_radius_dock);
 }
 
 QDockWidget::window:active {
+    background: var(--primary);
     border-color: var(--primary);
 }
 
