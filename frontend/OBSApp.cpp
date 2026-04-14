@@ -1504,6 +1504,10 @@ void InitializeNativeWindow(QWidget *widget)
 void UpdateTitleBarColor(QWidget *widget)
 {
 	HWND wnd = (HWND)widget->winId();
+	DWORD style = GetWindowLong(wnd, GWL_STYLE);
+
+	if (!(style & WS_CAPTION))
+		return;
 
 	// Set the caption (title bar) color from the palette
 	QColor qColor = widget->palette().color(QPalette::Base);
