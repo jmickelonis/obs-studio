@@ -11,7 +11,7 @@
 #ifdef _WIN32
 #include <windowsx.h>
 #include <dwmapi.h>
-#pragma comment (lib, "dwmapi")
+#pragma comment(lib, "dwmapi")
 #endif
 
 TitleBarWidget::TitleBarWidget(OBSDock *dock) : QWidget(dock)
@@ -171,23 +171,8 @@ QSize TitleBarLayout::sizeHint() const
 	floatButton->setVisible(floatable);
 	closeButton->setVisible(closable);
 
-	QStyle *style = dock->style();
-	QStyleOptionDockWidget opt;
-	dock->initStyleOption(&opt);
-
-	/*
-	 * Retrieve and force the sizes.
-	 * For some reason, normally the buttons end up larger than returned here,
-	 * so they overlap or fall outside the title bar bounds.
-	 */
-	QSize floatSize = floatable ? style->subElementRect(QStyle::SE_DockWidgetFloatButton, &opt, dock).size()
-				    : QSize(0, 0);
-	if (floatable)
-		floatButton->setFixedSize(floatSize);
-	QSize closeSize = closable ? style->subElementRect(QStyle::SE_DockWidgetCloseButton, &opt, dock).size()
-				   : QSize(0, 0);
-	if (closable)
-		closeButton->setFixedSize(closeSize);
+	QSize floatSize = floatable ? floatButton->sizeHint() : QSize(0, 0);
+	QSize closeSize = closable ? closeButton->sizeHint() : QSize(0, 0);
 
 	bool vertical = dock->hasFeature(QDockWidget::DockWidgetVerticalTitleBar);
 	int buttonHeight, w;
@@ -215,11 +200,22 @@ void TitleBarLayout::setGeometry(const QRect &)
 
 	QStyle *style = dock->style();
 	QRect rect = style->subElementRect(QStyle::SE_DockWidgetCloseButton, &opt, dock);
-	if (!rect.isNull())
-		items[CloseButton]->setGeometry(rect);
+	if (!rect.isNull()) {
+		QAbstractButton *button = dock->closeButton;
+		/*
+         * Force the button sizes before setting the geometry.
+         * For some reason, normally the buttons end up larger than returned here,
+         * so they overlap or fall outside the title bar bounds.
+         */
+		button->setFixedSize(rect.size());
+		button->setGeometry(rect);
+	}
 	rect = style->subElementRect(QStyle::SE_DockWidgetFloatButton, &opt, dock);
-	if (!rect.isNull())
-		items[FloatButton]->setGeometry(rect);
+	if (!rect.isNull()) {
+		QAbstractButton *button = dock->floatButton;
+		button->setFixedSize(rect.size());
+		button->setGeometry(rect);
+	}
 }
 
 QSize TitleBarLayout::minimumSize() const
@@ -234,7 +230,9 @@ OBSDock *TitleBarLayout::getDock() const
 
 OBSDock::OBSDock(const QString &title, QWidget *parent) : QDockWidget(title, parent)
 {
+#ifndef _WIN32
 	setAttribute(Qt::WA_TranslucentBackground);
+#endif
 
 	cursor = Qt::BlankCursor;
 	mouseState = NotPressed;
@@ -554,16 +552,8 @@ bool OBSDock::nativeEvent(const QByteArray &eventType, void *message, qintptr *r
 		DWM_WINDOW_CORNER_PREFERENCE corner = DWMWCP_DONOTROUND;
 		DwmSetWindowAttribute(handle, DWMWA_WINDOW_CORNER_PREFERENCE, &corner, sizeof(corner));
 
-		// Don't draw a native border
-		COLORREF color = DWMWA_COLOR_NONE;
-		DwmSetWindowAttribute(handle, DWMWA_BORDER_COLOR, &color, sizeof(color));
-
 		break;
 	}
-
-	case WM_NCCALCSIZE:
-		// Causes the window to be drawn over the frame
-		return true;
 
 	case WM_SIZING: {
 		// Notifies us that we're about to resize,
@@ -715,12 +705,12 @@ void OBSDock::setDropShadow(bool value)
 {
 	HWND hwnd = (HWND)winId();
 	DWORD style = GetWindowLong(hwnd, GWL_STYLE);
-	auto flags = WS_THICKFRAME | WS_CAPTION | WS_CLIPCHILDREN;
+	auto flags = WS_CAPTION | WS_CLIPCHILDREN;
 
 	if (value) {
 		style |= flags;
-		const MARGINS shadow = {1, 1, 1, 1};
-		DwmExtendFrameIntoClientArea(hwnd, &shadow);
+		const MARGINS margins = {-1};
+		DwmExtendFrameIntoClientArea(hwnd, &margins);
 	} else {
 		style &= ~flags;
 	}
