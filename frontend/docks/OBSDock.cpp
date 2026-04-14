@@ -522,7 +522,7 @@ void OBSDock::paintEvent(QPaintEvent *)
 	if (isFloating()) {
 		QStyleOptionFrame opt;
 		opt.initFrom(this);
-		painter.drawPrimitive(QStyle::PE_FrameDockWidget, opt);
+		painter.drawPrimitive(QStyle::PE_Widget, opt);
 	}
 
 	QStyleOptionDockWidget opt;
