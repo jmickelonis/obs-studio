@@ -260,8 +260,8 @@ int GetAppConfigPath(char *path, size_t size, const char *name);
 char *GetAppConfigPathPtr(const char *name);
 
 #ifdef _WIN32
-void EnableCompositing(QWidget *widget);
-void UpdateCaptionAndBorder(QWidget *widget);
+void InitializeNativeWindow(QWidget *widget);
+void UpdateTitleBarColor(QWidget *widget);
 #endif
 
 inline OBSApp *App()

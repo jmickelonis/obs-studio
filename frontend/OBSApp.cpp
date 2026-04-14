@@ -1474,27 +1474,41 @@ static SpinBoxEventFilter *spinBoxEventFilter = nullptr;
 
 #ifdef _WIN32
 
-/* Force compositing.
- * Avoids white flashes when windows are shown (and other artifacts).
- */
-void EnableCompositing(QWidget *widget)
+void InitializeNativeWindow(QWidget *widget)
 {
 	HWND wnd = (HWND)widget->winId();
 
+	/* Force compositing.
+	 * Avoids white flashes when windows are shown (and other artifacts).
+	 */
 	SetWindowLongW(wnd, GWL_EXSTYLE, GetWindowLongW(wnd, GWL_EXSTYLE) | WS_EX_COMPOSITED);
+
+	// Don't draw a native border
+	COLORREF color = DWMWA_COLOR_NONE;
+	DwmSetWindowAttribute(wnd, DWMWA_BORDER_COLOR, &color, sizeof(color));
+
+	// Disable immersive/dark mode
+	BOOL darkMode = FALSE; 
+	DwmSetWindowAttribute(wnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &darkMode, sizeof(darkMode));
+
+	/* This actually doesn't blur behind the window (as of Windows 8),
+	 * but it DOES stop the window from painting a black background,
+	 * which is needed for translucent window content.
+	 */
+	DWM_BLURBEHIND blurBehind = {};
+	blurBehind.fEnable = true;
+	blurBehind.dwFlags = DWM_BB_ENABLE;
+	DwmEnableBlurBehindWindow(wnd, &blurBehind);
 }
 
-void UpdateCaptionAndBorder(QWidget *widget)
+void UpdateTitleBarColor(QWidget *widget)
 {
 	HWND wnd = (HWND)widget->winId();
 
 	// Set the caption (title bar) color from the palette
-	COLORREF color = widget->palette().color(QPalette::Base).rgb() & 0xFFFFFF;
+	QColor qColor = widget->palette().color(QPalette::Base);
+	COLORREF color = RGB(qColor.red(), qColor.green(), qColor.blue());
 	DwmSetWindowAttribute(wnd, DWMWA_CAPTION_COLOR, &color, sizeof(color));
-
-	// Don't draw a native border
-	color = DWMWA_COLOR_NONE;
-	DwmSetWindowAttribute(wnd, DWMWA_BORDER_COLOR, &color, sizeof(color));
 }
 
 #endif
@@ -1537,10 +1551,8 @@ bool OBSApp::notify(QObject *receiver, QEvent *e)
 		goto skip;
 
 #ifdef _WIN32
-	// Make sure all top-level widgets are composited
-	EnableCompositing(w);
-	// Update the title bar/border styles
-	UpdateCaptionAndBorder(w);
+	InitializeNativeWindow(w);
+	UpdateTitleBarColor(w);
 #endif
 
 	window = w->windowHandle();
