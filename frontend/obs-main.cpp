@@ -533,6 +533,21 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 	const char *platform_theme = getenv("QT_QPA_PLATFORMTHEME");
 	if (platform_theme && strcmp(platform_theme, "qt5ct") == 0)
 		unsetenv("QT_QPA_PLATFORMTHEME");
+
+#if defined(ENABLE_WAYLAND)
+	const char *sessionType = getenv("XDG_SESSION_TYPE");
+	if (sessionType && !strcmp(sessionType, "wayland")) {
+		const char *platform = getenv("QT_QPA_PLATFORM");
+		if (platform) {
+			// Keep the environment-specified platform
+			blog(LOG_INFO, "QT_QPA_PLATFORM was set to %s", platform);
+		} else {
+			// The platform plugin for Wayland sucks, so use XCB/XWayland
+			setenv("QT_QPA_PLATFORM", "xcb", false);
+			blog(LOG_INFO, "Setting QT_QPA_PLATFORM to xcb for compatibility on Wayland");
+		}
+	}
+#endif
 #endif
 
 	/* NOTE: This disables an optimisation in Qt that attempts to determine if
