@@ -68,6 +68,10 @@ public:
 	OBSDock(const QString &title, QWidget *parent = nullptr);
 	inline OBSDock(QWidget *parent = nullptr) : OBSDock("", parent) {}
 
+	Q_PROPERTY(bool dropShadow READ isDropShadow WRITE setDropShadow)
+	bool isDropShadow();
+	void setDropShadow(bool value);
+
 	bool hasFeature(QDockWidget::DockWidgetFeature feature);
 	virtual void setVisible(bool visible) override;
 	virtual void closeEvent(QCloseEvent *event);
@@ -91,6 +95,9 @@ private:
 	MouseState mouseState;
 
 	Qt::CursorShape cursor;
+#ifdef _WIN32
+	bool dropShadow;
+#endif
 #ifdef __QT_SUPPORTS_SYSTEM_RESIZE
 	Qt::Edges pressEdges;
 #endif
@@ -104,7 +111,7 @@ private:
 	void clearCursor();
 
 #ifdef _WIN32
-	void setDropShadow(bool value);
+	void setDropShadowInternal(bool value);
 #endif
 	void setTranslucent(bool value);
 	void fixBounds();

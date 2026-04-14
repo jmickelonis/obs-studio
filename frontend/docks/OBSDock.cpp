@@ -65,7 +65,7 @@ void TitleBarWidget::onTopLevelChanged(bool floating)
 
 #ifdef _WIN32
 	if (dock->isFloating() && dock->mouseState == OBSDock::MouseState::NotPressed)
-		dock->setDropShadow(true);
+		dock->setDropShadowInternal(dock->dropShadow);
 #endif
 
 	// Stop from showing hover after setting floatable
@@ -243,6 +243,10 @@ OBSDock::OBSDock(const QString &title, QWidget *parent) : QDockWidget(title, par
 	mouseState = NotPressed;
 	settingFlags = false;
 
+#ifdef _WIN32
+	dropShadow = false;
+#endif
+
 	// Get the dock's buttons (hopefully these will never be null!)
 	floatButton = findChild<QAbstractButton *>("qt_dockwidget_floatbutton");
 	closeButton = findChild<QAbstractButton *>("qt_dockwidget_closebutton");
@@ -259,6 +263,27 @@ OBSDock::OBSDock(const QString &title, QWidget *parent) : QDockWidget(title, par
 #endif
 
 	connect(this, &QDockWidget::visibilityChanged, this, &OBSDock::onVisibilityChanged);
+}
+
+bool OBSDock::isDropShadow()
+{
+#ifdef _WIN32
+	return dropShadow;
+#else
+	return false;
+#endif
+}
+
+void OBSDock::setDropShadow(bool value)
+{
+#ifdef _WIN32
+	bool old = dropShadow;
+	if (value == old)
+		return;
+	dropShadow = value;
+	if (isFloating())
+		setDropShadowInternal(value);
+#endif
 }
 
 bool OBSDock::hasFeature(QDockWidget::DockWidgetFeature feature)
@@ -428,7 +453,7 @@ bool OBSDock::event(QEvent *e)
 			/* Disable the drop shadow when moving the dock around.
 			 * This prevents a lot of glitches (like when moving between screens).
 			 */
-			setDropShadow(false);
+			setDropShadowInternal(false);
 #endif
 		}
 		break;
@@ -444,7 +469,7 @@ bool OBSDock::event(QEvent *e)
 				return false;
 
 #ifdef _WIN32
-			setDropShadow(false);
+			setDropShadowInternal(false);
 #endif
 
 			mouseState = OBSApp::IsWayland() ? NotPressed : CtrlDragging;
@@ -461,7 +486,7 @@ bool OBSDock::event(QEvent *e)
 			return false;
 
 #ifdef _WIN32
-		setDropShadow(false);
+		setDropShadowInternal(false);
 #endif
 
 		mouseState = OBSApp::IsWayland() ? NotPressed : Resizing;
@@ -498,7 +523,7 @@ bool OBSDock::event(QEvent *e)
 			setTranslucent(false);
 			temporarilyDisableAnimations();
 #ifdef _WIN32
-			setDropShadow(true);
+			setDropShadowInternal(dropShadow);
 			fixBounds();
 #endif
 		}
@@ -550,15 +575,9 @@ bool OBSDock::nativeEvent(const QByteArray &eventType, void *message, qintptr *r
 
 	switch (msg->message) {
 
-	case WM_SHOWWINDOW: {
-		HWND handle = (HWND)winId();
-
-		// Don't allow rounded corners
-		DWM_WINDOW_CORNER_PREFERENCE corner = DWMWCP_DONOTROUND;
-		DwmSetWindowAttribute(handle, DWMWA_WINDOW_CORNER_PREFERENCE, &corner, sizeof(corner));
-
+	case WM_SHOWWINDOW:
+		setDropShadowInternal(dropShadow);
 		break;
-	}
 
 	case WM_SIZING: {
 		// Notifies us that we're about to resize,
@@ -601,7 +620,7 @@ bool OBSDock::nativeEvent(const QByteArray &eventType, void *message, qintptr *r
 	case WM_EXITSIZEMOVE:
 		mouseState = NotPressed;
 		fixBounds();
-		setDropShadow(true);
+		setDropShadowInternal(dropShadow);
 		setTranslucent(false);
 		break;
 
@@ -706,21 +725,15 @@ void OBSDock::clearCursor()
 }
 
 #ifdef _WIN32
-void OBSDock::setDropShadow(bool value)
+void OBSDock::setDropShadowInternal(bool value)
 {
-	HWND hwnd = (HWND)winId();
-	DWORD style = GetWindowLong(hwnd, GWL_STYLE);
-	auto flags = WS_CAPTION | WS_CLIPCHILDREN;
-
-	if (value) {
-		style |= flags;
-		const MARGINS margins = {-1};
-		DwmExtendFrameIntoClientArea(hwnd, &margins);
-	} else {
-		style &= ~flags;
-	}
-
-	SetWindowLong(hwnd, GWL_STYLE, style);
+	HWND handle = (HWND)winId();
+	/* Use small rounded corners, which gives us shadows for free,
+	 * and doesn't leave any kind of obvious artifacts.
+	 * The UI/theme has to account for the rounded corners, or risks being cut off.
+	 */
+	DWM_WINDOW_CORNER_PREFERENCE corner = value ? DWMWCP_ROUNDSMALL : DWMWCP_DONOTROUND;
+	DwmSetWindowAttribute(handle, DWMWA_WINDOW_CORNER_PREFERENCE, &corner, sizeof(corner));
 }
 #endif
 
