@@ -627,6 +627,12 @@ QProgressBar::chunk {
     border-radius: var(--border_radius_small);
 }
 
+QSizeGrip {
+    /* Hide the resize grip on the bottom right of windows */
+    max-width: 0px;
+    max-height: 0px;
+}
+
 /* Context Menu */
 
 QMenu::indicator {
