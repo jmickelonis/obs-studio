@@ -55,7 +55,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <dwmapi.h>
-#pragma comment (lib, "dwmapi")
+#pragma comment(lib, "dwmapi")
 #else
 #include <unistd.h>
 #include <sys/socket.h>
@@ -1477,18 +1477,21 @@ static SpinBoxEventFilter *spinBoxEventFilter = nullptr;
 void InitializeNativeWindow(QWidget *widget)
 {
 	HWND wnd = (HWND)widget->winId();
+	LONG exStyle = GetWindowLongW(wnd, GWL_EXSTYLE);
 
 	/* Force compositing.
 	 * Avoids white flashes when windows are shown (and other artifacts).
 	 */
-	SetWindowLongW(wnd, GWL_EXSTYLE, GetWindowLongW(wnd, GWL_EXSTYLE) | WS_EX_COMPOSITED);
+	SetWindowLongW(wnd, GWL_EXSTYLE, exStyle | WS_EX_COMPOSITED);
 
-	// Don't draw a native border
-	COLORREF color = DWMWA_COLOR_NONE;
-	DwmSetWindowAttribute(wnd, DWMWA_BORDER_COLOR, &color, sizeof(color));
+	if ((exStyle & WS_EX_WINDOWEDGE) || (widget->windowFlags() & Qt::Dialog) == Qt::Dialog) {
+		// Don't draw a native border
+		COLORREF color = DWMWA_COLOR_NONE;
+		DwmSetWindowAttribute(wnd, DWMWA_BORDER_COLOR, &color, sizeof(color));
+	}
 
 	// Disable immersive/dark mode
-	BOOL darkMode = FALSE; 
+	BOOL darkMode = FALSE;
 	DwmSetWindowAttribute(wnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &darkMode, sizeof(darkMode));
 
 	/* This actually doesn't blur behind the window (as of Windows 8),
@@ -1544,8 +1547,7 @@ bool OBSApp::notify(QObject *receiver, QEvent *e)
 
 			goto skip;
 		}
-	}
-	else {
+	} else {
 		goto skip;
 	}
 
