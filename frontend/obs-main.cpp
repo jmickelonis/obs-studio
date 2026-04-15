@@ -39,6 +39,15 @@
 #include <QStyleHints>
 #include <curl/curl.h>
 
+#ifdef __linux__
+#include <QDir>
+#include <QFileInfo>
+#include <QVersionNumber>
+#include <regex>
+#include <json11.hpp>
+using namespace json11;
+#endif
+
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -495,6 +504,213 @@ static bool shouldForceFusionStyle()
 	return value ? QVariant(value).toBool() : true;
 }
 
+#ifdef __linux__
+
+static QStringList getXDGDirectories()
+{
+	QStringList dirs;
+	const char *env = getenv("XDG_DATA_HOME");
+	dirs << (env ? env : "~/.local/share");
+	env = getenv("XDG_DATA_DIRS");
+	if (env)
+		dirs << QString(env).split(':', Qt::SkipEmptyParts);
+	else
+		dirs << "/usr/local/share" << "/usr/share";
+	return dirs;
+}
+
+static bool loadJSON(const QString &path, Json &out)
+{
+	QFile file(path);
+	if (!file.open(QFile::ReadOnly | QFile::Text))
+		return false;
+	QTextStream in(&file);
+	std::string error;
+	Json data = Json::parse(in.readAll().toStdString(), error);
+	if (!error.empty())
+		return false;
+	out = data;
+	return true;
+}
+
+static bool getVKCapturePath(const QStringList &xdgDirs, QFileInfo &out)
+{
+	QStringList dirs;
+	dirs << xdgDirs << "/opt/share";
+
+	for (QString dir : dirs) {
+		if (dir.startsWith("~"))
+			dir.replace(0, 1, QDir::homePath());
+
+		const QFileInfo file(dir + "/vulkan/implicit_layer.d/obs_vkcapture_64.json");
+		if (file.exists() && file.isFile()) {
+			out = file;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/* Looks for and enables the game capture Vulkan layer.
+ */
+static void enableVKCapture(const QStringList &xdgDirs)
+{
+	QFileInfo fileInfo;
+	if (!getVKCapturePath(xdgDirs, fileInfo))
+		return;
+
+	QString filePath = fileInfo.filePath();
+	Json json;
+	if (!loadJSON(filePath, json))
+		return;
+	Json layer = json["layer"];
+	if (!layer.is_object())
+		return;
+	Json libraryPath = layer["library_path"];
+	if (!libraryPath.is_string())
+		return;
+
+	blog(LOG_INFO,
+	     "Found game capture layer"
+	     "\n    Path: %s"
+	     "\n    Library Path: %s",
+	     filePath.toStdString().c_str(), libraryPath.string_value().c_str());
+
+	QStringList path(fileInfo.dir().absolutePath());
+	const char *env = getenv("VK_ADD_LAYER_PATH");
+	if (env)
+		path << QString(env).split(':', Qt::SkipEmptyParts);
+	QString s = path.join(':');
+	blog(LOG_DEBUG, "env VK_ADD_LAYER_PATH = %s", s.toStdString().c_str());
+	qputenv("VK_ADD_LAYER_PATH", s.toUtf8());
+
+	QStringList enable("VK_LAYER_OBS_vkcapture_*");
+	env = getenv("VK_LOADER_LAYERS_ENABLE");
+	if (env)
+		enable << QString(env).split(',', Qt::SkipEmptyParts);
+	s = enable.join(',');
+	blog(LOG_DEBUG, "env VK_LOADER_LAYERS_ENABLE = %s", s.toStdString().c_str());
+	qputenv("VK_LOADER_LAYERS_ENABLE", s.toUtf8());
+}
+
+static QStringList getVulkanDriverDiscoveryDirectories()
+{
+	QStringList dirs;
+	const char *env = getenv("XDG_CONFIG_HOME");
+	dirs << (env ? env : "~/.config");
+	env = getenv("XDG_CONFIG_DIRS");
+	if (env)
+		dirs << QString(env).split(':', Qt::SkipEmptyParts);
+	else
+		dirs << "/etc/xdg";
+	dirs << "/etc";
+	return dirs;
+}
+
+static bool getAMDGPUProICDPath(const QStringList &xdgDirs, QFileInfo &out)
+{
+	QStringList driverDirs = getVulkanDriverDiscoveryDirectories();
+	driverDirs << xdgDirs;
+
+	for (QString dir : driverDirs) {
+		if (dir.startsWith("~"))
+			dir.replace(0, 1, QDir::homePath());
+
+		const QFileInfo file(dir + "/vulkan/icd.d/amd_pro_icd64.json");
+		if (file.exists() && file.isFile()) {
+			out = file;
+			return true;
+		}
+	}
+
+	const QFileInfo file("/opt/amdgpu-pro/etc/vulkan/icd.d/amd_icd64.json");
+	if (file.exists() && file.isFile()) {
+		out = file;
+		return true;
+	}
+
+	return false;
+}
+
+/* Looks for the AMF library.
+ * If found and needed for the AMF version, forces AMDGPU Pro Vulkan.
+ */
+static void enableAMF(const QStringList &xdgDirs)
+{
+	const char *env = getenv("OBS_ACTIVATE_AMF");
+	if (env && !QVariant(env).toBool()) {
+		blog(LOG_INFO, "AMD HW encoder activation was disabled (OBS_ACTIVATE_AMF=false)");
+		return;
+	}
+
+	// Check for the encoder library
+	std::unique_ptr<FILE, decltype(&pclose)> pipe(popen("ldconfig -v 2>/dev/null | grep libamfrt64", "r"), pclose);
+	if (!pipe)
+		return;
+
+	std::string config;
+	std::array<char, 64> buffer;
+	while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe.get()) != nullptr)
+		config += buffer.data();
+
+	std::regex pattern(R"(libamfrt64\.so\.(\d+\.\d+\.\d+))");
+	std::smatch match;
+	if (!std::regex_search(config, match, pattern))
+		return;
+
+	QString amfVersion = match[1].str().c_str();
+	blog(LOG_INFO, "Found AMD HW encoder: libamfrt64.so v%s", amfVersion.toStdString().c_str());
+
+	if (QVersionNumber::fromString(amfVersion) >= QVersionNumber(1, 4, 34) &&
+	    !(env && !strcmp(env, "AMDVLK-PRO"))) {
+		// AMF 1.4.34 introduced stable support for Mesa/RADV
+		blog(LOG_INFO,
+		     "Not using AMDVLK-PRO with AMF >= 1.4.34 by default (set OBS_ACTIVATE_AMF=AMDVLK-PRO to force)");
+		return;
+	}
+
+	QFileInfo fileInfo;
+	if (!getAMDGPUProICDPath(xdgDirs, fileInfo)) {
+		blog(LOG_WARNING, "Could not find AMDGPU Pro Vulkan ICD");
+		return;
+	}
+
+	QString filePath = fileInfo.filePath();
+	Json json;
+	if (!loadJSON(filePath, json))
+		return;
+
+	Json icd = json["ICD"];
+	if (!icd.is_object())
+		return;
+
+	Json version = icd["api_version"];
+	Json libraryPath = icd["library_path"];
+	if (!(version.is_string() && libraryPath.is_string()))
+		return;
+
+	blog(LOG_INFO,
+	     "Found AMDGPU Pro Vulkan ICD"
+	     "\n      Path: %s"
+	     "\n      Library Path: %s"
+	     "\n      Version: %s",
+	     filePath.toStdString().c_str(), libraryPath.string_value().c_str(), version.string_value().c_str());
+
+	QStringList fileNames(filePath);
+	env = getenv("VK_ICD_FILENAMES");
+	if (env)
+		fileNames << QString(env).split(':', Qt::SkipEmptyParts);
+
+	qputenv("AMD_VULKAN_ICD", "AMDVLK-PRO");
+	QString s = fileNames.join(':');
+	qputenv("VK_ICD_FILENAMES", s.toUtf8());
+	blog(LOG_DEBUG, "env VK_ICD_FILENAMES = %s", s.toStdString().c_str());
+	blog(LOG_INFO, "Using AMDVLK-PRO with AMF");
+}
+
+#endif
+
 static const char *run_program_init = "run_program_init";
 static int run_program(fstream &logFile, int argc, char *argv[])
 {
@@ -544,10 +760,15 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 		} else {
 			// The platform plugin for Wayland sucks, so use XCB/XWayland
 			setenv("QT_QPA_PLATFORM", "xcb", false);
-			blog(LOG_INFO, "Setting QT_QPA_PLATFORM to xcb for compatibility on Wayland");
+			blog(LOG_INFO, "Setting QT_QPA_PLATFORM to xcb (for compatibility on Wayland)");
 		}
 	}
 #endif
+
+	QStringList xdgDirs = getXDGDirectories();
+	enableVKCapture(xdgDirs);
+	enableAMF(xdgDirs);
+
 #endif
 
 	/* NOTE: This disables an optimisation in Qt that attempts to determine if
