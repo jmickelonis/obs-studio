@@ -2,6 +2,10 @@
 
 #include "StatusBarWidget.hpp"
 
+#ifdef __linux__
+#include "GPUUsage.hpp"
+#endif
+
 #include <obs.hpp>
 
 #include <QPointer>
@@ -63,6 +67,10 @@ private:
 	QPointer<QTimer> refreshTimer;
 	QPointer<QTimer> messageTimer;
 
+#ifdef __linux__
+	GPUUsage *gpuUsage;
+#endif
+
 	obs_output_t *GetOutput();
 
 	void Activate();
@@ -104,4 +112,7 @@ public:
 	void RecordingUnpaused();
 
 	void ReconnectClear();
+
+protected:
+	virtual bool event(QEvent *event) override;
 };

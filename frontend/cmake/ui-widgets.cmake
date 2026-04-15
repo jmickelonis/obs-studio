@@ -60,3 +60,11 @@ target_sources(
     widgets/StatusBarWidget.cpp
     widgets/StatusBarWidget.hpp
 )
+
+if(OS_LINUX)
+  target_sources(
+    obs-studio
+    PRIVATE
+      widgets/GPUUsage.cpp
+  )
+endif()
