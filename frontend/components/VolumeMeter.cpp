@@ -14,7 +14,6 @@ QPointer<QTimer> VolumeMeter::updateTimer = nullptr;
 namespace {
 constexpr int INDICATOR_THICKNESS = 3;
 constexpr int CLIP_FLASH_DURATION_MS = 1000;
-constexpr int TICK_SIZE = 2;
 constexpr int TICK_DB_INTERVAL = 6;
 
 constexpr const char *TICK_LABEL_TOKEN = "-88";
@@ -601,7 +600,7 @@ QColor VolumeMeter::getPeakColor(float peakHold)
 	return color;
 }
 
-void VolumeMeter::paintHTicks(QPainter &painter, int x, int y, int width)
+void VolumeMeter::paintTicks(QPainter &painter, int x, int y, int width)
 {
 	qreal scale = width / minimumLevel;
 
@@ -611,7 +610,7 @@ void VolumeMeter::paintHTicks(QPainter &painter, int x, int y, int width)
 
 	// Draw major tick lines and numeric indicators.
 	for (int i = 0; i >= minimumLevel; i -= TICK_DB_INTERVAL) {
-		int position = int(x + width - (i * scale) - 1);
+		int position = int(x + width - (i * scale));
 		QString str = QString::number(i);
 
 		// Center the number on the tick, but don't overflow
@@ -625,41 +624,18 @@ void VolumeMeter::paintHTicks(QPainter &painter, int x, int y, int width)
 				pos = 0;
 			}
 		}
-		painter.drawText(pos, y + 4 + metrics.capHeight(), str);
-
-		painter.drawLine(position, y, position, y + TICK_SIZE);
-	}
-}
-
-void VolumeMeter::paintVTicks(QPainter &painter, int x, int y, int height)
-{
-	qreal scale = height / minimumLevel;
-
-	painter.setFont(font());
-	QFontMetrics metrics(font());
-	painter.setPen(majorTickColor);
-
-	// Draw major tick lines and numeric indicators.
-	for (int i = 0; i >= minimumLevel; i -= TICK_DB_INTERVAL) {
-		int position = y + int(i * scale);
-		QString str = QString::number(i);
-
-		// Center the number on the tick, but don't overflow
-		if (i == 0) {
-			painter.drawText(x + 10, position + metrics.capHeight(), str);
-		} else {
-			painter.drawText(x + 8, position + (metrics.capHeight() / 2), str);
-		}
-
-		painter.drawLine(x, position, x + TICK_SIZE, position);
+		painter.drawText(pos, y + tickTextTokenRect.height(), str);
 	}
 }
 
 void VolumeMeter::updateTickLabelTokenSize()
 {
 	QFontMetrics metrics(font());
+	int ascent = metrics.ascent();
+	tickTextPadding = ascent - metrics.capHeight();
 	// This is a quick and naive assumption for widest potential tick label.
 	tickTextTokenRect = metrics.size(Qt::TextSingleLine, TICK_LABEL_TOKEN);
+	tickTextTokenRect.setHeight(ascent);
 }
 
 void VolumeMeter::updateBackgroundCache(bool force)
@@ -686,12 +662,17 @@ void VolumeMeter::updateBackgroundCache(bool force)
 	QRect widgetRect = rect();
 
 	// Draw ticks
+	int x = INDICATOR_THICKNESS + 3;
+	int y = displayNrAudioChannels * (meterThickness + 1) - 1;
 	if (vertical) {
-		paintVTicks(bg, displayNrAudioChannels * (meterThickness + 1) - 1, 0,
-			    widgetRect.height() - (INDICATOR_THICKNESS + 3));
+		int length = widgetRect.height();
+		bg.save();
+		bg.translate(0, length);
+		bg.rotate(-90);
+		paintTicks(bg, x, y, length - x);
+		bg.restore();
 	} else {
-		paintHTicks(bg, INDICATOR_THICKNESS + 3, displayNrAudioChannels * (meterThickness + 1) - 1,
-			    widgetRect.width() - (INDICATOR_THICKNESS + 3));
+		paintTicks(bg, x, y, widgetRect.width() - x);
 	}
 
 	// Draw meter backgrounds
@@ -892,17 +873,7 @@ QSize VolumeMeter::sizeHint() const
 {
 	QRect meterRect = getBarRect();
 	int labelTotal = std::abs(minimumLevel / TICK_DB_INTERVAL) + 1;
-
-	if (vertical) {
-		int width = meterRect.width() + tickTextTokenRect.width() + TICK_SIZE + 10;
-		int height = (labelTotal * (tickTextTokenRect.height() * TICK_LABEL_HEIGHT_SCALE_FACTOR)) +
-			     INDICATOR_THICKNESS;
-
-		return QSize(width, height);
-	} else {
-		int width = (labelTotal * tickTextTokenRect.width()) + INDICATOR_THICKNESS;
-		int height = meterRect.height() + tickTextTokenRect.height();
-
-		return QSize(width, height);
-	}
+	int length = (labelTotal * tickTextTokenRect.width()) + INDICATOR_THICKNESS;
+	int thickness = displayNrAudioChannels * (meterThickness + 1) - 1 + tickTextTokenRect.height();
+	return vertical ? QSize(thickness, length) : QSize(length, thickness);
 }

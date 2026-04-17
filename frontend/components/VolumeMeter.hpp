@@ -64,8 +64,7 @@ private:
 	inline int convertToInt(float number);
 	QColor getPeakColor(float peakHold);
 
-	void paintHTicks(QPainter &painter, int x, int y, int width);
-	void paintVTicks(QPainter &painter, int x, int y, int height);
+	void paintTicks(QPainter &painter, int x, int y, int width);
 
 	QMutex dataMutex;
 
@@ -88,6 +87,7 @@ private:
 	void updateBackgroundCache(bool force = false);
 
 	QSize tickTextTokenRect;
+	int tickTextPadding;
 
 	QColor backgroundNominalColor;
 	QColor backgroundWarningColor;
