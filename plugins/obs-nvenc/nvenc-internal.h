@@ -47,7 +47,7 @@ struct nvenc_properties {
 	const char *profile;
 	const char *tune;
 	const char *multipass;
-	const char *opts_str;
+	char *opts_str;
 
 	bool adaptive_quantization;
 	bool lookahead;
