@@ -4,6 +4,7 @@
 
 class AbsoluteSlider : public SliderIgnoreScroll {
 	Q_OBJECT
+	Q_PROPERTY(bool displayTicks READ getDisplayTicks WRITE setDisplayTicks DESIGNABLE true)
 	Q_PROPERTY(QColor tickColor READ getTickColor WRITE setTickColor DESIGNABLE true)
 
 public:
