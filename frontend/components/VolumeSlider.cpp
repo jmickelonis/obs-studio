@@ -46,10 +46,9 @@ void VolumeSlider::paintEvent(QPaintEvent *event)
 	if (orientation() == Qt::Horizontal) {
 		const int sliderWidth = groove.width() - handle.width();
 
-		float tickLength = groove.height() * 1.5;
-		tickLength = std::max((int)tickLength + groove.height(), 8 + groove.height());
-
-		float yPos = groove.center().y() - (tickLength / 2) + 1;
+		int n = std::ceil((groove.top() - handle.top()) / 2.0);
+		int yPos = groove.top() - n;
+		int tickLength = groove.height() + n * 2;
 
 		for (int db = -10; db >= -90; db -= 10) {
 			float tickValue = fader_db_to_def(db);
@@ -57,17 +56,14 @@ void VolumeSlider::paintEvent(QPaintEvent *event)
 			float xPos = groove.left() + (tickValue * sliderWidth) + (handle.width() / 2);
 			painter.fillRect(xPos, yPos, 1, tickLength, tickColor);
 		}
-	}
-
-	if (orientation() == Qt::Vertical) {
+	} else {
 		const int sliderHeight = groove.height() - handle.height();
 
-		float tickLength = groove.width() * 1.5;
-		tickLength = std::max((int)tickLength + groove.width(), 8 + groove.width());
+		int n = std::ceil((groove.left() - handle.left()) / 2.0);
+		int xPos = groove.left() - n;
+		int tickLength = groove.width() + n * 2;
 
-		float xPos = groove.center().x() - (tickLength / 2) + 1;
-
-		for (int db = -10; db >= -96; db -= 10) {
+		for (int db = -10; db >= -90; db -= 10) {
 			float tickValue = fader_db_to_def(db);
 
 			float yPos =

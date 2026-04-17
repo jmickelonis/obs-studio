@@ -139,27 +139,39 @@ void AbsoluteSlider::paintEvent(QPaintEvent *event)
 	QRect groove = style()->subControlRect(QStyle::CC_Slider, &opt, QStyle::SC_SliderGroove, this);
 	QRect handle = style()->subControlRect(QStyle::CC_Slider, &opt, QStyle::SC_SliderHandle, this);
 
-	const bool isHorizontal = orientation() == Qt::Horizontal;
+	int min = minimum();
+	int max = maximum();
 
-	const int sliderLength = isHorizontal ? groove.width() - handle.width() : groove.height() - handle.height();
-	const int handleSize = isHorizontal ? handle.width() : handle.height();
-	const int grooveSize = isHorizontal ? groove.height() : groove.width();
-	const int grooveStart = isHorizontal ? groove.left() : groove.top();
-	const int tickLinePos = isHorizontal ? groove.center().y() : groove.center().x();
-	const int tickLength = std::max((int)(grooveSize * 1.5) + grooveSize, 8 + grooveSize);
-	const int tickLineStart = tickLinePos - (tickLength / 2) + 1;
+	if (orientation() == Qt::Horizontal) {
+		int sliderLength = groove.width() - handle.width();
+		int halfHandleLength = handle.width() / 2;
+		int grooveStart = groove.left();
 
-	for (double offset = minimum(); offset <= maximum(); offset += singleStep()) {
-		double tickPercent = (offset - minimum()) / (maximum() - minimum());
-		const int tickLineOffset = grooveStart + std::floor(sliderLength * tickPercent) + (handleSize / 2);
+		int n = std::ceil((groove.top() - handle.top()) / 2.0);
+		int y = groove.top() - n;
+		int h = groove.height() + n * 2;
 
-		const int xPos = isHorizontal ? tickLineOffset : tickLineStart;
-		const int yPos = isHorizontal ? tickLineStart : tickLineOffset;
+		for (double offset = min; offset <= max; offset += singleStep()) {
+			double percent = (offset - min) / (max - min);
+			int x = grooveStart + std::floor(sliderLength * percent) + halfHandleLength;
 
-		const int tickWidth = isHorizontal ? 1 : tickLength;
-		const int tickHeight = isHorizontal ? tickLength : 1;
+			painter.fillRect(x, y, 1, h, tickColor);
+		}
+	} else {
+		int sliderLength = groove.height() - handle.height();
+		int halfHandleLength = handle.height() / 2;
+		int grooveStart = groove.top();
 
-		painter.fillRect(xPos, yPos, tickWidth, tickHeight, tickColor);
+		int n = std::ceil((groove.left() - handle.left()) / 2.0);
+		int x = groove.left() - n;
+		int w = groove.width() + n * 2;
+
+		for (double offset = min; offset <= max; offset += singleStep()) {
+			double percent = (offset - min) / (max - min);
+			int y = grooveStart + std::floor(sliderLength * percent) + halfHandleLength;
+
+			painter.fillRect(x, y, w, 1, tickColor);
+		}
 	}
 
 	QSlider::paintEvent(event);
