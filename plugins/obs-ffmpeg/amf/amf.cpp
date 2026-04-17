@@ -1,0 +1,74 @@
+
+#include "amf.hpp"
+
+AMFException::AMFException(const char *message, AMF_RESULT result)
+	: message(message),
+	  result(result),
+	  resultText(amfTrace->GetResultText(result))
+{
+}
+
+const char *AMFException::what()
+{
+	return message;
+}
+
+bool getCaps(uint32_t deviceID, CodecType codec, AMFCaps **caps)
+{
+	AMFContextPtr context;
+	if (AMF_FAILED(amfFactory->CreateContext(&context)))
+		return false;
+#ifdef _WIN32
+	ComPtr<ID3D11Device> device;
+	try {
+		device = createDevice(deviceID).device;
+	} catch (...) {
+		return false;
+	}
+	if (AMF_FAILED(context->InitDX11(device, AMF_DX11_1)))
+		return false;
+#elif defined(__linux__)
+	AMFContext1Ptr context1 = AMFContext1Ptr(context);
+	shared_ptr<VulkanDevice> device;
+	try {
+		device = createDevice(context1, deviceID);
+	} catch (...) {
+		return false;
+	}
+	if (AMF_FAILED(context1->InitVulkan(device.get())))
+		return false;
+#endif
+	const wchar_t *id = getEncoderID(codec);
+	AMFComponentPtr component;
+	if (AMF_FAILED(amfFactory->CreateComponent(context, id, &component)))
+		return false;
+	bool ok = AMF_SUCCEEDED(component->GetCaps(caps));
+	context->Terminate(); // Have to call this before VulkanDevice is destroyed
+	return ok;
+}
+
+const wchar_t *getEncoderID(CodecType codec)
+{
+	switch (codec) {
+	case CodecType::AVC:
+	default:
+		return AMFVideoEncoderVCE_AVC;
+	case CodecType::HEVC:
+		return AMFVideoEncoder_HEVC;
+	case CodecType::AV1:
+		return AMFVideoEncoder_AV1;
+	}
+}
+
+bool getBool(AMFPropertyStorage *storage, const wchar_t *name)
+{
+	bool value = false;
+	storage->GetProperty(name, &value);
+	return value;
+}
+
+amf_int64 getInt(AMFPropertyStorage *storage, const wchar_t *name, amf_int64 value)
+{
+	storage->GetProperty(name, &value);
+	return value;
+}

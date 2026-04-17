@@ -69,16 +69,16 @@ target_link_libraries(
     $<$<PLATFORM_ID:Linux,FreeBSD,OpenBSD>:Libva::drm>
     $<$<PLATFORM_ID:Linux,FreeBSD,OpenBSD>:Libpci::pci>
     $<$<PLATFORM_ID:Linux,FreeBSD,OpenBSD>:Libdrm::Libdrm>
+    $<$<PLATFORM_ID:Linux>:Vulkan::Vulkan>
     $<$<BOOL:${ENABLE_NEW_MPEGTS_OUTPUT}>:Librist::Librist>
     $<$<BOOL:${ENABLE_NEW_MPEGTS_OUTPUT}>:Libsrt::Libsrt>
 )
 
-if(OS_WINDOWS)
-  if(CMAKE_VS_PLATFORM_NAME STREQUAL x64)
-    target_sources(obs-ffmpeg PRIVATE texture-amf-opts.hpp texture-amf.cpp)
-    target_link_libraries(obs-ffmpeg PRIVATE AMF::AMF)
-  endif()
+if(OS_WINDOWS AND CMAKE_VS_PLATFORM_NAME STREQUAL x64 OR OS_LINUX)
+  add_subdirectory(amf)
+endif()
 
+if(OS_WINDOWS)
   configure_file(cmake/windows/obs-module.rc.in obs-ffmpeg.rc)
   target_sources(obs-ffmpeg PRIVATE obs-ffmpeg.rc)
 endif()

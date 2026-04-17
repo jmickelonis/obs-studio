@@ -323,7 +323,9 @@ static bool hevc_vaapi_supported(void)
 #endif
 #endif
 
-#if defined(_WIN32) && !defined(_M_ARM64)
+#define _HAS_AMF defined(_WIN32) && !defined(_M_ARM64) || defined(__linux__)
+
+#if _HAS_AMF
 extern void amf_load(void);
 extern void amf_unload(void);
 #endif
@@ -374,7 +376,7 @@ bool obs_module_load(void)
 	}
 #endif
 
-#if defined(_WIN32) && !defined(_M_ARM64)
+#if _HAS_AMF
 	amf_load();
 #endif
 
@@ -423,7 +425,7 @@ void obs_module_unload(void)
 	obs_ffmpeg_unload_logging();
 #endif
 
-#if defined(_WIN32) && !defined(_M_ARM64)
+#if _HAS_AMF
 	amf_unload();
 #endif
 }
