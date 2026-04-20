@@ -871,7 +871,6 @@ QSize VolumeMeter::minimumSizeHint() const
 
 QSize VolumeMeter::sizeHint() const
 {
-	QRect meterRect = getBarRect();
 	int labelTotal = std::abs(minimumLevel / TICK_DB_INTERVAL) + 1;
 	int length = (labelTotal * tickTextTokenRect.width()) + INDICATOR_THICKNESS;
 	int thickness = displayNrAudioChannels * (meterThickness + 1) - 1 + tickTextTokenRect.height();
