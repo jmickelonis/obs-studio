@@ -323,7 +323,9 @@ static bool hevc_vaapi_supported(void)
 #endif
 #endif
 
-#define _HAS_AMF defined(_WIN32) && !defined(_M_ARM64) || defined(__linux__)
+#if defined(_WIN32) && !defined(_M_ARM64) || defined(__linux__)
+#define _HAS_AMF 1
+#endif
 
 #if _HAS_AMF
 extern void amf_load(void);
