@@ -22,14 +22,46 @@
 #include <QAbstractButton>
 #include <QLabel>
 #include <QPointer>
+#include <QHBoxLayout>
+
+class VolumeLabel : public QLabel {
+	Q_OBJECT
+
+public:
+	enum Direction { Up, Down, Left, Right };
+
+	VolumeLabel(QWidget *parent = 0);
+
+	Direction getDirection();
+	void setDirection(Direction value);
+
+protected:
+	virtual QSize sizeHint() const override;
+	virtual QSize minimumSizeHint() const override;
+	virtual void paintEvent(QPaintEvent *) override;
+
+private:
+	Direction direction;
+};
+
+class VolumeNameLayout : public QHBoxLayout {
+	Q_OBJECT
+
+public:
+	VolumeNameLayout();
+
+protected:
+	virtual void setGeometry(const QRect &r) override;
+};
 
 class VolumeName : public QAbstractButton {
 	Q_OBJECT;
 	Q_PROPERTY(Qt::Alignment textAlignment READ alignment WRITE setAlignment)
 
-	QPointer<QLabel> label{};
+	QPointer<VolumeLabel> label{};
 	int indicatorWidth;
 	QString fullText{};
+	bool vertical;
 
 public:
 	VolumeName(obs_source_t *source, QWidget *parent = nullptr);
@@ -38,13 +70,16 @@ public:
 	void setAlignment(Qt::Alignment alignment);
 	Qt::Alignment alignment() const { return textAlignment; }
 
-	QSize minimumSizeHint() const override;
+	void setVertical(bool value);
+
 	QSize sizeHint() const override;
 
 	void updateLabelText(const QString &name);
 	void setText(const QString &text);
 
 protected:
+	friend class VolumeNameLayout;
+
 	OBSSignal renamedSignal;
 	OBSSignal removedSignal;
 	OBSSignal destroyedSignal;
@@ -57,6 +92,7 @@ protected:
 
 	void resizeEvent(QResizeEvent *event) override;
 	void paintEvent(QPaintEvent *event) override;
+	bool event(QEvent *event) override;
 
 private slots:
 	void onRenamed(QString name);

@@ -40,26 +40,130 @@ QString getPlainText(const QString &text)
 }
 } // namespace
 
-VolumeName::VolumeName(obs_source_t *source, QWidget *parent)
-	: QAbstractButton(parent),
-	  indicatorWidth(style()->pixelMetric(QStyle::PM_MenuButtonIndicator, nullptr, this))
+VolumeLabel::VolumeLabel(QWidget *parent) : QLabel(parent)
+{
+	direction = Up;
+}
+
+VolumeLabel::Direction VolumeLabel::getDirection()
+{
+	return direction;
+}
+
+void VolumeLabel::setDirection(Direction value)
+{
+	Direction old = direction;
+	if (value == old)
+		return;
+	direction = value;
+	update();
+}
+
+QSize VolumeLabel::sizeHint() const
+{
+	const QSize size = QLabel::sizeHint();
+	switch (direction) {
+	case Left:
+	case Right:
+		QMargins margins = contentsMargins();
+		int mw = margins.left() + margins.right();
+		int mh = margins.top() + margins.bottom();
+		return QSize(size.height() - mh + mw, size.width() - mw + mh);
+	}
+	return size;
+}
+
+QSize VolumeLabel::minimumSizeHint() const
+{
+	const QSize size = QLabel::minimumSizeHint();
+	switch (direction) {
+	case Left:
+	case Right:
+		QMargins margins = contentsMargins();
+		int mw = margins.left() + margins.right();
+		int mh = margins.top() + margins.bottom();
+		return QSize(size.height() - mh + mw, size.width() - mw + mh);
+	}
+	return size;
+}
+
+void VolumeLabel::paintEvent(QPaintEvent *event)
+{
+	QStyleOption opt;
+	opt.initFrom(this);
+
+	QStylePainter painter(this);
+	painter.drawPrimitive(QStyle::PE_Widget, opt);
+
+	QMargins margins = contentsMargins();
+	painter.save();
+	painter.translate(margins.left(), margins.top());
+
+	QRect bounds = rect();
+	bounds.setSize(QSize(bounds.width() - (margins.left() + margins.right()),
+			     bounds.height() - (margins.top() + margins.bottom())));
+
+	switch (direction) {
+	case Left:
+		bounds = bounds.transposed();
+		painter.rotate(-90);
+		painter.translate(-bounds.width(), 0);
+		break;
+	case Right:
+		bounds = bounds.transposed();
+		painter.rotate(90);
+		painter.translate(0, -bounds.height());
+		break;
+	case Down:
+		painter.rotate(180);
+		painter.translate(-bounds.width(), -bounds.height());
+		break;
+	default:
+		break;
+	}
+
+	painter.drawText(bounds, alignment(), text());
+	painter.restore();
+}
+
+VolumeNameLayout::VolumeNameLayout() : QHBoxLayout() {}
+
+void VolumeNameLayout::setGeometry(const QRect &r)
+{
+	VolumeName *name = qobject_cast<VolumeName *>(parentWidget());
+
+	QStyleOptionButton opt;
+	opt.initFrom(name);
+
+	QRect bounds = name->style()->subElementRect(QStyle::SE_PushButtonContents, &opt, name);
+	if (name->vertical)
+		bounds.setTop(bounds.top() + name->indicatorWidth);
+	else
+		bounds.setRight(bounds.right() - name->indicatorWidth);
+	name->label->setGeometry(bounds);
+}
+
+VolumeName::VolumeName(obs_source_t *source, QWidget *parent) : QAbstractButton(parent)
 {
 	renamedSignal = OBSSignal(obs_source_get_signal_handler(source), "rename", &VolumeName::obsSourceRenamed, this);
 	removedSignal = OBSSignal(obs_source_get_signal_handler(source), "remove", &VolumeName::obsSourceRemoved, this);
 	destroyedSignal =
 		OBSSignal(obs_source_get_signal_handler(source), "destroy", &VolumeName::obsSourceDestroyed, this);
 
-	QHBoxLayout *layout = new QHBoxLayout();
+	VolumeNameLayout *layout = new VolumeNameLayout();
 	setLayout(layout);
 
-	label = new QLabel(this);
+	label = new VolumeLabel(this);
 	label->setIndent(0);
 	layout->addWidget(label);
 
-	layout->setContentsMargins(0, 0, indicatorWidth, 0);
+	layout->setContentsMargins(0, 0, 0, 0);
 
 	QString name = obs_source_get_name(source);
 	setText(name);
+
+	vertical = false;
+	indicatorWidth = 0;
 }
 
 VolumeName::~VolumeName() {}
@@ -72,28 +176,14 @@ void VolumeName::setAlignment(Qt::Alignment alignment_)
 	}
 }
 
-QSize VolumeName::minimumSizeHint() const
+void VolumeName::setVertical(bool value)
 {
-	QStyleOptionButton opt;
-	opt.initFrom(this);
-
-	QString plainText = getPlainText(fullText);
-
-	QFontMetrics metrics(label->font());
-	QSize textSize = metrics.size(Qt::TextSingleLine, plainText);
-
-	int width = textSize.width();
-	int height = textSize.height();
-
-	if (!opt.icon.isNull()) {
-		height = std::max(height, indicatorWidth);
-	}
-
-	QSize contentsSize = style()->sizeFromContents(QStyle::CT_PushButton, &opt, QSize(width, height), this);
-
-	contentsSize.rwidth() += indicatorWidth;
-
-	return contentsSize;
+	bool old = vertical;
+	if (value == old)
+		return;
+	vertical = value;
+	label->setDirection(vertical ? VolumeLabel::Direction::Left : VolumeLabel::Direction::Up);
+	update();
 }
 
 QSize VolumeName::sizeHint() const
@@ -102,17 +192,18 @@ QSize VolumeName::sizeHint() const
 
 	QFontMetrics metrics(label->font());
 
-	int textWidth = metrics.horizontalAdvance(plainText);
-	int textHeight = metrics.height();
+	int width = metrics.horizontalAdvance(plainText) + indicatorWidth;
+	int height = metrics.height();
 
-	int width = textWidth + indicatorWidth;
+	if (vertical)
+		std::swap(width, height);
 
-	// Account for label margins if needed
 	QMargins margins = label->contentsMargins();
-	width += margins.left() + margins.right();
-	int height = textHeight + margins.top() + margins.bottom();
+	QSize size = QSize(width, height).grownBy(margins);
 
-	return QSize(width, height);
+	QStyleOptionButton opt;
+	opt.initFrom(this);
+	return style()->sizeFromContents(QStyle::CT_PushButton, &opt, size, this);
 }
 
 void VolumeName::obsSourceRenamed(void *data, calldata_t *params)
@@ -152,16 +243,33 @@ void VolumeName::paintEvent(QPaintEvent *)
 	painter.drawControl(QStyle::CE_PushButtonBevel, opt);
 
 	QRect contentRect = style()->subElementRect(QStyle::SE_PushButtonContents, &opt, this);
-	int paddingRight = opt.rect.right() - contentRect.right();
 
-	int indicatorWidth = style()->pixelMetric(QStyle::PM_MenuButtonIndicator, &opt, this);
+	painter.save();
+	QPointF center = contentRect.center();
+	if (vertical) {
+		painter.translate((int)(center.x() - indicatorWidth / 2.0), contentRect.top());
+		painter.rotate(-90);
+		painter.translate(-indicatorWidth, 0);
+	} else {
+		painter.translate(contentRect.x() + contentRect.width() - indicatorWidth,
+				  (int)(center.y() - indicatorWidth / 2.0));
+	}
 
-	QStyleOption arrowOpt = opt;
-	QRect arrowRect(opt.rect.right() - indicatorWidth - paddingRight / 2,
-			opt.rect.center().y() - indicatorWidth / 2, indicatorWidth, indicatorWidth);
-	arrowOpt.rect = arrowRect;
-
+	QStyleOption arrowOpt;
+	arrowOpt.initFrom(label);
+	arrowOpt.rect = QRect(0, 0, indicatorWidth, indicatorWidth);
 	painter.drawPrimitive(QStyle::PE_IndicatorArrowDown, arrowOpt);
+	painter.restore();
+}
+
+bool VolumeName::event(QEvent *event)
+{
+	if (event->type() == QEvent::StyleChange) {
+		indicatorWidth = style()->pixelMetric(QStyle::PM_MenuButtonIndicator, nullptr, label);
+		update();
+	}
+
+	return QAbstractButton::event(event);
 }
 
 void VolumeName::onRenamed(QString name)
@@ -185,10 +293,12 @@ void VolumeName::updateLabelText(const QString &name)
 
 	QFontMetrics metrics(label->font());
 
-	int availableWidth = label->contentsRect().width();
+	QRect contentsRect = label->contentsRect();
+	int availableWidth = vertical ? contentsRect.height() : contentsRect.width();
 	if (availableWidth <= 0) {
 		label->clear();
 		fullText = name;
+		setToolTip(plainText);
 		return;
 	}
 
@@ -198,10 +308,12 @@ void VolumeName::updateLabelText(const QString &name)
 	bool needsElide = textWidth > availableWidth;
 
 	if (needsElide && !isRichText) {
-		QString elided = metrics.elidedText(plainText, Qt::ElideMiddle, availableWidth);
+		QString elided = metrics.elidedText(plainText, Qt::ElideRight, availableWidth);
 		label->setText(elided);
+		setToolTip(plainText);
 	} else {
 		label->setText(name);
+		setToolTip("");
 	}
 
 	fullText = name;
