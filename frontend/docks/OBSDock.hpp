@@ -33,17 +33,12 @@ private slots:
 class TitleBarLayout : public QLayout {
 
 public:
-	TitleBarLayout(QWidget *parent);
-	~TitleBarLayout();
+	TitleBarLayout(QWidget *parent) : QLayout(parent) {}
 
-	enum Role { FloatButton, CloseButton };
-	QWidget *getWidget(Role role) const;
-	void setWidget(Role role, QWidget *widget);
-
-	QLayoutItem *itemAt(int index) const override;
-	QLayoutItem *takeAt(int index) override;
+	QLayoutItem *itemAt(int index) const override { return nullptr; }
+	QLayoutItem *takeAt(int index) override { return nullptr; };
 	void addItem(QLayoutItem *) override {}
-	int count() const override;
+	int count() const override { return 0; }
 
 	QSize sizeHint() const override;
 
@@ -52,8 +47,6 @@ protected:
 	QSize minimumSize() const override;
 
 private:
-	QVector<QLayoutItem *> items;
-
 	OBSDock *getDock() const;
 };
 

@@ -21,8 +21,7 @@ TitleBarWidget::TitleBarWidget(OBSDock *dock) : QWidget(dock)
 	setAttribute(Qt::WA_TransparentForMouseEvents);
 
 	TitleBarLayout *layout = new TitleBarLayout(this);
-	layout->setWidget(TitleBarLayout::FloatButton, dock->floatButton);
-	layout->setWidget(TitleBarLayout::CloseButton, dock->closeButton);
+	setLayout(layout);
 
 	connect(dock, &QDockWidget::featuresChanged, this, &TitleBarWidget::onFeaturesChanged);
 	connect(dock, &QDockWidget::topLevelChanged, this, &TitleBarWidget::onTopLevelChanged);
@@ -79,80 +78,6 @@ void TitleBarWidget::onTopLevelChanged(bool floating)
 	if (!floating)
 		// Stock doesn't normally bring it to the top for some reason
 		dock->raise();
-}
-
-TitleBarLayout::TitleBarLayout(QWidget *parent) : QLayout(parent), items(2, nullptr) {}
-
-TitleBarLayout::~TitleBarLayout()
-{
-	qDeleteAll(items);
-}
-
-QWidget *TitleBarLayout::getWidget(Role role) const
-{
-	QLayoutItem *item = items.at(role);
-	return item ? item->widget() : nullptr;
-}
-
-void TitleBarLayout::setWidget(Role role, QWidget *widget)
-{
-	QWidget *old = getWidget(role);
-
-	if (old) {
-		old->hide();
-		removeWidget(old);
-	}
-
-	if (widget) {
-		/* Do not add the button as a child,
-		 * because it's already a child of the dock itself
-		 */
-		//addChildWidget(widget);
-
-		items[role] = new QWidgetItemV2(widget);
-		widget->show();
-	} else {
-		items[role] = nullptr;
-	}
-
-	invalidate();
-}
-
-QLayoutItem *TitleBarLayout::itemAt(int index) const
-{
-	int count = 0;
-	for (QLayoutItem *item : items) {
-		if (!item)
-			continue;
-		if (index == count++)
-			return item;
-	}
-	return nullptr;
-}
-
-QLayoutItem *TitleBarLayout::takeAt(int index)
-{
-	int count = 0;
-	for (int i = 0; i < items.count(); i++) {
-		QLayoutItem *item = items.at(i);
-		if (!item)
-			continue;
-		if (index == count++) {
-			items[i] = nullptr;
-			invalidate();
-			return item;
-		}
-	}
-	return nullptr;
-}
-
-int TitleBarLayout::count() const
-{
-	int count = 0;
-	for (QLayoutItem *item : items)
-		if (item)
-			count++;
-	return count;
 }
 
 QSize TitleBarLayout::sizeHint() const
