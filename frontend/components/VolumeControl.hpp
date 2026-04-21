@@ -73,13 +73,17 @@ private:
 	std::vector<OBSSignal> obsSignals;
 
 	QBoxLayout *mainLayout;
-	QLabel *categoryLabel;
+	VolumeLabel *categoryLabel;
 	VolumeName *nameButton;
-	QLabel *volumeLabel;
+	VolumeLabel *volumeLabel;
 	VolumeMeter *volumeMeter;
 	VolumeSlider *slider;
 	QPushButton *muteButton;
 	QPushButton *monitorButton;
+
+	QBoxLayout *textLayout;
+	QBoxLayout *controlLayout;
+	QBoxLayout *contentsLayout;
 
 	OBSFader obs_fader;
 

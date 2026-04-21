@@ -9,6 +9,7 @@
 
 #include <QMessageBox>
 #include <QObjectCleanupHandler>
+#include <QStylePainter>
 
 #include "moc_VolumeControl.cpp"
 
@@ -56,18 +57,13 @@ VolumeControl::VolumeControl(obs_source_t *source, QWidget *parent, bool vertica
 
 	uuid = obs_source_get_uuid(source);
 
-	mainLayout = new QBoxLayout(QBoxLayout::LeftToRight, this);
-	mainLayout->setContentsMargins(0, 0, 0, 0);
-	mainLayout->setSpacing(0);
-	setLayout(mainLayout);
-
-	categoryLabel = new QLabel("Active");
+	categoryLabel = new VolumeLabel(this);
+	categoryLabel->setText("Active");
 	categoryLabel->setAlignment(Qt::AlignCenter);
 	utils->addClass(categoryLabel, "mixer-category");
 	utils->addClass(categoryLabel, "text-tiny");
 
 	nameButton = new VolumeName(source, this);
-	nameButton->setMaximumWidth(140);
 	utils->addClass(nameButton, "text-small");
 	utils->addClass(nameButton, "mixer-name");
 
@@ -79,13 +75,16 @@ VolumeControl::VolumeControl(obs_source_t *source, QWidget *parent, bool vertica
 	monitorButton->setCheckable(true);
 	utils->addClass(monitorButton, "btn-monitor");
 
-	volumeLabel = new QLabel(this);
+	volumeLabel = new VolumeLabel(this);
 	volumeLabel->setIndent(0);
 	volumeLabel->setObjectName("volLabel");
+	volumeLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
 	slider = new VolumeSlider(obs_fader, Qt::Horizontal, this);
 	slider->setMinimum(0);
 	slider->setMaximum(int(FADER_PRECISION));
+	slider->setDisplayTicks(true);
+	slider->setLayoutDirection(Qt::LeftToRight);
 
 	sourceName = obs_source_get_name(source);
 	setObjectName(sourceName);
@@ -94,11 +93,49 @@ VolumeControl::VolumeControl(obs_source_t *source, QWidget *parent, bool vertica
 	utils->applyStateStylingEventFilter(monitorButton);
 
 	volumeMeter = new VolumeMeter(this, source);
+	volumeMeter->setFocusProxy(slider);
 
 	bool muted = obs_source_muted(source);
 	bool unassigned = isSourceUnassigned(source);
 
+	auto createBoxLayout = []() {
+		QBoxLayout *layout = new QBoxLayout(QBoxLayout::LeftToRight);
+		layout->setContentsMargins(0, 0, 0, 0);
+		layout->setSpacing(0);
+		return layout;
+	};
+
 	volumeMeter->setMuted(muted || unassigned);
+
+	textLayout = createBoxLayout();
+	textLayout->addWidget(nameButton);
+	textLayout->addSpacerItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding));
+	textLayout->addWidget(volumeLabel);
+
+	QBoxLayout *meterLayout = createBoxLayout();
+	meterLayout->addWidget(volumeMeter);
+	QFrame *meterFrame = new QFrame(this);
+	meterFrame->setLayout(meterLayout);
+	meterFrame->setObjectName("volMeterFrame");
+
+	controlLayout = createBoxLayout();
+	controlLayout->addWidget(slider);
+	controlLayout->addWidget(muteButton);
+	controlLayout->addWidget(monitorButton);
+
+	contentsLayout = createBoxLayout();
+	contentsLayout->addItem(textLayout);
+	contentsLayout->addWidget(meterFrame);
+	contentsLayout->addItem(controlLayout);
+
+	QFrame *contentsFrame = new QFrame(this);
+	contentsFrame->setLayout(contentsLayout);
+	contentsFrame->setObjectName("contents");
+
+	mainLayout = createBoxLayout();
+	mainLayout->addWidget(categoryLabel, 0);
+	mainLayout->addWidget(contentsFrame, 1);
+	setLayout(mainLayout);
 
 	setLayoutVertical(vertical);
 	setName(sourceName);
@@ -204,147 +241,42 @@ void VolumeControl::obsSourceDestroy(void *data, calldata_t *)
 
 void VolumeControl::setLayoutVertical(bool vertical)
 {
-	QBoxLayout *newLayout = new QBoxLayout(QBoxLayout::TopToBottom);
-	newLayout->setContentsMargins(0, 0, 0, 0);
-	newLayout->setSpacing(0);
+	nameButton->setVertical(vertical);
+	volumeMeter->setVertical(vertical);
 
 	if (vertical) {
-		setMaximumWidth(110);
-		setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
-
-		QHBoxLayout *categoryLayout = new QHBoxLayout;
-		QHBoxLayout *nameLayout = new QHBoxLayout;
-		QHBoxLayout *controlLayout = new QHBoxLayout;
-		QHBoxLayout *volLayout = new QHBoxLayout;
-		QFrame *meterFrame = new QFrame;
-		QHBoxLayout *meterLayout = new QHBoxLayout;
-
-		volumeMeter->setVertical(true);
-		volumeMeter->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::MinimumExpanding);
+		categoryLabel->setDirection(VolumeLabel::Up);
 
 		slider->setOrientation(Qt::Vertical);
-		slider->setLayoutDirection(Qt::LeftToRight);
-		slider->setDisplayTicks(true);
+		slider->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
 
-		nameButton->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
-		categoryLabel->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
-		volumeLabel->setAlignment(Qt::AlignLeft);
+		volumeLabel->setDirection(VolumeLabel::Left);
 
-		categoryLayout->setAlignment(Qt::AlignCenter);
-		nameLayout->setAlignment(Qt::AlignCenter);
-		meterLayout->setAlignment(Qt::AlignCenter);
-		controlLayout->setAlignment(Qt::AlignCenter);
-		volLayout->setAlignment(Qt::AlignCenter);
+		volumeMeter->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
 
-		meterFrame->setObjectName("volMeterFrame");
-
-		categoryLayout->setContentsMargins(0, 0, 0, 0);
-		categoryLayout->setSpacing(0);
-		categoryLayout->addWidget(categoryLabel);
-
-		nameLayout->setContentsMargins(0, 0, 0, 0);
-		nameLayout->setSpacing(0);
-		nameLayout->addWidget(nameButton);
-
-		controlLayout->setContentsMargins(0, 0, 0, 0);
-		controlLayout->setSpacing(0);
-
-		// Add Headphone (audio monitoring) widget here
-		controlLayout->addWidget(muteButton);
-		controlLayout->addWidget(monitorButton);
-
-		meterLayout->setContentsMargins(0, 0, 0, 0);
-		meterLayout->setSpacing(0);
-		meterLayout->addWidget(slider);
-		meterLayout->addWidget(volumeMeter);
-
-		meterFrame->setLayout(meterLayout);
-
-		volLayout->setContentsMargins(0, 0, 0, 0);
-		volLayout->setSpacing(0);
-		volLayout->addWidget(volumeLabel);
-		volLayout->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Maximum));
-
-		newLayout->addItem(categoryLayout);
-		newLayout->addItem(nameLayout);
-		newLayout->addItem(volLayout);
-		newLayout->addWidget(meterFrame);
-		newLayout->addItem(controlLayout);
-
-		newLayout->setStretch(0, 0);
-		newLayout->setStretch(1, 0);
-		newLayout->setStretch(2, 0);
-		newLayout->setStretch(3, 1);
-		newLayout->setStretch(4, 0);
-
-		volumeMeter->setFocusProxy(slider);
+		setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
+		textLayout->setDirection(QBoxLayout::BottomToTop);
+		controlLayout->setDirection(QBoxLayout::TopToBottom);
+		contentsLayout->setDirection(QBoxLayout::LeftToRight);
+		mainLayout->setDirection(QBoxLayout::TopToBottom);
 	} else {
-		setMaximumWidth(QWIDGETSIZE_MAX);
-		setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
-
-		QHBoxLayout *textLayout = new QHBoxLayout;
-		QHBoxLayout *controlLayout = new QHBoxLayout;
-		QFrame *meterFrame = new QFrame;
-		QVBoxLayout *meterLayout = new QVBoxLayout;
-		QVBoxLayout *buttonLayout = new QVBoxLayout;
-
-		volumeMeter->setVertical(false);
-		volumeMeter->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
+		categoryLabel->setDirection(VolumeLabel::Right);
 
 		slider->setOrientation(Qt::Horizontal);
-		slider->setLayoutDirection(Qt::LeftToRight);
-		slider->setDisplayTicks(true);
+		slider->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
 
-		nameButton->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
-		categoryLabel->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
-		volumeLabel->setAlignment(Qt::AlignRight);
+		volumeLabel->setDirection(VolumeLabel::Up);
 
-		QHBoxLayout *textSubLayout = new QHBoxLayout;
-		textSubLayout->setContentsMargins(0, 0, 0, 0);
-		textLayout->setContentsMargins(0, 0, 0, 0);
+		volumeMeter->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
 
-		textLayout->addWidget(nameButton);
-		textLayout->addItem(textSubLayout);
-
-		textSubLayout->addSpacerItem(
-			new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Preferred));
-		textSubLayout->addWidget(categoryLabel);
-		textSubLayout->addWidget(volumeLabel);
-
-		meterFrame->setObjectName("volMeterFrame");
-		meterFrame->setLayout(meterLayout);
-
-		meterLayout->setContentsMargins(0, 0, 0, 0);
-		meterLayout->setSpacing(0);
-
-		meterLayout->addWidget(slider);
-		meterLayout->addWidget(volumeMeter);
-		meterLayout->setStretch(0, 2);
-		meterLayout->setStretch(1, 2);
-
-		buttonLayout->setContentsMargins(0, 0, 0, 0);
-		buttonLayout->setSpacing(0);
-
-		buttonLayout->addWidget(muteButton);
-		buttonLayout->addWidget(monitorButton);
-
-		controlLayout->addItem(buttonLayout);
-		controlLayout->addWidget(meterFrame);
-
-		newLayout->addItem(textLayout);
-		newLayout->addItem(controlLayout);
-		newLayout->setStretch(0, 3);
-		newLayout->setStretch(1, 6);
-
-		volumeMeter->setFocusProxy(slider);
+		setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
+		textLayout->setDirection(QBoxLayout::LeftToRight);
+		controlLayout->setDirection(QBoxLayout::LeftToRight);
+		contentsLayout->setDirection(QBoxLayout::TopToBottom);
+		mainLayout->setDirection(QBoxLayout::RightToLeft);
 	}
 
-	QWidget().setLayout(mainLayout);
-
-	setLayout(newLayout);
-	mainLayout = newLayout;
 	updateTabOrder();
-
 	adjustSize();
 }
 
@@ -449,20 +381,30 @@ void VolumeControl::showVolumeControlMenu(QPoint pos)
 	QPoint popupPos = mapToGlobal(pos);
 
 	if (pos.isNull()) {
-		QPoint menuPos = nameButton->mapToGlobal(nameButton->rect().bottomLeft());
+		QPoint menuPos;
+		QRect nameBounds = nameButton->rect();
 		QSize menuSize = popup->sizeHint();
 
-		QRect available = QGuiApplication::screenAt(menuPos)->availableGeometry();
-		int spaceBelow = available.bottom() - menuPos.y();
-		int spaceAbove = menuPos.y() - available.top();
-
-		if (menuSize.height() > spaceBelow && spaceAbove > spaceBelow) {
-			menuPos = nameButton->mapToGlobal(nameButton->rect().topLeft());
+		if (vertical) {
+			// Bottom-align the menu to the right of the button
+			menuPos = nameButton->mapToGlobal(nameBounds.bottomRight());
 			menuPos.ry() -= menuSize.height();
+		} else {
+			// Left-align the menu below the button
+			menuPos = nameButton->mapToGlobal(nameBounds.bottomLeft());
 		}
 
-		if (menuPos.x() + menuSize.width() > available.right()) {
-			menuPos.rx() = available.right() - menuSize.width();
+		if (!OBSApp::IsWayland()) {
+			QRect available = QApplication::screenAt(QCursor::pos())->availableGeometry();
+			if (vertical) {
+				if (menuSize.width() > available.right() - menuPos.x())
+					// Out of bounds; move to the left of the button
+					menuPos.rx() -= nameBounds.width() + menuSize.width();
+			} else {
+				if (menuSize.height() > available.bottom() - menuPos.y())
+					// Out of bounds; move above the button
+					menuPos.ry() -= nameBounds.height() + menuSize.height();
+			}
 		}
 
 		popupPos = menuPos;
@@ -897,19 +839,11 @@ void VolumeControl::updateTabOrder()
 	QWidget *prevFocus = firstWidget()->previousInFocusChain();
 	QWidget *lastFocus = lastWidget()->nextInFocusChain();
 
-	if (vertical) {
-		setTabOrder(prevFocus, nameButton);
-		setTabOrder(nameButton, slider);
-		setTabOrder(slider, muteButton);
-		setTabOrder(muteButton, monitorButton);
-		setTabOrder(monitorButton, lastFocus);
-	} else {
-		setTabOrder(prevFocus, nameButton);
-		setTabOrder(nameButton, muteButton);
-		setTabOrder(muteButton, monitorButton);
-		setTabOrder(monitorButton, slider);
-		setTabOrder(slider, lastFocus);
-	}
+	setTabOrder(prevFocus, nameButton);
+	setTabOrder(nameButton, slider);
+	setTabOrder(slider, muteButton);
+	setTabOrder(muteButton, monitorButton);
+	setTabOrder(monitorButton, lastFocus);
 }
 
 void VolumeControl::updateName()

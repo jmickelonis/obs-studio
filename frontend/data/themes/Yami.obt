@@ -1641,7 +1641,7 @@ QSlider::handle:disabled {
     height: var(--icon_small);
     background-color: transparent;
     padding: var(--padding_base_border) var(--padding_base_border);
-    margin: 0px var(--spacing_small);
+    margin: 0px;
     border: var(--highlight_width) solid transparent;
     border-radius: var(--border_radius);
     icon-size: var(--icon_small);
@@ -1748,7 +1748,7 @@ VolumeMeter {
     color: var(--grey3);
     font-size: 6pt;
     font-weight: bold;
-    
+
     qproperty-backgroundNominalColor: var(--green5);
     qproperty-backgroundWarningColor: var(--yellow5);
     qproperty-backgroundErrorColor: var(--red5);
@@ -1769,8 +1769,8 @@ VolumeMeter {
 
 VolumeName {
     background: transparent;
-    padding: var(--padding_base) 0;
     border: 1px solid transparent;
+    border-radius: var(--border_radius);
 }
 
 VolumeName QLabel {
@@ -1787,45 +1787,51 @@ VolumeName:hover {
 }
 
 VolumeControl #volLabel {
-    min-width: 48px;
-    padding: var(--padding_base) 0px var(--padding_base);
-    text-align: center;
     font-size: var(--font_small);
     color: var(--text_muted);
 }
 
+VolumeControl #contents {
+    margin: var(--padding_base);
+}
+
 /* Horizontal Mixer */
+
 #hVolumeWidgets VolumeControl {
-    padding: 0px 0px;
     border-bottom: 1px solid var(--border_color);
     margin-bottom: 0px;
 }
 
-#hVolumeWidgets .mixer-category {
-    margin: var(--spacing_base);
-    padding: 0px var(--padding_xlarge);
-    border-radius: var(--border_radius);
+#hVolumeWidgets VolumeControl .mixer-category {
+    border-left: 1px solid var(--border_color);
+}
+
+#hMixerScrollArea {
+    border: none;
+    margin-bottom: -1;
 }
 
 #hVolumeWidgets VolumeName {
-    padding-right: var(--padding_large);
+    padding: var(--padding_base) 0;
+    padding-right: 0px;
+    min-width: 1px;
 }
 
 #hVolumeWidgets VolumeName QLabel {
-    margin: 0 var(--padding_large);
+    margin: 0px;
+    margin-left: var(--padding_large);
 }
 
 #hVolumeWidgets #volLabel {
-    margin: 0 var(--spacing_base);
-    border-radius: var(--border_radius);
+    margin: 0 var(--spacing_large);
 }
 
 #hVolumeWidgets #volMeterFrame {
-    margin-bottom: var(--padding_large);
+    margin: var(--padding_base) 0px;
 }
 
 #hVolumeWidgets VolumeControl QSlider {
-    margin: var(--padding_large) 0px var(--padding_large);
+    margin-right: var(--padding_large);
 }
 
 #hVolumeWidgets VolumeControl QSlider::groove:horizontal {
@@ -1833,47 +1839,48 @@ VolumeControl #volLabel {
     height: var(--volume_slider);
 }
 
-#hVolumeWidgets VolumeControl QPushButton {
-    margin-left: var(--padding_large);
-}
-
-#hVolumeWidgets VolumeControl #volMeterFrame {
-    padding: 0 var(--padding_xlarge);
-}
-
 /* Vertical Mixer */
+
 #vVolumeWidgets VolumeControl {
-    padding: 0px 0px var(--padding_container);
     border-right: 1px solid var(--border_color);
+    margin-right: 0px;
 }
 
-#vVolumeWidgets .mixer-category {
+#vVolumeWidgets VolumeControl .mixer-category {
     border-bottom: 1px solid var(--border_color);
 }
 
-#vMixerScrollArea VolumeControl QSlider {
-    width: var(--volume_slider_box);
-    margin: 0px var(--padding_xlarge);
+#vMixerScrollArea {
+    border: none;
+    margin-right: -1;
 }
 
-#vVolumeWidgets VolumeControl #volLabel {
-    padding: var(--padding_base) 0px var(--padding_base);
-    min-width: var(--volume_slider_label);
-    margin-left: var(--padding_xlarge);
-    text-align: center;
+#vVolumeWidgets VolumeName {
+    padding: 0 var(--padding_base);
+    padding-top: 0px;
+    min-height: 1px;
+}
+
+#vVolumeWidgets VolumeName QLabel {
+    margin: 0px;
+    margin-bottom: var(--padding_large);
+}
+
+#vVolumeWidgets #volLabel {
+    margin: var(--spacing_large) 0;
+}
+
+#vVolumeWidgets #volMeterFrame {
+    margin: 0px var(--padding_base);
+}
+
+#vVolumeWidgets VolumeControl QSlider {
+    margin-bottom: var(--padding_large);
 }
 
 #vVolumeWidgets VolumeControl QSlider::groove:vertical {
     background: var(--bg_window);
     width: var(--volume_slider);
-}
-
-#vVolumeWidgets VolumeControl #volMeterFrame {
-    padding: var(--padding_large) var(--padding_xlarge) var(--padding_large) 0px;
-}
-
-#vVolumeWidgets VolumeControl QLabel {
-    padding: 0px var(--padding_large);
 }
 
 VolumeControl.volume-inactive,
@@ -2735,7 +2742,7 @@ AlignmentSelector:checked:hover {
 
 AlignmentSelector::indicator {
     margin: 0px;
-    background: transparent;    
+    background: transparent;
 }
 
 AlignmentSelector::indicator:checked {
