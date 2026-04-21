@@ -14,11 +14,11 @@ private:
 	QString title;
 
 public:
-	inline BrowserDock() : OBSDock() { setAttribute(Qt::WA_NativeWindow); }
-	inline BrowserDock(const QString &title_) : OBSDock(title_)
+	inline BrowserDock(const QString &title_ = "") : OBSDock(title_)
 	{
 		title = title_;
-		setAttribute(Qt::WA_NativeWindow);
+		// Native CEF windows are now embedded
+		// setAttribute(Qt::WA_NativeWindow);
 	}
 
 	QScopedPointer<QCefWidget> cefWidget;
