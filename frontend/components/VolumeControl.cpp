@@ -377,6 +377,20 @@ void VolumeControl::showVolumeControlMenu(QPoint pos)
 	popup->addAction(filtersAction);
 	popup->addAction(propertiesAction);
 
+	// Add layout toggle and advanced properties actions,
+	// so they can be accessed from any context menu
+	QAction *layoutToggleAction = new QAction(QTStr("Basic.AudioMixer.Layout.Vertical"), popup);
+	if (vertical)
+		layoutToggleAction->setText(QTStr("Basic.AudioMixer.Layout.Horizontal"));
+	QAction *openAdvancedProperties = new QAction(QTStr("Basic.AdvAudio"), popup);
+	connect(layoutToggleAction, &QAction::triggered, main, &OBSBasic::toggleMixerLayout, Qt::DirectConnection);
+	connect(openAdvancedProperties, &QAction::triggered, main, &OBSBasic::on_actionAdvAudioProperties_triggered,
+		Qt::DirectConnection);
+	popup->addSeparator();
+	popup->addAction(layoutToggleAction);
+	popup->addSeparator();
+	popup->addAction(openAdvancedProperties);
+
 	// Calculate menu position
 	QPoint popupPos = mapToGlobal(pos);
 
