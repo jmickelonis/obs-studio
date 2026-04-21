@@ -1621,6 +1621,10 @@ QSlider::handle:disabled {
     background-color: var(--white5);
 }
 
+AbsoluteSlider {
+    qproperty-tickColor: var(--grey3);
+}
+
 #stackedMixerArea {
     border: none;
     padding: 0px;
@@ -1922,11 +1926,6 @@ VolumeControl.volume-inactive .mixer-category {
 VolumeControl.volume-preview .mixer-category {
     background: var(--green6);
     color: var(--green1);
-}
-
-#stackedMixerArea VolumeControl.volume-hidden QSlider::groove,
-#stackedMixerArea VolumeControl.volume-inactive QSlider::groove {
-    background: var(--grey8);
 }
 
 /* Status Bar */

@@ -33,7 +33,7 @@ void VolumeSlider::paintEvent(QPaintEvent *event)
 	}
 
 	QPainter painter(this);
-	QColor tickColor(91, 98, 115, 255);
+	QColor tickColor = getTickColor();
 
 	obs_fader_conversion_t fader_db_to_def = obs_fader_db_to_def(fad);
 

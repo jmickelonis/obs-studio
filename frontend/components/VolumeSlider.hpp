@@ -18,7 +18,6 @@ public:
 
 private:
 	bool displayTicks = false;
-	QColor tickColor;
 
 protected:
 	virtual void paintEvent(QPaintEvent *event) override;
