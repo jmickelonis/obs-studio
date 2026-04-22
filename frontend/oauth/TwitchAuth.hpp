@@ -4,11 +4,15 @@
 
 #include <json11.hpp>
 
+#include <QList>
 #include <QTimer>
+
+#include <docks/BrowserDock.hpp>
 
 class TwitchAuth : public OAuthStreamKey {
 	Q_OBJECT
 
+	QList<BrowserDock *> docks;
 	bool uiLoaded = false;
 
 	std::string name;
@@ -23,6 +27,15 @@ class TwitchAuth : public OAuthStreamKey {
 	bool GetChannelInfo();
 
 	virtual void LoadUI() override;
+
+	struct DockOptions {
+		unsigned int width = 300;
+		unsigned int height = 600;
+		unsigned int minWidth = 150;
+		unsigned int minHeight = 150;
+	};
+	BrowserDock *addDock(const std::string &name, const std::string &localeName, const std::string &title,
+			     const std::string &url, const std::string &startupScript, const DockOptions &dockOptions);
 
 public:
 	TwitchAuth(const Def &d);
