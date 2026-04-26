@@ -44,6 +44,7 @@ Q_DECLARE_METATYPE(VoidFunc)
 
 class QFileSystemWatcher;
 class QSocketNotifier;
+class OBSThemeVariable;
 
 namespace OBS {
 class CrashHandler;
@@ -170,8 +171,8 @@ public:
 
 	inline const char *GetLocale() const { return locale.c_str(); }
 
-	std::string GetThemeCSSPath(std::string id);
-	void PrepareThemeCSS(std::string id);
+	std::filesystem::path GetThemeCSSPath(std::string id);
+	void PrepareThemeCSS(std::string id, const QHash<QString, OBSThemeVariable> &vars);
 	OBSTheme *GetTheme() const { return currentTheme; }
 	QList<OBSTheme> GetThemes() const { return themes.values(); }
 	OBSTheme *GetTheme(const QString &name);

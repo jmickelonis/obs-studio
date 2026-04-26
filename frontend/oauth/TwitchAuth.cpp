@@ -39,6 +39,9 @@ TwitchAuth::TwitchAuth(const Def &d) : OAuthStreamKey(d)
 	uiLoadTimer.setSingleShot(true);
 	uiLoadTimer.setInterval(500);
 	connect(&uiLoadTimer, &QTimer::timeout, this, &TwitchAuth::TryLoadSecondaryUIPanes);
+
+	// Set dark/light early, so Twitch's code can pick up on it
+	preLoadScript = std::format("localStorage.setItem('twilight.theme', {});", (int)App()->IsThemeDark());
 }
 
 TwitchAuth::~TwitchAuth()
@@ -216,6 +219,7 @@ BrowserDock *TwitchAuth::addDock(const std::string &name, const std::string &loc
 	dock->setWindowTitle(windowTitle);
 
 	QCefWidget *widget = cef->create_widget(dock, url, panel_cookies);
+	widget->setPreLoadScript(preLoadScript);
 	widget->setStartupScript(startupScript);
 	dock->SetWidget(widget);
 
@@ -257,14 +261,7 @@ void TwitchAuth::LoadUI()
 	/* ----------------------------------- */
 
 	OBSBasic *main = OBSBasic::Get();
-	std::string script;
-
-	if (App()->IsThemeDark()) {
-		script = "localStorage.setItem('twilight.theme', 1);";
-	} else {
-		script = "localStorage.setItem('twilight.theme', 0);";
-	}
-	script += style_script;
+	std::string script = style_script;
 
 	const int twAddonChoice = config_get_int(main->Config(), service(), "AddonChoice");
 	if (twAddonChoice) {
@@ -301,17 +298,10 @@ void TwitchAuth::LoadSecondaryUIPanes()
 {
 	OBSBasic *main = OBSBasic::Get();
 
-	std::string script;
-
 	QSize size = main->frameSize();
 	QPoint pos = main->pos();
 
-	if (App()->IsThemeDark()) {
-		script = "localStorage.setItem('twilight.theme', 1);";
-	} else {
-		script = "localStorage.setItem('twilight.theme', 0);";
-	}
-	script += style_script;
+	std::string script = style_script;
 	script += referrer_script1;
 	script += "https://www.twitch.tv/";
 	script += name;

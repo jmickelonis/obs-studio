@@ -17,6 +17,7 @@ class TwitchAuth : public OAuthStreamKey {
 
 	std::string name;
 	std::string uuid;
+	std::string preLoadScript;
 
 	virtual bool RetryLogin() override;
 

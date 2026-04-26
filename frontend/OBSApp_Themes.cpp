@@ -34,7 +34,15 @@
 #include <QTimer>
 #include <QLabel>
 
+#include <format>
+#include <fstream>
+#include <regex>
+#include <sstream>
+#include "docks/BrowserDock.hpp"
+#include "widgets/OBSBasic.hpp"
+
 using namespace std;
+namespace fs = std::filesystem;
 
 struct CFParser {
 	cf_parser cfp = {};
@@ -809,7 +817,7 @@ static double getPaddingForDensityId(int id)
 }
 
 /* Returns the path to the specified CSS file for the current theme.
- * If a file does not exist, an empty string is returned.
+ * If a file does not exist, an empty path is returned.
  *
  * As an example, for the Fusion theme's Smurf variant,
  * CSS for twitch would be found in "themes/twitch/Fusion.Smurf.css"
@@ -817,41 +825,113 @@ static double getPaddingForDensityId(int id)
  *
  * Also allows for a default CSS file to exist for themes that don't provide one.
  */
-std::string OBSApp::GetThemeCSSPath(std::string id)
+filesystem::path OBSApp::GetThemeCSSPath(string id)
 {
-	std::string theme = currentTheme->id.toStdString();
+	string theme = currentTheme->id.toStdString();
+
 	// Try the theme-specific, then the default
-	std::string relpaths[] = {"themes/" + id + "/" + theme + ".css", "themes/" + id + ".css"};
-	for (std::string relpath : relpaths) {
+	string relpaths[] = {"themes/" + id + "/" + theme + ".css", "themes/" + id + ".css"};
+
+	for (string relpath : relpaths) {
 		char cpath[512];
 		int res = GetAppConfigPath(cpath, sizeof(cpath), ("obs-studio/" + relpath).c_str());
-		if (res > 0 && os_file_exists(cpath))
-			// Found in user config
-			return std::string(cpath, res);
-		std::string path;
-		if (GetDataFilePath(relpath.c_str(), path) && os_file_exists(path.c_str()))
-			return path;
+		if (res > 0) {
+			fs::path path = cpath;
+			if (fs::exists(path) && !fs::is_directory(path))
+				// Found in user config
+				return path;
+		}
+
+		string spath;
+		if (GetDataFilePath(relpath.c_str(), spath)) {
+			fs::path path = spath;
+			if (fs::exists(path) && !fs::is_directory(path))
+				return path;
+		}
 	}
 	return "";
+}
+
+static bool ProcessThemeCSS(fs::path path, fs::path outPath, const QHash<QString, OBSThemeVariable> &vars)
+{
+	if (path.empty())
+		return false;
+
+	ifstream file(path);
+	if (!file.is_open())
+		return false;
+
+	string s = string(istreambuf_iterator<char>(file), istreambuf_iterator<char>());
+	if (s == "")
+		return false;
+
+	// Find any variables that are referenced
+	regex varPattern(R"(\bvar\(--obs-([^)]+)\))");
+	auto begin = sregex_iterator(s.begin(), s.end(), varPattern);
+	auto end = sregex_iterator();
+	if (distance(begin, end)) {
+		map<QString, OBSThemeVariable> references;
+
+		for (sregex_iterator i = begin; i != end; ++i) {
+			smatch match = *i;
+
+			const QString name = QString::fromStdString(match[1].str());
+			if (!vars.contains(name))
+				continue;
+
+			OBSThemeVariable var = vars.value(name);
+			if (!ResolveVariable(vars, var))
+				continue;
+
+			references[name] = var;
+		}
+
+		if (references.size()) {
+			stringstream ss;
+
+			// Prepend the referenced values to the stylesheet
+			ss << ":root{";
+			for (auto const &[key, value] : references)
+				ss << "--obs-" << key.toStdString() << ": " << value.value.toString().toStdString()
+				   << ";";
+			ss << "}";
+
+			// Copy over the existing CSS
+			ss << s;
+			s = ss.str();
+
+			// Save everything to the output file
+			std::ofstream out(outPath);
+			if (!out.is_open())
+				return false;
+
+			out << s;
+			out.close();
+			return true;
+		}
+	}
+
+	// Copy the existing file
+	return fs::copy_file(path, outPath, fs::copy_options::overwrite_existing);
 }
 
 /* "Prepares" the specified theme CSS file for use by a service's browser docks.
  * The file is copied to a central location (currently <CONFIG_DIR>/obs-studio/.<ID>.css).
  */
-void OBSApp::PrepareThemeCSS(std::string id)
+void OBSApp::PrepareThemeCSS(string id, const QHash<QString, OBSThemeVariable> &vars)
 {
 	char cpath[512];
 	int res = GetAppConfigPath(cpath, sizeof(cpath), ("obs-studio/." + id + ".css").c_str());
 	if (res <= 0)
 		// Shouldn't happen
 		return;
-	std::string path = GetThemeCSSPath(id);
-	if (path != "")
-		// Copy the existing file
-		std::filesystem::copy_file(path, cpath, std::filesystem::copy_options::overwrite_existing);
-	else
+
+	fs::path path = GetThemeCSSPath(id);
+	fs::path outPath = cpath;
+
+	if (!ProcessThemeCSS(path, outPath, vars))
 		// Remove the target (all docks should just use their default styles)
-		std::filesystem::remove(cpath);
+		fs::remove(outPath);
 }
 
 OBSTheme *OBSApp::GetTheme(const QString &name)
@@ -873,6 +953,7 @@ bool OBSApp::SetTheme(const QString &name)
 		themeWatcher->removePaths(themeWatcher->files());
 	}
 
+	bool wasDark = currentTheme && currentTheme->isDark;
 	setStyleSheet("");
 	currentTheme = theme;
 
@@ -1009,8 +1090,35 @@ bool OBSApp::SetTheme(const QString &name)
 	SetMacOSDarkMode(theme->isDark);
 #endif
 
-	PrepareThemeCSS("twitch");
+	PrepareThemeCSS("twitch", vars);
 	emit StyleChanged();
+
+	OBSBasic *basic = OBSBasic::Get();
+	if (basic) {
+		// Update the CSS in any Twitch docks
+
+		QList<shared_ptr<QDockWidget>> twitchDocks;
+		for (auto dock : basic->extraDocks)
+			if (dock->objectName().startsWith("twitch"))
+				twitchDocks.append(dock);
+
+		if (!twitchDocks.isEmpty()) {
+			bool dark = theme->isDark;
+
+			// Set dark/light early, so Twitch's code can pick up on it
+			string preLoadScript = std::format("localStorage.setItem('twilight.theme', {});", (int)dark);
+
+			// If dark/light changed, the page will need to be reloaded
+			string script = dark == wasDark ? "_updateOBSStyle();" : preLoadScript + "location.reload();";
+
+			for (auto dock : twitchDocks) {
+				BrowserDock *browserDock = static_cast<BrowserDock *>(dock.get());
+				auto &cefWidget = browserDock->cefWidget;
+				cefWidget->setPreLoadScript(preLoadScript);
+				cefWidget->postScript(script);
+			}
+		}
+	}
 
 	if (themeWatcher) {
 		themeWatcher->addPaths(filenames);
