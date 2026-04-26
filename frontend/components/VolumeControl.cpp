@@ -271,7 +271,7 @@ void VolumeControl::setLayoutVertical(bool vertical)
 
 		setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
 		textLayout->setDirection(QBoxLayout::LeftToRight);
-		controlLayout->setDirection(QBoxLayout::LeftToRight);
+		controlLayout->setDirection(QBoxLayout::RightToLeft);
 		contentsLayout->setDirection(QBoxLayout::TopToBottom);
 		mainLayout->setDirection(QBoxLayout::RightToLeft);
 	}
