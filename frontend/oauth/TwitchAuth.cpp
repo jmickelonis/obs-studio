@@ -41,7 +41,9 @@ TwitchAuth::TwitchAuth(const Def &d) : OAuthStreamKey(d)
 	connect(&uiLoadTimer, &QTimer::timeout, this, &TwitchAuth::TryLoadSecondaryUIPanes);
 
 	// Set dark/light early, so Twitch's code can pick up on it
-	preLoadScript = std::format("localStorage.setItem('twilight.theme', {});", (int)App()->IsThemeDark());
+	preLoadScript = std::format("var isDark = {};", App()->IsThemeDark());
+	preLoadScript += "localStorage.setItem('twilight.theme', isDark ? 1 : 0);";
+	preLoadScript += "localStorage.setItem('bttv_darkenedMode', isDark);";
 }
 
 TwitchAuth::~TwitchAuth()
@@ -180,13 +182,14 @@ var ffz = document.createElement('script');\
 ffz.setAttribute('src','https://cdn.frankerfacez.com/script/script.min.js');\
 document.head.appendChild(ffz);";
 
-static const char *bttv_script = "\
-localStorage.setItem('bttv_clickTwitchEmotes', true);\
-localStorage.setItem('bttv_darkenedMode', true);\
-localStorage.setItem('bttv_bttvGIFEmotes', true);\
-var bttv = document.createElement('script');\
-bttv.setAttribute('src','https://cdn.betterttv.net/betterttv.js');\
-document.head.appendChild(bttv);";
+static const char *bttv_script = R"(
+localStorage.setItem('bttv_clickTwitchEmotes', true);
+localStorage.removeItem('bttv_autoThemeMode');
+localStorage.setItem('bttv_bttvGIFEmotes', true);
+var bttv = document.createElement('script');
+bttv.setAttribute('src','https://cdn.betterttv.net/betterttv.js');
+document.head.appendChild(bttv);
+)";
 
 static const char *referrer_script1 = "\
 Object.defineProperty(document, 'referrer', {get : function() { return '";
@@ -261,7 +264,7 @@ void TwitchAuth::LoadUI()
 	/* ----------------------------------- */
 
 	OBSBasic *main = OBSBasic::Get();
-	std::string script = style_script;
+	std::string script = "";
 
 	const int twAddonChoice = config_get_int(main->Config(), service(), "AddonChoice");
 	if (twAddonChoice) {
@@ -270,6 +273,8 @@ void TwitchAuth::LoadUI()
 		if (twAddonChoice & 0x2)
 			script += ffz_script;
 	}
+
+	script += style_script;
 
 	BrowserDock *chat = addDock("twitchChat", "Twitch.Chat", "Chat",
 				    "https://www.twitch.tv/popout/" + name + "/chat", script, {});
@@ -308,13 +313,14 @@ void TwitchAuth::LoadSecondaryUIPanes()
 	script += "/dashboard/live";
 	script += referrer_script2;
 
-	const int twAddonChoice = config_get_int(main->Config(), service(), "AddonChoice");
-	if (twAddonChoice) {
-		if (twAddonChoice & 0x1)
-			script += bttv_script;
-		if (twAddonChoice & 0x2)
-			script += ffz_script;
-	}
+	// Only use the add-ons in the chat dock
+	// const int twAddonChoice = config_get_int(main->Config(), service(), "AddonChoice");
+	// if (twAddonChoice) {
+	// 	if (twAddonChoice & 0x1)
+	// 		script += bttv_script;
+	// 	if (twAddonChoice & 0x2)
+	// 		script += ffz_script;
+	// }
 
 	struct DockConfig {
 		const std::string &name;

@@ -942,6 +942,8 @@ OBSTheme *OBSApp::GetTheme(const QString &name)
 	return &themes[name];
 }
 
+#include <iostream>
+
 bool OBSApp::SetTheme(const QString &name)
 {
 	OBSTheme *theme = GetTheme(name);
@@ -1103,16 +1105,22 @@ bool OBSApp::SetTheme(const QString &name)
 				twitchDocks.append(dock);
 
 		if (!twitchDocks.isEmpty()) {
-			bool dark = theme->isDark;
+			bool isDark = theme->isDark;
 
-			// Set dark/light early, so Twitch's code can pick up on it
-			string preLoadScript = std::format("localStorage.setItem('twilight.theme', {});", (int)dark);
+			BrowserDock *browserDock = static_cast<BrowserDock *>(twitchDocks.at(0).get());
+			string preLoadScript = browserDock->cefWidget->getPreLoadScript();
+
+			if (isDark != wasDark) {
+				// Modify the pre-load script with the new dark value
+				regex pattern(R"(\bisDark = [^;]*)");
+				preLoadScript = regex_replace(preLoadScript, pattern, format("isDark = {}", isDark));
+			}
 
 			// If dark/light changed, the page will need to be reloaded
-			string script = dark == wasDark ? "_updateOBSStyle();" : preLoadScript + "location.reload();";
+			string script = isDark == wasDark ? "_updateOBSStyle();" : preLoadScript + "location.reload();";
 
 			for (auto dock : twitchDocks) {
-				BrowserDock *browserDock = static_cast<BrowserDock *>(dock.get());
+				browserDock = static_cast<BrowserDock *>(dock.get());
 				auto &cefWidget = browserDock->cefWidget;
 				cefWidget->setPreLoadScript(preLoadScript);
 				cefWidget->postScript(script);
