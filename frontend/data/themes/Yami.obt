@@ -162,6 +162,7 @@
     --border_color: var(--grey4);
 
     --border_radius: 4px;
+    --half_border_radius: calc(var(--border_radius) / 2);
     --border_radius_small: 2px;
     --border_radius_large: 6px;
     --border_radius_dock: calc(var(--border_radius) * 1.25);
@@ -209,8 +210,8 @@
     --tab_border_focus: var(--primary_lighter);
     --tab_border_selected: var(--primary);
 
-    --tab_padding_base: calc(5px + var(--padding_base));
-    --tab_padding_large: calc(9px + var(--padding_base));
+    --tab_hpadding: calc(var(--padding_base) * 2);
+    --tab_vpadding: var(--padding_small);
 
     --preview_scale_width: calc(calc(var(--input_text_padding) * 3.5) * calc(var(--font_base_value) / 10));
 
@@ -1100,12 +1101,21 @@ QToolBarExtension {
 
 /* The tab widget frame */
 QTabWidget::pane {
-    border-top: 4px solid var(--tab_bg);
+    border-top: 4px solid var(--bg_base);
 }
 
 QTabBar {
     outline: none;
     background: transparent;
+    color: var(--text);
+    font-size: var(--font_small);
+    font-weight: bold;
+}
+
+QMainWindow > QTabBar {
+    qproperty-expanding: 1;
+    font-size: var(--font_xsmall);
+    font-weight: normal;
 }
 
 QTabWidget::tab-bar {
@@ -1117,52 +1127,71 @@ QTabBar QToolButton {
     border: none;
 }
 
+QTabBar::tab {
+    padding: var(--tab_vpadding) var(--tab_hpadding);
+    border: 1px solid var(--bg_base);
+}
+
+QMainWindow > QTabBar::tab {
+    border-color: var(--tab_border);
+}
+
 QTabBar::tab:top {
-    border-top-left-radius: 4px;
-    border-top-right-radius: 4px;
+    border-top-left-radius: var(--border_radius);;
+    border-top-right-radius: var(--border_radius);;
 }
 
 QTabBar::tab:bottom {
-    border-bottom-left-radius: 4px;
-    border-bottom-right-radius: 4px;
-}
-
-QTabBar::tab:bottom:first, QTabBar::tab:top:first {
-    margin-left: 4px;
-}
-
-QTabBar::tab:bottom:last, QTabBar::tab:top:last {
-    margin-right: 4px;
+    border-bottom-left-radius: var(--border_radius);;
+    border-bottom-right-radius: var(--border_radius);;
 }
 
 QTabBar::tab {
-    background: var(--tab_bg);
-    color: var(--text);
-    border: none;
-    padding: var(--tab_padding_base) var(--tab_padding_large);
-    min-width: 50px;
-    margin: 1px 0px;
-    margin-right: 2px;
-    border: 1px solid var(--tab_border);
+    margin-left: -1px;
+}
+
+QTabBar::tab:first {
+    margin-left: 0;
+}
+
+QMainWindow > QTabBar::tab:first {
+    margin-left: var(--border_radius);
+}
+
+QMainWindow > QTabBar::tab:last {
+    margin-right: var(--border_radius);
 }
 
 QTabBar::tab:pressed {
     background: var(--tab_bg_down);
 }
 
-QTabBar::tab:hover {
-    background: var(--tab_bg_hover);
-    border-color: var(--tab_border_hover);
-    color: var(--text);
+QTabBar::tab:bottom {
+    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 var(--bg_window), stop: 1 var(--bg_base));
 }
 
-QTabBar::tab:focus {
-    border-color: var(--tab_border_focus);
+QTabBar::tab:top {
+    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 var(--bg_base), stop: 1 var(--bg_window));
+}
+
+QTabBar::tab:top:!selected {
+    margin-top: var(--half_border_radius);
+}
+
+QTabBar::tab:bottom:!selected {
+    margin-bottom: var(--half_border_radius);
 }
 
 QTabBar::tab:selected {
-    background: var(--tab_bg_down);
-    color: var(--text);
+    background: var(--bg_base);
+}
+
+QMainWindow > QTabBar::tab:selected {
+    background: var(--border_color);
+}
+
+QTabBar::tab:hover, QMainWindow > QTabBar::tab:hover {
+    background: var(--tab_bg_hover);
 }
 
 QTabBar::tab:top {
