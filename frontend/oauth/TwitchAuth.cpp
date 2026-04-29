@@ -442,6 +442,9 @@ void TwitchAuth::LoadSecondaryUIPanes()
 		if (main->isVisible() || !main->isMaximized())
 			main->restoreState(dockState);
 	}
+
+	// Sort the menu items we added
+	main->SortServiceDockMenu("twitchMenu");
 }
 
 /* Twitch.tv has an OAuth for itself.  If we try to load multiple panel pages

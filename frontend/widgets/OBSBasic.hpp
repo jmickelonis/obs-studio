@@ -451,6 +451,9 @@ public:
 	bool IsDockObjectNameUsed(const QString &name);
 	void AddCustomDockWidget(QDockWidget *dock);
 	void setDockCornersVertical(bool vertical);
+#ifdef BROWSER_AVAILABLE
+	void SortServiceDockMenu(const QString &objectName);
+#endif
 
 private slots:
 	void on_resetDocks_triggered(bool force = false);
@@ -467,6 +470,9 @@ private:
 	void AddDropSource(const char *file, DropType image);
 	void AddDropURL(QUrl url, QString &name, obs_data_t *settings, const obs_video_info &ovi);
 	void ConfirmDropUrl(const QString &url);
+#ifdef BROWSER_AVAILABLE
+	QMenu *GetServiceDockMenu(const QString &objectName, const QString &title);
+#endif
 	void dragEnterEvent(QDragEnterEvent *event) override;
 	void dragLeaveEvent(QDragLeaveEvent *event) override;
 	void dragMoveEvent(QDragMoveEvent *event) override;
