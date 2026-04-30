@@ -93,10 +93,7 @@
        </layout>
       </item>
       <item>
-       <layout class="QHBoxLayout" name="recordingLayout">
-        <property name="spacing">
-         <number>2</number>
-        </property>
+       <layout class="QGridLayout" name="recordingLayout">
         <property name="leftMargin">
          <number>0</number>
         </property>
@@ -109,7 +106,7 @@
         <property name="bottomMargin">
          <number>0</number>
         </property>
-        <item>
+        <item row="0" column="0">
          <widget class="QPushButton" name="recordButton">
           <property name="enabled">
            <bool>true</bool>
@@ -131,7 +128,7 @@
           </property>
          </widget>
         </item>
-        <item>
+        <item row="0" column="0" alignment="Qt::AlignmentFlag::AlignRight">
          <widget class="QPushButton" name="pauseRecordButton">
           <property name="enabled">
            <bool>true</bool>
@@ -160,10 +157,7 @@
        </layout>
       </item>
       <item>
-       <layout class="QHBoxLayout" name="replayBufferLayout">
-        <property name="spacing">
-         <number>2</number>
-        </property>
+       <layout class="QGridLayout" name="replayBufferLayout">
         <property name="leftMargin">
          <number>0</number>
         </property>
@@ -176,7 +170,7 @@
         <property name="bottomMargin">
          <number>0</number>
         </property>
-        <item>
+        <item row="0" column="0">
          <widget class="QPushButton" name="replayBufferButton">
           <property name="enabled">
            <bool>true</bool>
@@ -198,7 +192,7 @@
           </property>
          </widget>
         </item>
-        <item>
+        <item row="0" column="0" alignment="Qt::AlignmentFlag::AlignRight">
          <widget class="QPushButton" name="saveReplayButton">
           <property name="enabled">
            <bool>true</bool>
@@ -227,10 +221,7 @@
        </layout>
       </item>
       <item>
-       <layout class="QHBoxLayout" name="virtualCamLayout">
-        <property name="spacing">
-         <number>2</number>
-        </property>
+       <layout class="QGridLayout" name="virtualCamLayout">
         <property name="leftMargin">
          <number>0</number>
         </property>
@@ -243,7 +234,7 @@
         <property name="bottomMargin">
          <number>0</number>
         </property>
-        <item>
+        <item row="0" column="0">
          <widget class="QPushButton" name="virtualCamButton">
           <property name="enabled">
            <bool>true</bool>
@@ -265,7 +256,7 @@
           </property>
          </widget>
         </item>
-        <item>
+        <item row="0" column="0" alignment="Qt::AlignmentFlag::AlignRight">
          <widget class="QPushButton" name="virtualCamConfigButton">
           <property name="enabled">
            <bool>true</bool>

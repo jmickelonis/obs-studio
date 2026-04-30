@@ -1450,6 +1450,12 @@ QDoubleSpinBox::down-arrow {
     max-width: var(--input_height);
 }
 
+#virtualCamConfigButton:!hover:!pressed {
+    /* Let the Virtual Camera button show through */
+    background: transparent;
+    border-color: transparent;
+}
+
 /* Primary Control Button Checked Coloring */
 #streamButton:!hover:!pressed.state-active,
 #recordButton:!hover:!pressed.state-active,
