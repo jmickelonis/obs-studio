@@ -503,6 +503,12 @@ bool OBSDock::nativeEvent(const QByteArray &eventType, void *message, qintptr *r
 
 	switch (msg->message) {
 
+	case WM_NCACTIVATE:
+		/* Browser docks can mess up normal [de]activate events,
+		 * so go ahead and update from here */
+		update();
+		break;
+
 	case WM_SHOWWINDOW:
 		setDropShadowInternal(dropShadow);
 		break;
