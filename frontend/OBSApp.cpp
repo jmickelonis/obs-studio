@@ -1497,15 +1497,6 @@ void InitializeNativeWindow(QWidget *widget)
 	// Disable immersive/dark mode
 	BOOL darkMode = FALSE;
 	DwmSetWindowAttribute(wnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &darkMode, sizeof(darkMode));
-
-	/* This actually doesn't blur behind the window (as of Windows 8),
-	 * but it DOES stop the window from painting a black background,
-	 * which is needed for translucent window content.
-	 */
-	DWM_BLURBEHIND blurBehind = {};
-	blurBehind.fEnable = true;
-	blurBehind.dwFlags = DWM_BB_ENABLE;
-	DwmEnableBlurBehindWindow(wnd, &blurBehind);
 }
 
 void UpdateTitleBarColor(QWidget *widget)

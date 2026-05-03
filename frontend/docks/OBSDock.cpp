@@ -509,9 +509,19 @@ bool OBSDock::nativeEvent(const QByteArray &eventType, void *message, qintptr *r
 		update();
 		break;
 
-	case WM_SHOWWINDOW:
+	case WM_SHOWWINDOW: {
+		/* This actually doesn't blur behind the window (as of Windows 8),
+		* but it DOES stop the window from painting a black background,
+		* which is needed for translucent window content.
+		*/
+		DWM_BLURBEHIND blurBehind = {};
+		blurBehind.fEnable = true;
+		blurBehind.dwFlags = DWM_BB_ENABLE;
+		DwmEnableBlurBehindWindow((HWND)winId(), &blurBehind);
+
 		setDropShadowInternal(dropShadow);
 		break;
+	}
 
 	case WM_SIZING: {
 		// Notifies us that we're about to resize,
