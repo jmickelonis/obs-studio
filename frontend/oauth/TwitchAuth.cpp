@@ -195,13 +195,26 @@ static const char *referrer_script1 = "\
 Object.defineProperty(document, 'referrer', {get : function() { return '";
 static const char *referrer_script2 = "'; }});";
 
-static const char *style_script = R"(
+/* Loads the stylesheet, and provides a function to update it.
+ * Adds a listener to intercept links and open them in the system browser.
+ */
+static const char *custom_script = R"(
 var _obs_style = document.createElement('style');
 function _updateOBSStyle() {
 	_obs_style.innerText = obsstudio.getCSS('twitch');
 }
 _updateOBSStyle();
 document.head.appendChild(_obs_style);
+document.addEventListener('click', (event) => {
+	var a = event.target.closest('a');
+	if (!a)
+		return;
+	var href = a.href;
+	if (!href)
+		return;
+	event.preventDefault();
+	window.open(href);
+}, true);
 )";
 
 /* Adds a Twitch dock and its associated menu action to the main window.
@@ -274,7 +287,7 @@ void TwitchAuth::LoadUI()
 			script += ffz_script;
 	}
 
-	script += style_script;
+	script += custom_script;
 
 	BrowserDock *chat = addDock("twitchChat", "Twitch.Chat", "Chat",
 				    "https://www.twitch.tv/popout/" + name + "/chat", script, {});
@@ -306,7 +319,7 @@ void TwitchAuth::LoadSecondaryUIPanes()
 	QSize size = main->frameSize();
 	QPoint pos = main->pos();
 
-	std::string script = style_script;
+	std::string script = custom_script;
 	script += referrer_script1;
 	script += "https://www.twitch.tv/";
 	script += name;
