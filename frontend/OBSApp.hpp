@@ -44,7 +44,7 @@ Q_DECLARE_METATYPE(VoidFunc)
 
 class QFileSystemWatcher;
 class QSocketNotifier;
-class OBSThemeVariable;
+struct OBSThemeVariable;
 
 namespace OBS {
 class CrashHandler;
