@@ -48,4 +48,5 @@ signals:
 
 private:
 	QString elidedText = "";
+	QRect elidedTextBounds{};
 };

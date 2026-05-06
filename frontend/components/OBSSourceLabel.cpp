@@ -18,7 +18,8 @@
 #include "OBSSourceLabel.hpp"
 #include "moc_OBSSourceLabel.cpp"
 
-#include <QPainter>
+#include <QStyleOption>
+#include <QStylePainter>
 
 OBSSourceLabel::OBSSourceLabel(const obs_source_t *source, QWidget *parent, Qt::WindowFlags f)
 	: QLabel(obs_source_get_name(source), parent, f),
@@ -63,14 +64,19 @@ void OBSSourceLabel::mousePressEvent(QMouseEvent *event)
 
 void OBSSourceLabel::resizeEvent(QResizeEvent *event)
 {
-	QLabel::resizeEvent(event);
-	elidedText = fontMetrics().elidedText(text(), Qt::TextElideMode::ElideRight, event->size().width(),
+	QStyleOptionFrame opt;
+	opt.initFrom(this);
+	elidedTextBounds = style()->subElementRect(QStyle::SE_FrameContents, &opt, this);
+	elidedText = fontMetrics().elidedText(text(), Qt::TextElideMode::ElideRight, elidedTextBounds.width(),
 					      Qt::TextShowMnemonic);
 }
 
 void OBSSourceLabel::paintEvent(QPaintEvent *event)
 {
-	QPainter p(this);
-	const QSize &size = this->size();
-	p.drawText(0, 0, size.width(), size.height(), alignment(), elidedText);
+	QStylePainter p(this);
+	QStyleOption opt;
+	opt.initFrom(this);
+	p.drawPrimitive(QStyle::PE_Widget, opt);
+	p.drawText(elidedTextBounds.x(), elidedTextBounds.y(), elidedTextBounds.width(), elidedTextBounds.height(),
+		   alignment(), elidedText);
 }
