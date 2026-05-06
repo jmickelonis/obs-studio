@@ -18,6 +18,8 @@
 #include "OBSSourceLabel.hpp"
 #include "moc_OBSSourceLabel.cpp"
 
+#include <QPainter>
+
 OBSSourceLabel::OBSSourceLabel(const obs_source_t *source, QWidget *parent, Qt::WindowFlags f)
 	: QLabel(obs_source_get_name(source), parent, f),
 	  renamedSignal(obs_source_get_signal_handler(source), "rename", &OBSSourceLabel::obsSourceRenamed, this),
@@ -57,4 +59,18 @@ void OBSSourceLabel::mousePressEvent(QMouseEvent *event)
 	emit clicked();
 
 	QLabel::mousePressEvent(event);
+}
+
+void OBSSourceLabel::resizeEvent(QResizeEvent *event)
+{
+	QLabel::resizeEvent(event);
+	elidedText = fontMetrics().elidedText(text(), Qt::TextElideMode::ElideRight, event->size().width(),
+					      Qt::TextShowMnemonic);
+}
+
+void OBSSourceLabel::paintEvent(QPaintEvent *event)
+{
+	QPainter p(this);
+	const QSize &size = this->size();
+	p.drawText(0, 0, size.width(), size.height(), alignment(), elidedText);
 }

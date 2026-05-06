@@ -20,6 +20,7 @@
 #include <obs.hpp>
 
 #include <QLabel>
+#include <QResizeEvent>
 
 class OBSSourceLabel : public QLabel {
 	Q_OBJECT;
@@ -36,10 +37,15 @@ protected:
 	static void obsSourceRemoved(void *data, calldata_t *params);
 	static void obsSourceDestroyed(void *data, calldata_t *params);
 	void mousePressEvent(QMouseEvent *event);
+	void resizeEvent(QResizeEvent *event);
+	void paintEvent(QPaintEvent *event);
 
 signals:
 	void renamed(const char *name);
 	void removed();
 	void destroyed();
 	void clicked();
+
+private:
+	QString elidedText = "";
 };
