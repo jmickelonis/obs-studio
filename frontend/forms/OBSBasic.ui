@@ -986,16 +986,16 @@
       <number>0</number>
      </property>
      <property name="leftMargin">
-      <number>1</number>
+      <number>0</number>
      </property>
      <property name="topMargin">
       <number>0</number>
      </property>
      <property name="rightMargin">
-      <number>1</number>
+      <number>0</number>
      </property>
      <property name="bottomMargin">
-      <number>1</number>
+      <number>0</number>
      </property>
      <item>
       <widget class="QFrame" name="scenesFrame">
@@ -1115,16 +1115,16 @@
       <number>0</number>
      </property>
      <property name="leftMargin">
-      <number>1</number>
+      <number>0</number>
      </property>
      <property name="topMargin">
       <number>0</number>
      </property>
      <property name="rightMargin">
-      <number>1</number>
+      <number>0</number>
      </property>
      <property name="bottomMargin">
-      <number>1</number>
+      <number>0</number>
      </property>
      <item>
       <widget class="QFrame" name="sourcesFrame">
@@ -1247,16 +1247,16 @@
       <number>0</number>
      </property>
      <property name="leftMargin">
-      <number>1</number>
+      <number>0</number>
      </property>
      <property name="topMargin">
       <number>0</number>
      </property>
      <property name="rightMargin">
-      <number>1</number>
+      <number>0</number>
      </property>
      <property name="bottomMargin">
-      <number>1</number>
+      <number>0</number>
      </property>
     </layout>
    </widget>
@@ -1277,20 +1277,38 @@
       <number>0</number>
      </property>
      <property name="leftMargin">
-      <number>1</number>
+      <number>0</number>
      </property>
      <property name="topMargin">
       <number>0</number>
      </property>
      <property name="rightMargin">
-      <number>1</number>
+      <number>0</number>
      </property>
      <property name="bottomMargin">
-      <number>1</number>
+      <number>0</number>
      </property>
      <item>
       <widget class="QFrame" name="transitionsFrame">
        <layout class="QVBoxLayout" name="verticalLayout_8">
+        <property name="spacing">
+         <number>0</number>
+        </property>
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>0</number>
+        </property>
+        <item>
+      <widget class="QFrame" name="transitionsControls">
+       <layout class="QVBoxLayout">
         <property name="spacing">
          <number>0</number>
         </property>
@@ -1365,116 +1383,6 @@
          </layout>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_4">
-          <property name="spacing">
-           <number>4</number>
-          </property>
-          <item>
-           <spacer name="horizontalSpacer">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeType">
-             <enum>QSizePolicy::Expanding</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>40</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-          <item>
-           <widget class="QPushButton" name="transitionAdd">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="toolTip">
-             <string>Basic.AddTransition</string>
-            </property>
-            <property name="accessibleName">
-             <string>Basic.AddTransition</string>
-            </property>
-            <property name="text">
-             <string notr="true"/>
-            </property>
-            <property name="icon">
-             <iconset resource="obs.qrc">
-              <normaloff>:/res/images/plus.svg</normaloff>:/res/images/plus.svg</iconset>
-            </property>
-            <property name="flat">
-             <bool>false</bool>
-            </property>
-            <property name="class" stdset="0">
-             <string notr="true">btn-tool icon-plus</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="transitionRemove">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="toolTip">
-             <string>Basic.RemoveTransition</string>
-            </property>
-            <property name="accessibleName">
-             <string>Basic.RemoveTransition</string>
-            </property>
-            <property name="text">
-             <string notr="true"/>
-            </property>
-            <property name="icon">
-             <iconset resource="obs.qrc">
-              <normaloff>:/res/images/minus.svg</normaloff>:/res/images/minus.svg</iconset>
-            </property>
-            <property name="flat">
-             <bool>false</bool>
-            </property>
-            <property name="class" stdset="0">
-             <string notr="true">btn-tool icon-trash</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="transitionProps">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="toolTip">
-             <string>Basic.TransitionProperties</string>
-            </property>
-            <property name="accessibleName">
-             <string>Basic.TransitionProperties</string>
-            </property>
-            <property name="text">
-             <string notr="true"/>
-            </property>
-            <property name="icon">
-             <iconset resource="obs.qrc">
-              <normaloff>:/settings/images/settings/general.svg</normaloff>:/settings/images/settings/general.svg</iconset>
-            </property>
-            <property name="flat">
-             <bool>false</bool>
-            </property>
-            <property name="class" stdset="0">
-             <string notr="true">btn-tool icon-dots-vert</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item>
          <spacer name="verticalSpacer">
           <property name="orientation">
            <enum>Qt::Vertical</enum>
@@ -1489,6 +1397,32 @@
         </item>
        </layout>
       </widget>
+     </item>
+     <item>
+      <widget class="QToolBar" name="transitionsToolbar">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="iconSize">
+        <size>
+         <width>16</width>
+         <height>16</height>
+        </size>
+       </property>
+       <property name="floatable">
+        <bool>false</bool>
+       </property>
+       <addaction name="actionAddTransition"/>
+       <addaction name="actionRemoveTransition"/>
+       <addaction name="separator"/>
+       <addaction name="actionTransitionProperties"/>
+      </widget>
+     </item>
+    </layout>
+   </widget>
      </item>
     </layout>
    </widget>
@@ -1518,6 +1452,21 @@
    </property>
    <property name="toolTip">
     <string>AddSource</string>
+   </property>
+   <property name="class" stdset="0">
+    <string notr="true">icon-plus</string>
+   </property>
+  </action>
+  <action name="actionAddTransition">
+   <property name="icon">
+    <iconset resource="obs.qrc">
+     <normaloff>:/res/images/plus.svg</normaloff>:/res/images/plus.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Add</string>
+   </property>
+   <property name="toolTip">
+    <string>Basic.AddTransition</string>
    </property>
    <property name="class" stdset="0">
     <string notr="true">icon-plus</string>
@@ -1571,6 +1520,30 @@
     <string notr="true">icon-trash</string>
    </property>
   </action>
+  <action name="actionRemoveTransition">
+   <property name="icon">
+    <iconset resource="obs.qrc">
+     <normaloff>:/res/images/minus.svg</normaloff>:/res/images/minus.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Remove</string>
+   </property>
+   <property name="toolTip">
+    <string>Basic.RemoveTransition</string>
+   </property>
+   <property name="shortcut">
+    <string>Del</string>
+   </property>
+   <property name="shortcutContext">
+    <enum>Qt::WidgetWithChildrenShortcut</enum>
+   </property>
+   <property name="iconVisibleInMenu">
+    <bool>false</bool>
+   </property>
+   <property name="class" stdset="0">
+    <string notr="true">icon-trash</string>
+   </property>
+  </action>
   <action name="actionSourceProperties">
    <property name="enabled">
     <bool>true</bool>
@@ -1587,6 +1560,24 @@
    </property>
    <property name="class" stdset="0">
     <string notr="true">icon-gear</string>
+   </property>
+  </action>
+  <action name="actionTransitionProperties">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="obs.qrc">
+     <normaloff>:/settings/images/settings/general.svg</normaloff>:/settings/images/settings/general.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Properties</string>
+   </property>
+   <property name="toolTip">
+    <string>Basic.TransitionProperties</string>
+   </property>
+   <property name="class" stdset="0">
+    <string notr="true">icon-dots-vert</string>
    </property>
   </action>
   <action name="actionSceneUp">

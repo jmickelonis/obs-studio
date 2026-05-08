@@ -1576,9 +1576,9 @@ private slots:
 	void TBarChanged(int value);
 	void TBarReleased();
 
-	void on_transitionAdd_clicked();
-	void on_transitionRemove_clicked();
-	void on_transitionProps_clicked();
+	void on_actionAddTransition_triggered();
+	void on_actionRemoveTransition_triggered();
+	void on_actionTransitionProperties_triggered();
 
 	void ShowTransitionProperties();
 	void HideTransitionProperties();

@@ -36,27 +36,22 @@
 void OBSBasic::copyActionsDynamicProperties()
 {
 	// Themes need the QAction dynamic properties
-	for (QAction *x : ui->scenesToolbar->actions()) {
-		QWidget *temp = ui->scenesToolbar->widgetForAction(x);
 
-		if (!temp)
-			continue;
+	auto copyProperties = [](QToolBar *toolbar) {
+		for (QAction *x : toolbar->actions()) {
+			QWidget *temp = toolbar->widgetForAction(x);
 
-		for (QByteArray &y : x->dynamicPropertyNames()) {
-			temp->setProperty(y.constData(), x->property(y.constData()));
+			if (!temp)
+				continue;
+
+			for (QByteArray &y : x->dynamicPropertyNames()) {
+				temp->setProperty(y.constData(), x->property(y.constData()));
+			}
 		}
-	}
-
-	for (QAction *x : ui->sourcesToolbar->actions()) {
-		QWidget *temp = ui->sourcesToolbar->widgetForAction(x);
-
-		if (!temp)
-			continue;
-
-		for (QByteArray &y : x->dynamicPropertyNames()) {
-			temp->setProperty(y.constData(), x->property(y.constData()));
-		}
-	}
+	};
+	copyProperties(ui->scenesToolbar);
+	copyProperties(ui->sourcesToolbar);
+	copyProperties(ui->transitionsToolbar);
 }
 
 void OBSBasic::ClearContextBar()
