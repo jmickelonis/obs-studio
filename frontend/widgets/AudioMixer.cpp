@@ -102,7 +102,7 @@ AudioMixer::AudioMixer(QWidget *parent) : QFrame(parent)
 	hMixerScrollArea->setWidgetResizable(true);
 	hMixerScrollArea->setContextMenuPolicy(Qt::ContextMenuPolicy::CustomContextMenu);
 
-	hVolumeWidgets = new QWidget(this);
+	hVolumeWidgets = new QFrame(this);
 	hVolumeWidgets->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
 	hVolumeWidgets->setObjectName("hVolumeWidgets");
 
@@ -123,7 +123,7 @@ AudioMixer::AudioMixer(QWidget *parent) : QFrame(parent)
 	vMixerScrollArea->setWidgetResizable(true);
 	vMixerScrollArea->setContextMenuPolicy(Qt::ContextMenuPolicy::CustomContextMenu);
 
-	vVolumeWidgets = new QWidget(this);
+	vVolumeWidgets = new QFrame(this);
 
 	vVolumeWidgets->setObjectName("vVolumeWidgets");
 
