@@ -852,7 +852,10 @@ OBSDock QToolBar QToolButton:disabled {
     background: var(--grey7);
 }
 
-#transitionsFrame {
+SceneTree, SourceTree {
+    margin: 0 1px;
+}
+#transitionsControls {
     padding: var(--padding_container);
 }
 
