@@ -636,3 +636,13 @@ void SourceTree::paintEvent(QPaintEvent *event)
 		QListView::paintEvent(event);
 	}
 }
+
+void SourceTree::showEvent(QShowEvent *event)
+{
+	QListView::showEvent(event);
+
+	// Toggling dock floating mode can mess up the list dimensions
+	// when it would also show/hide the vertical scrollbar.
+	// This works around that.
+	updateGeometries();
+}
