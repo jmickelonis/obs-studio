@@ -26,16 +26,22 @@ void SceneTree::SetGridMode(bool grid)
 		setResizeMode(QListView::Fixed);
 	}
 
+	// Get the theme to pick up the property change
+	QStyle *style = this->style();
+	style->unpolish(this);
+	style->polish(this);
+
+	// Reload the style
+	QEvent styleEvent(QEvent::StyleChange);
+	event(&styleEvent);
+
+	// Force a resize
 	const QSize size = this->size();
 	QResizeEvent event(size, size);
 	resizeEvent(&event);
 	if (gridMode)
 		// For some reason, it needs to be called twice for grids
 		resizeEvent(&event);
-
-	QStyle *style = this->style();
-	style->unpolish(this);
-	style->polish(this);
 }
 
 bool SceneTree::GetGridMode()
