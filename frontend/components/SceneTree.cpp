@@ -28,8 +28,12 @@ void SceneTree::SetGridMode(bool grid)
 		setStyleSheet("");
 	}
 
-	QResizeEvent event(size(), size());
+	const QSize size = this->size();
+	QResizeEvent event(size, size);
 	resizeEvent(&event);
+	if (gridMode)
+		// For some reason, it needs to be called twice for grids
+		resizeEvent(&event);
 }
 
 bool SceneTree::GetGridMode()
