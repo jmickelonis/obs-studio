@@ -37,7 +37,7 @@ OBSBasicStatusBar::OBSBasicStatusBar(QWidget *parent)
 	statusWidget->ui->kbps->hide();
 
 	addPermanentWidget(statusWidget, 1);
-	setMinimumHeight(statusWidget->height());
+	// setMinimumHeight(statusWidget->height());
 
 	UpdateIcons();
 	connect(App(), &OBSApp::StyleChanged, this, &OBSBasicStatusBar::UpdateIcons);
