@@ -21,11 +21,9 @@ void SceneTree::SetGridMode(bool grid)
 		setResizeMode(QListView::Adjust);
 		setViewMode(QListView::IconMode);
 		setUniformItemSizes(true);
-		setStyleSheet("*{padding: 0; margin: 0;}");
 	} else {
 		setViewMode(QListView::ListMode);
 		setResizeMode(QListView::Fixed);
-		setStyleSheet("");
 	}
 
 	const QSize size = this->size();
@@ -34,6 +32,10 @@ void SceneTree::SetGridMode(bool grid)
 	if (gridMode)
 		// For some reason, it needs to be called twice for grids
 		resizeEvent(&event);
+
+	QStyle *style = this->style();
+	style->unpolish(this);
+	style->polish(this);
 }
 
 bool SceneTree::GetGridMode()
