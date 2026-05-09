@@ -78,6 +78,9 @@ protected:
 	QAbstractButton *floatButton;
 
 	virtual bool event(QEvent *event) override;
+#ifdef __QT_SUPPORTS_SYSTEM_RESIZE
+	virtual bool eventFilter(QObject *watched, QEvent *event) override;
+#endif
 	virtual void paintEvent(QPaintEvent *event) override;
 #ifdef _WIN32
 	virtual bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override;
@@ -92,12 +95,14 @@ private:
 	bool dropShadow;
 #endif
 #ifdef __QT_SUPPORTS_SYSTEM_RESIZE
-	Qt::Edges pressEdges;
+	Qt::Edges edges;
 #endif
 	QPoint pressPosition;
 	bool settingFlags;
 
+#ifdef __QT_SUPPORTS_SYSTEM_RESIZE
 	Qt::Edges getResizeEdges(const QPoint &position);
+#endif
 	Qt::CursorShape getCursor(const QPoint &position);
 	void updateCursor(const QPoint &position);
 	void updateCursor(Qt::CursorShape cursor);

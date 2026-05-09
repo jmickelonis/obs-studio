@@ -272,22 +272,158 @@ void OBSDock::showEvent(QShowEvent *event)
 	QDockWidget::showEvent(event);
 }
 
+#ifdef __QT_SUPPORTS_SYSTEM_RESIZE
+bool OBSDock::eventFilter(QObject *watched, QEvent *event)
+{
+	if (!isFloating() || watched != window()->windowHandle())
+		goto END;
+
+	/* Filter events going to the floating window.
+	 * This allows us to better support native resizing.
+	 */
+
+	switch (event->type()) {
+
+	case QEvent::Enter: {
+		if (mouseState != NotPressed)
+			break;
+
+		// Update the edges and cursor
+		QEnterEvent *enterEvent = static_cast<QEnterEvent *>(event);
+		const QPoint &pos = enterEvent->pos();
+		edges = getResizeEdges(pos);
+		updateCursor(pos);
+
+		// Don't forward to the widget if we can resize
+		return edges;
+	}
+
+	case QEvent::MouseButtonPress: {
+		if (mouseState != NotPressed || !edges)
+			break;
+
+		QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
+		if (mouseEvent->button() != Qt::LeftButton)
+			break;
+
+		/* An edge was pressed.
+		 * We'll do a system resize when dragged far enough.
+		 */
+		pressPosition = mouseEvent->pos();
+		mouseState = Pressed;
+		return true;
+	}
+
+	case QEvent::MouseMove: {
+		if (mouseState == Pressed && edges) {
+			QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
+			if (!shouldStartDrag(mouseEvent))
+				return true;
+
+			// Dragged an edge far enough to start a system resize
+
+#ifdef _WIN32
+			setDropShadowInternal(false);
+#endif
+			mouseState = OBSApp::IsWayland() ? NotPressed : Resizing;
+			window()->windowHandle()->startSystemResize(edges);
+			return true;
+		}
+
+		if (mouseState != NotPressed)
+			break;
+
+		// Update the edges and cursor
+		QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
+		const QPoint &pos = mouseEvent->pos();
+		Qt::Edges oldEdges = edges;
+		edges = getResizeEdges(pos);
+		updateCursor(pos);
+
+		if (edges == oldEdges)
+			return edges;
+
+		if (edges) {
+			/* Went from not being over an edge to being over one.
+			 * If any widgets are showing hover state,
+			 * they need to be forced out of it.
+			 */
+			QWidget *widget = QApplication::widgetAt(mouseEvent->globalPos());
+			while (widget && widget != this) {
+				QEvent leaveEvent(QEvent::Leave);
+				QApplication::sendEvent(widget, &leaveEvent);
+				widget = widget->parentWidget();
+			}
+		}
+		else {
+			// We already ate the enter event, so we have to send a new one
+			const QPointF pos = mouseEvent->position();
+			QEnterEvent enterEvent(pos, pos, mouseEvent->globalPosition());
+			QApplication::sendEvent(window()->windowHandle(), &enterEvent);
+		}
+
+		return edges;
+	}
+
+	case QEvent::MouseButtonRelease: {
+		if (mouseState != Resizing)
+			break;
+
+		// Done resizing
+		mouseState = NotPressed;
+		edges = Qt::Edges();
+		clearCursor();
+
+		/* Send an enter event to the window at the current location.
+		 * Otherwise, we'd have to move the mouse again to show hover state.
+		 */
+		QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
+		const QPointF pos = mouseEvent->position();
+		QEnterEvent enterEvent(pos, pos, mouseEvent->globalPosition());
+		QApplication::sendEvent(window()->windowHandle(), &enterEvent);
+
+		break;
+	}
+
+	case QEvent::Leave: {
+		if (mouseState != NotPressed)
+			break;
+		edges = Qt::Edges();
+		break;
+	}
+	}
+
+END:
+	return QDockWidget::eventFilter(watched, event);
+}
+#endif
+
 bool OBSDock::event(QEvent *e)
 {
 	switch (e->type()) {
 
 #ifdef __QT_SUPPORTS_SYSTEM_RESIZE
+
+	case QEvent::Show:
+		if (!isFloating())
+			break;
+		edges = Qt::Edges();
+		window()->windowHandle()->installEventFilter(this);
+		break;
+
 	case QEvent::ChildAdded: {
 		QChildEvent *childEvent = static_cast<QChildEvent *>(e);
 		QObject *child = childEvent->child();
 		if (child != this && !qobject_cast<QWidget *>(child)) {
 			/* Might be a resizer.
+			 * It's used to handle the default (non-system) window resize.
 			 * Kill it!
 			 */
 			QTimer::singleShot(1, this, [this, child]() { removeEventFilter(child); });
 		}
 		break;
 	}
+
 #endif
 
 	case QEvent::ContextMenu: {
@@ -342,15 +478,6 @@ bool OBSDock::event(QEvent *e)
 
 		pressPosition = mouseEvent->pos();
 
-#ifdef __QT_SUPPORTS_SYSTEM_RESIZE
-		pressEdges = getResizeEdges(pressPosition);
-		if (pressEdges) {
-			// Will do a system resize on drag
-			mouseState = Pressed;
-			return true;
-		}
-#endif
-
 		if (!isOverTitleBar(pressPosition))
 			break;
 
@@ -404,23 +531,6 @@ bool OBSDock::event(QEvent *e)
 			window()->windowHandle()->startSystemMove();
 			return true;
 		}
-
-#ifdef __QT_SUPPORTS_SYSTEM_RESIZE
-		if (mouseState != Pressed || !pressEdges)
-			break;
-
-		QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(e);
-		if (!shouldStartDrag(mouseEvent))
-			return false;
-
-#ifdef _WIN32
-		setDropShadowInternal(false);
-#endif
-
-		mouseState = OBSApp::IsWayland() ? NotPressed : Resizing;
-		window()->windowHandle()->startSystemResize(pressEdges);
-		return true;
-#endif
 
 		break;
 	}
@@ -576,6 +686,7 @@ bool OBSDock::nativeEvent(const QByteArray &eventType, void *message, qintptr *r
 }
 #endif
 
+#ifdef __QT_SUPPORTS_SYSTEM_RESIZE
 Qt::Edges OBSDock::getResizeEdges(const QPoint &position)
 {
 	Qt::Edges edges;
@@ -592,34 +703,40 @@ Qt::Edges OBSDock::getResizeEdges(const QPoint &position)
 		// Position is not within this window
 		return edges;
 
-	/* Try to match the default implementation.
-	 * A little extra space is given inside the title bar.
-	 */
-	const QWidget *titleBar = titleBarWidget();
-	bool inTitleBar = y < titleBar->y() + titleBar->height();
-	static int borderSize = 4;
+	// Give more room on the top/bottom edges, as well as inside the title bar
+	static int borderSize = 5;
+	static int borderSizeSmall = 2;
 
-	if (x < borderSize)
-		edges |= Qt::LeftEdge;
-	else if (x >= w - (inTitleBar ? borderSize - 1 : borderSize))
-		edges |= Qt::RightEdge;
+	int hBorderSize = borderSizeSmall;
 
-	if (y < borderSize)
+	if (y < borderSize) {
 		edges |= Qt::TopEdge;
-	else if (y >= h - borderSize)
+		hBorderSize = borderSize;
+	} else if (y >= h - borderSize) {
 		edges |= Qt::BottomEdge;
+		hBorderSize = borderSize;
+	} else {
+		const QWidget *titleBar = titleBarWidget();
+		if (y < titleBar->y() + titleBar->height())
+			hBorderSize = borderSize;
+	}
+
+	if (x < hBorderSize)
+		edges |= Qt::LeftEdge;
+	else if (x >= w - hBorderSize)
+		edges |= Qt::RightEdge;
 
 	return edges;
 }
+#endif
 
 Qt::CursorShape OBSDock::getCursor(const QPoint &position)
 {
 	if (floatButton->underMouse() || closeButton->underMouse())
 		return Qt::BlankCursor;
 
+#ifdef __QT_SUPPORTS_SYSTEM_RESIZE
 	if (isFloating()) {
-		Qt::Edges edges = getResizeEdges(position);
-
 		if (edges & Qt::LeftEdge)
 			return edges & Qt::TopEdge      ? Qt::SizeFDiagCursor
 			       : edges & Qt::BottomEdge ? Qt::SizeBDiagCursor
@@ -631,6 +748,7 @@ Qt::CursorShape OBSDock::getCursor(const QPoint &position)
 		else if (edges & (Qt::TopEdge | Qt::BottomEdge))
 			return Qt::SizeVerCursor;
 	}
+#endif
 
 	switch (mouseState) {
 	case MouseState::Pressed:
