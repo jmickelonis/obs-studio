@@ -63,7 +63,8 @@ OBSBasicStats::OBSBasicStats(QWidget *parent, bool closable)
 	int row = 0;
 
 	auto newStatBare = [&](QString name, QWidget *label, int col) {
-		QLabel *typeLabel = new QLabel(name, this);
+		QLabel *typeLabel = new QLabel(name + ":", this);
+		typeLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 		topLayout->addWidget(typeLabel, row, col);
 		topLayout->addWidget(label, row++, col + 1);
 	};
@@ -105,6 +106,10 @@ OBSBasicStats::OBSBasicStats(QWidget *parent, bool closable)
 	newStat("AverageTimeToRender", renderTime, 2);
 	newStat("MissedFrames", missedFrames, 2);
 	newStat("SkippedFrames", skippedFrames, 2);
+
+	int stretch[] = {0, 1, 0, 1};
+	for (int i = 0; i < 4; i++)
+		topLayout->setColumnStretch(i, stretch[i]);
 
 	/* --------------------------------------------- */
 	QPushButton *closeButton = nullptr;
