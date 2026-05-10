@@ -936,7 +936,15 @@ OBSBasicStatusBar {
 
 StatusBarWidget > QFrame {
     border: none;
-    padding: 0px var(--padding_xlarge) var(--padding_small);
+    margin-left: 0.5em;
+    margin-top: var(--spacing_large);
+    min-height: 1.5em
+}
+
+StatusBarWidget #kbps,
+StatusBarWidget #recordTime,
+StatusBarWidget #streamTime {
+    margin-left: 6px
 }
 
 /* Group Box */
