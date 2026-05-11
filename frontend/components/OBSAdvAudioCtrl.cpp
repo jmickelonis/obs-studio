@@ -1,6 +1,7 @@
 #include "OBSAdvAudioCtrl.hpp"
 
 #include <components/BalanceSlider.hpp>
+#include <components/OBSElidedLabel.hpp>
 #include <widgets/OBSBasic.hpp>
 
 #include <qt-wrappers.hpp>
@@ -33,7 +34,7 @@ OBSAdvAudioCtrl::OBSAdvAudioCtrl(QGridLayout *, obs_source_t *source_) : source(
 	labelL = new QLabel();
 	labelR = new QLabel();
 	iconLabel = new QLabel();
-	nameLabel = new QLabel();
+	nameLabel = new OBSElidedLabel();
 	active = new QLabel();
 	stackedWidget = new QStackedWidget();
 	volume = new QDoubleSpinBox();
@@ -84,6 +85,8 @@ OBSAdvAudioCtrl::OBSAdvAudioCtrl(QGridLayout *, obs_source_t *source_) : source(
 
 	SetSourceName(sourceName);
 	nameLabel->setAlignment(Qt::AlignVCenter);
+	nameLabel->setMinimumWidth(100);
+	nameLabel->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
 
 	bool isActive = obs_source_active(source) && obs_source_audio_active(source);
 	active->setText(isActive ? QTStr("Basic.Stats.Status.Active") : QTStr("Basic.Stats.Status.Inactive"));
@@ -252,6 +255,7 @@ void OBSAdvAudioCtrl::ShowAudioControl(QGridLayout *layout)
 	layout->addWidget(mixerContainer, lastRow, idx++);
 	layout->layout()->setAlignment(mixerContainer, Qt::AlignVCenter);
 	layout->setHorizontalSpacing(15);
+	layout->setColumnStretch(1, 1);
 }
 
 /* ------------------------------------------------------------------------- */
