@@ -268,18 +268,6 @@
                    <verstretch>0</verstretch>
                   </sizepolicy>
                  </property>
-                 <property name="minimumSize">
-                  <size>
-                   <width>20</width>
-                   <height>16</height>
-                  </size>
-                 </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>20</width>
-                   <height>16</height>
-                  </size>
-                 </property>
                  <property name="toolTip">
                   <string>Basic.MainMenu.Edit.Scale.ZoomOut</string>
                  </property>
@@ -324,18 +312,6 @@
                    <horstretch>0</horstretch>
                    <verstretch>0</verstretch>
                   </sizepolicy>
-                 </property>
-                 <property name="minimumSize">
-                  <size>
-                   <width>20</width>
-                   <height>16</height>
-                  </size>
-                 </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>20</width>
-                   <height>16</height>
-                  </size>
                  </property>
                  <property name="toolTip">
                   <string>Basic.MainMenu.Edit.Scale.ZoomIn</string>
@@ -394,7 +370,7 @@
                  </property>
                 </spacer>
                </item>
-               <item>
+               <item alignment="Qt::AlignTop">
                 <widget class="QScrollBar" name="previewXScrollBar">
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">

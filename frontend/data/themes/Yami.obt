@@ -2476,16 +2476,14 @@ OBSBasicAdvAudio #scrollAreaWidgetContents {
     width: 16px;
 }
 
-#previewZoomInButton {
-    border: none;
-    border-radius: 0px;
-    outline: none;
-}
-
+#previewZoomInButton,
 #previewZoomOutButton {
     border: none;
     border-radius: 0px;
     outline: none;
+    padding: 0;
+    height: 12px;
+    width: 20px;
 }
 
 #previewZoomInButton:!hover,
