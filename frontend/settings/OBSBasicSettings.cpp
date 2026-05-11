@@ -2318,7 +2318,7 @@ void OBSBasicSettings::LoadAudioSources()
 		delete forDeletion;
 	}
 	auto layout = new QFormLayout();
-	layout->setVerticalSpacing(15);
+	layout->setVerticalSpacing(10);
 	layout->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
 
 	audioSourceSignals.clear();
@@ -2403,15 +2403,19 @@ void OBSBasicSettings::LoadAudioSources()
 		audioSources.emplace_back(OBSGetWeakRef(source), ptmCB, ptmSB, pttCB, pttSB);
 
 		auto label = new OBSSourceLabel(source);
-		TruncateLabel(label, label->text());
-		label->setMinimumSize(QSize(170, 0));
-		label->setAlignment(Qt::AlignRight | Qt::AlignTrailing | Qt::AlignVCenter);
+		// TruncateLabel(label, label->text());
+		// label->setMinimumSize(QSize(170, 0));
+		// label->setAlignment(Qt::AlignRight | Qt::AlignTrailing | Qt::AlignVCenter);
 		connect(label, &OBSSourceLabel::removed, this,
 			[=]() { QMetaObject::invokeMethod(this, "ReloadAudioSources"); });
 		connect(label, &OBSSourceLabel::destroyed, this,
 			[=]() { QMetaObject::invokeMethod(this, "ReloadAudioSources"); });
 
-		layout->addRow(label, form);
+		// Give the label its own row,
+		// instead of cramming it to the left of the form
+		layout->addRow(label);
+		form->setContentsMargins(167, 0, 0, 0);
+		layout->addRow(form);
 		return true;
 	};
 
