@@ -18,11 +18,11 @@
 #pragma once
 
 #include <obs.hpp>
+#include "OBSElidedLabel.hpp"
 
-#include <QLabel>
 #include <QResizeEvent>
 
-class OBSSourceLabel : public QLabel {
+class OBSSourceLabel : public OBSElidedLabel {
 	Q_OBJECT;
 
 public:
@@ -37,16 +37,10 @@ protected:
 	static void obsSourceRemoved(void *data, calldata_t *params);
 	static void obsSourceDestroyed(void *data, calldata_t *params);
 	void mousePressEvent(QMouseEvent *event);
-	void resizeEvent(QResizeEvent *event);
-	void paintEvent(QPaintEvent *event);
 
 signals:
 	void renamed(const char *name);
 	void removed();
 	void destroyed();
 	void clicked();
-
-private:
-	QString elidedText = "";
-	QRect elidedTextBounds{};
 };
