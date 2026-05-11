@@ -802,33 +802,25 @@ void AudioMixer::createMixerContextMenu()
 	// Create menu actions
 	QAction *unhideAllAction = new QAction(QTStr("UnhideAll"), mixerMenu);
 
-	showHiddenCheckBox = new MenuCheckBox(QTStr("Basic.AudioMixer.ShowHidden"), mixerMenu);
-	QWidgetAction *showHiddenAction = new QWidgetAction(mixerMenu);
-	showHiddenCheckBox->setAction(showHiddenAction);
-	showHiddenCheckBox->setChecked(showHidden);
-	showHiddenAction->setDefaultWidget(showHiddenCheckBox);
+	showHiddenAction = new QAction(QTStr("Basic.AudioMixer.ShowHidden"), mixerMenu);
+	showHiddenAction->setCheckable(true);
+	showHiddenAction->setChecked(showHidden);
 
-	QWidgetAction *showInactiveAction = new QWidgetAction(mixerMenu);
-	MenuCheckBox *showInactiveCheckBox = new MenuCheckBox(QTStr("Basic.AudioMixer.ShowInactive"), mixerMenu);
-	showInactiveCheckBox->setAction(showInactiveAction);
-	showInactiveCheckBox->setChecked(showInactive);
-	showInactiveAction->setDefaultWidget(showInactiveCheckBox);
+	QAction *showInactiveAction = new QAction(QTStr("Basic.AudioMixer.ShowInactive"), mixerMenu);
+	showInactiveAction->setCheckable(true);
+	showInactiveAction->setChecked(showInactive);
 
-	QWidgetAction *hiddenLastAction = new QWidgetAction(mixerMenu);
-	const char *hiddenLastString = mixerVertical ? "Basic.AudioMixer.KeepHiddenRight"
-						     : "Basic.AudioMixer.KeepHiddenBottom";
-	MenuCheckBox *hiddenLastCheckBox = new MenuCheckBox(QTStr(hiddenLastString), mixerMenu);
-	hiddenLastCheckBox->setAction(hiddenLastAction);
-	hiddenLastCheckBox->setChecked(keepHiddenLast);
-	hiddenLastAction->setDefaultWidget(hiddenLastCheckBox);
+	QAction *hiddenLastAction = new QAction(QTStr(mixerVertical ? "Basic.AudioMixer.KeepHiddenRight"
+								    : "Basic.AudioMixer.KeepHiddenBottom"),
+						mixerMenu);
+	hiddenLastAction->setCheckable(true);
+	hiddenLastAction->setChecked(keepHiddenLast);
 
-	QWidgetAction *inactiveLastAction = new QWidgetAction(mixerMenu);
-	const char *inactiveLastString = mixerVertical ? "Basic.AudioMixer.KeepInactiveRight"
-						       : "Basic.AudioMixer.KeepInactiveBottom";
-	MenuCheckBox *inactiveLastCheckBox = new MenuCheckBox(QTStr(inactiveLastString), mixerMenu);
-	inactiveLastCheckBox->setAction(inactiveLastAction);
-	inactiveLastCheckBox->setChecked(keepInactiveLast);
-	inactiveLastAction->setDefaultWidget(inactiveLastCheckBox);
+	QAction *inactiveLastAction = new QAction(QTStr(mixerVertical ? "Basic.AudioMixer.KeepInactiveRight"
+								      : "Basic.AudioMixer.KeepInactiveBottom"),
+						  mixerMenu);
+	inactiveLastAction->setCheckable(true);
+	inactiveLastAction->setChecked(keepInactiveLast);
 
 	QAction *layoutToggleAction = new QAction(QTStr("Basic.AudioMixer.Layout.Vertical"), mixerMenu);
 	if (mixerVertical) {
@@ -840,12 +832,11 @@ void AudioMixer::createMixerContextMenu()
 	// Connect menu actions
 	connect(unhideAllAction, &QAction::triggered, this, &AudioMixer::unhideAllAudioControls, Qt::DirectConnection);
 
-	connect(showHiddenCheckBox, &QCheckBox::toggled, this, &AudioMixer::toggleShowHidden, Qt::DirectConnection);
-	connect(hiddenLastCheckBox, &QCheckBox::toggled, this, &AudioMixer::toggleKeepHiddenLast, Qt::DirectConnection);
+	connect(showHiddenAction, &QAction::toggled, this, &AudioMixer::toggleShowHidden, Qt::DirectConnection);
+	connect(hiddenLastAction, &QAction::toggled, this, &AudioMixer::toggleKeepHiddenLast, Qt::DirectConnection);
 
-	connect(showInactiveCheckBox, &QCheckBox::toggled, this, &AudioMixer::toggleShowInactive, Qt::DirectConnection);
-	connect(inactiveLastCheckBox, &QCheckBox::toggled, this, &AudioMixer::toggleKeepInactiveLast,
-		Qt::DirectConnection);
+	connect(showInactiveAction, &QAction::toggled, this, &AudioMixer::toggleShowInactive, Qt::DirectConnection);
+	connect(inactiveLastAction, &QAction::toggled, this, &AudioMixer::toggleKeepInactiveLast, Qt::DirectConnection);
 
 	OBSBasic *main = OBSBasic::Get();
 	connect(layoutToggleAction, &QAction::triggered, main, &OBSBasic::toggleMixerLayout, Qt::DirectConnection);
@@ -980,7 +971,7 @@ void AudioMixer::updateShowHidden()
 	toggleHiddenButton->setToolTip(tooltip);
 
 	toggleHiddenButton->setChecked(showHidden);
-	showHiddenCheckBox->setChecked(showHidden);
+	showHiddenAction->setChecked(showHidden);
 
 	queueLayoutUpdate();
 }

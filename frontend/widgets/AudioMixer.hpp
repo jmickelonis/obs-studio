@@ -88,7 +88,7 @@ private:
 	QPushButton *toggleHiddenButton{nullptr};
 
 	QPointer<QMenu> mixerMenu;
-	QPointer<MenuCheckBox> showHiddenCheckBox;
+	QPointer<QAction> showHiddenAction;
 
 	QScrollArea *hMixerScrollArea{nullptr};
 	QWidget *hVolumeWidgets{nullptr};
