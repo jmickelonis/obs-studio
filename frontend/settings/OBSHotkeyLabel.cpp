@@ -63,7 +63,7 @@ void OBSHotkeyLabel::leaveEvent(QEvent *event)
 
 void OBSHotkeyLabel::setToolTip(const QString &toolTip)
 {
-	QLabel::setToolTip(toolTip);
+	OBSElidedLabel::setToolTip(toolTip);
 	if (widget)
 		widget->setToolTip(toolTip);
 }

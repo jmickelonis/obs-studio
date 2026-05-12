@@ -2636,8 +2636,12 @@ static inline void LayoutHotkey(OBSBasicSettings *settings, obs_hotkey_id id, ob
 	auto *label = new OBSHotkeyLabel;
 	QString text = QT_UTF8(obs_hotkey_get_description(key));
 
+	label->setText(text);
 	label->setProperty("fullName", text);
-	TruncateLabel(label, text);
+	label->setStyleSheet("* { padding: 0; }");
+	// TruncateLabel(label, text);
+	label->setMinimumWidth(1);
+	label->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
 
 	OBSHotkeyWidget *hw = nullptr;
 
@@ -2734,7 +2738,7 @@ void OBSBasicSettings::LoadHotkeySettings(obs_hotkey_id ignoreKey)
 
 	QFormLayout *hotkeysLayout = new QFormLayout();
 	hotkeysLayout->setVerticalSpacing(0);
-	hotkeysLayout->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+	hotkeysLayout->setFieldGrowthPolicy(QFormLayout::FieldsStayAtSizeHint);
 	hotkeysLayout->setLabelAlignment(Qt::AlignRight | Qt::AlignTrailing | Qt::AlignVCenter);
 	auto hotkeyChildWidget = new QWidget();
 	hotkeyChildWidget->setLayout(hotkeysLayout);

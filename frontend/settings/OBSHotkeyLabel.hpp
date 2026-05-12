@@ -19,10 +19,11 @@
 
 #include <QLabel>
 #include <QPointer>
+#include "../components/OBSElidedLabel.hpp"
 
 class OBSHotkeyWidget;
 
-class OBSHotkeyLabel : public QLabel {
+class OBSHotkeyLabel : public OBSElidedLabel {
 	Q_OBJECT
 
 public:

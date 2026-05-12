@@ -87,6 +87,7 @@ void OBSHotkeyWidget::AddEdit(obs_key_combination combo, int idx)
 {
 	auto edit = new OBSHotkeyEdit(parentWidget(), combo, settings);
 	edit->setToolTip(toolTip);
+	edit->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
 
 	auto revert = new QPushButton;
 	revert->setProperty("class", "icon-revert");
