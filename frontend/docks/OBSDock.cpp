@@ -290,7 +290,7 @@ bool OBSDock::eventFilter(QObject *watched, QEvent *event)
 
 		// Update the edges and cursor
 		QEnterEvent *enterEvent = static_cast<QEnterEvent *>(event);
-		const QPoint &pos = enterEvent->pos();
+		const QPoint &pos = enterEvent->position().toPoint();
 		edges = getResizeEdges(pos);
 		updateCursor(pos);
 
@@ -348,7 +348,7 @@ bool OBSDock::eventFilter(QObject *watched, QEvent *event)
 			 * If any widgets are showing hover state,
 			 * they need to be forced out of it.
 			 */
-			QWidget *widget = QApplication::widgetAt(mouseEvent->globalPos());
+			QWidget *widget = QApplication::widgetAt(mouseEvent->globalPosition().toPoint());
 			while (widget && widget != this) {
 				QEvent leaveEvent(QEvent::Leave);
 				QApplication::sendEvent(widget, &leaveEvent);
