@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="16"
+   height="16"
+   version="1.1"
+   id="svg2"
+   sodipodi:docname="output.svg"
+   inkscape:version="1.4.2 (ebf0e940d0, 2025-05-08)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#505050"
+     bordercolor="#ffffff"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="1"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="58"
+     inkscape:cx="6.9913793"
+     inkscape:cy="7.5"
+     inkscape:window-width="1920"
+     inkscape:window-height="1052"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg2" />
+  <defs
+     id="defs1">
+    <style
+       id="current-color-scheme"
+       type="text/css">
+   .ColorScheme-Text { color:#444444; } .ColorScheme-Highlight { color:#4285f4; } .ColorScheme-NeutralText { color:#ff9800; } .ColorScheme-PositiveText { color:#4caf50; } .ColorScheme-NegativeText { color:#f44336; }
+  </style>
+  </defs>
+  <path
+     style="opacity:0.6;fill:#e8e8e8;fill-opacity:1;stroke-width:1.06664"
+     class="ColorScheme-Text"
+     d="M 9.066643,7.4666792 V 12.03191 C 8.74665,11.850581 8.383991,11.73325 8,11.73325 c -1.1839736,0 -2.1332857,0.959979 -2.1332857,2.133286 0,1.173307 0.9493121,2.133285 2.1332857,2.133285 1.173307,0 2.133286,-0.959978 2.133286,-2.133285 V 9.5999642 h 4.266571 V 12.03191 c -0.319993,-0.181329 -0.682651,-0.29866 -1.066643,-0.29866 -1.183973,0 -2.133285,0.959979 -2.133285,2.133286 0,1.173307 0.949312,2.133285 2.133285,2.133285 1.173307,0 2.133286,-0.959978 2.133286,-2.133285 V 7.4666792 Z"
+     id="path1" />
+  <path
+     style="fill:#e8e8e8;fill-opacity:1;stroke-width:1.06664"
+     class="ColorScheme-Text"
+     d="M 0.5335,1.788e-4 V 15.999821 h 1.0666429 v -1.066642 h 1.0666428 v 1.066642 H 3.7334286 V 12.799893 H 4.8000714 V 10.666607 H 3.7334286 V 5.3333931 H 12.266571 V 6.4000359 H 15.4665 V 1.788e-4 h -1.066643 v 1.0666428 0 H 13.333214 V 1.788e-4 H 12.266571 V 3.2001073 H 3.7334286 V 1.788e-4 H 2.6667857 v 1.0666428 0 H 1.6001429 V 1.788e-4 Z M 1.6001429,2.1334645 H 2.6667857 V 3.2001073 H 1.6001429 Z m 11.7330711,0 h 1.066643 V 3.2001073 H 13.333214 Z M 1.6001429,4.2667502 H 2.6667857 V 5.3333931 H 1.6001429 Z m 11.7330711,0 h 1.066643 V 5.3333931 H 13.333214 Z M 1.6001429,6.4000359 H 2.6667857 V 7.4666792 H 1.6001429 Z m 0,2.1332853 h 1.0666428 v 1.066643 H 1.6001429 Z m 0,2.1332858 H 2.6667857 V 11.73325 H 1.6001429 Z m 0,2.133286 h 1.0666428 v 1.066643 H 1.6001429 Z"
+     id="path2" />
+</svg>

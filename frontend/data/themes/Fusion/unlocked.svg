@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="16"
+   height="16"
+   viewBox="0 0 16 16"
+   version="1.1"
+   id="svg1"
+   sodipodi:docname="unlocked.svg"
+   inkscape:version="1.4.2 (ebf0e940d0, 2025-05-08)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#505050"
+     bordercolor="#ffffff"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="1"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="39.318182"
+     inkscape:cx="11.025433"
+     inkscape:cy="10.987283"
+     inkscape:window-width="1920"
+     inkscape:window-height="1052"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg1" />
+  <defs
+     id="defs1">
+    <style
+       id="current-color-scheme"
+       type="text/css">
+   .ColorScheme-Text { color:#444444; } .ColorScheme-Highlight { color:#4285f4; } .ColorScheme-NeutralText { color:#ff9800; } .ColorScheme-PositiveText { color:#4caf50; } .ColorScheme-NegativeText { color:#f44336; }
+  </style>
+  </defs>
+  <path
+     style="color:#444444;display:inline;opacity:0.600266;fill:#e8e8e8;fill-opacity:1;stroke-width:1.14292"
+     class="ColorScheme-Text"
+     d="M 2.2854167,6.8568613 C 1.6522408,6.8568613 1.1425,7.3666012 1.1425,7.9997782 v 6.8574998 c 0,0.633175 0.5097408,1.142916 1.1429167,1.142916 H 13.714583 c 0.633176,0 1.142917,-0.509741 1.142917,-1.142916 V 7.9997782 c 0,-0.633177 -0.509741,-1.1429169 -1.142917,-1.1429169 z"
+     id="path1-2" />
+  <path
+     id="path1-5"
+     style="color:#444444;display:inline;opacity:0.36;fill:#e8e8e8;fill-opacity:1;stroke-width:1.14292"
+     class="ColorScheme-Text"
+     d="m 8.000444,-1.942e-4 c -2.5093219,0 -4.5341301,2.0426864 -4.5712912,4.5712916 h 2.2847778 c 0,-1.2663517 1.0201622,-2.2865139 2.2865134,-2.2865139 1.266352,0 2.286515,1.0201622 2.286515,2.2865139 v 2.286514 h 2.284777 V 4.6422797 c 0,-2.5601334 -2.038588,-4.6424739 -4.571292,-4.6424739 z" />
+</svg>
