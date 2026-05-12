@@ -40,6 +40,7 @@
 #include <sstream>
 #include "docks/BrowserDock.hpp"
 #include "widgets/OBSBasic.hpp"
+#include "settings/OBSHotkeyEdit.hpp"
 
 using namespace std;
 namespace fs = std::filesystem;
@@ -942,8 +943,6 @@ OBSTheme *OBSApp::GetTheme(const QString &name)
 	return &themes[name];
 }
 
-#include <iostream>
-
 bool OBSApp::SetTheme(const QString &name)
 {
 	OBSTheme *theme = GetTheme(name);
@@ -1059,6 +1058,15 @@ bool OBSApp::SetTheme(const QString &name)
 				continue;
 			label->setText("");
 			label->setText(text);
+		}
+
+		/* Hotkey edits need to have their style updated as well.
+		 */
+		QList<OBSHotkeyEdit *> hotkeyEdits = widget->findChildren<OBSHotkeyEdit *>();
+		if (!hotkeyEdits.isEmpty()) {
+			QStyle *style = GetInvisibleCursorStyle();
+			for (OBSHotkeyEdit *edit : hotkeyEdits)
+				edit->setStyle(style);
 		}
 
 #ifdef _WIN32
