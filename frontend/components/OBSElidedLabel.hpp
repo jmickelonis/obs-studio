@@ -14,6 +14,8 @@ public:
 	OBSElidedLabel(const QString &text, QWidget *parent = (QWidget *)nullptr,
 		       Qt::WindowFlags f = Qt::WindowFlags());
 
+	void setToolTip(const QString &text);
+
 public slots:
 	void setText(const QString &text);
 
@@ -24,6 +26,7 @@ protected:
 private:
 	QString elidedText = "";
 	QRect elidedTextBounds{};
+	bool hasToolTip = false;
 
 	void updateElidedText();
 };

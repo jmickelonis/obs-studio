@@ -7,6 +7,17 @@
 OBSElidedLabel::OBSElidedLabel(QWidget *parent, Qt::WindowFlags f) : QLabel(parent, f) {}
 OBSElidedLabel::OBSElidedLabel(const QString &text, QWidget *parent, Qt::WindowFlags f) : QLabel(text, parent, f) {}
 
+void OBSElidedLabel::setToolTip(const QString &text)
+{
+	// If a tooltip was specifically set,
+	// don't override it when eliding
+	hasToolTip = !text.isEmpty();
+	if (hasToolTip)
+		QLabel::setToolTip(text);
+	else
+		updateElidedText();
+}
+
 void OBSElidedLabel::setText(const QString &text)
 {
 	QLabel::setText(text);
@@ -39,5 +50,6 @@ void OBSElidedLabel::updateElidedText()
 					      Qt::TextShowMnemonic);
 
     // Provide a tooltip with the full text if necessary
-	setToolTip(elidedText != text ? text : "");
+	if (!hasToolTip)
+		QLabel::setToolTip(elidedText != text ? text : "");
 }
