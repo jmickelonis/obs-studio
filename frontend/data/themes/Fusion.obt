@@ -1,6 +1,6 @@
 @OBSThemeMeta {
-  name: "Waluigi";
-  id: "Fusion.Waluigi";
+  name: "Fusion";
+  id: "Fusion";
   author: "SoftPrawn";
 }
 @OBSThemeVars {
