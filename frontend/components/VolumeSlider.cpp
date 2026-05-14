@@ -27,7 +27,7 @@ void VolumeSlider::setDisplayTicks(bool display)
 
 void VolumeSlider::paintEvent(QPaintEvent *event)
 {
-	if (!getDisplayTicks()) {
+	if (!(getDisplayTicks() && isEnabled() && (underMouse() || hasFocus()))) {
 		QSlider::paintEvent(event);
 		return;
 	}
