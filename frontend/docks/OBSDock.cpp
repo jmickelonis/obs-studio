@@ -169,7 +169,7 @@ OBSDock::OBSDock(const QString &title, QWidget *parent) : QDockWidget(title, par
 	settingFlags = false;
 
 #ifdef _WIN32
-	dropShadow = false;
+	dropShadow = true;
 #endif
 
 	// Get the dock's buttons (hopefully these will never be null!)
@@ -366,6 +366,15 @@ bool OBSDock::eventFilter(QObject *watched, QEvent *event)
 	}
 
 	case QEvent::MouseButtonRelease: {
+		QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
+		if (mouseEvent->button() != Qt::LeftButton)
+			break;
+
+		if (mouseState == Pressed) {
+			mouseState = NotPressed;
+			break;
+		}
+
 		if (mouseState != Resizing)
 			break;
 
@@ -377,7 +386,6 @@ bool OBSDock::eventFilter(QObject *watched, QEvent *event)
 		/* Send an enter event to the window at the current location.
 		 * Otherwise, we'd have to move the mouse again to show hover state.
 		 */
-		QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
 		const QPointF pos = mouseEvent->position();
 		QEnterEvent enterEvent(pos, pos, mouseEvent->globalPosition());
 		QApplication::sendEvent(window()->windowHandle(), &enterEvent);
