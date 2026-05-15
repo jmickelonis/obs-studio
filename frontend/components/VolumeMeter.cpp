@@ -640,11 +640,13 @@ void VolumeMeter::updateTickLabelTokenSize()
 
 void VolumeMeter::updateBackgroundCache(bool force)
 {
-	if (!force && size().isEmpty()) {
+	QSize size = this->size();
+
+	if (!force && size.isEmpty()) {
 		return;
 	}
 
-	if (!force && backgroundCache.size() == size() && !backgroundCache.isNull()) {
+	if (!force && backgroundCache.size() == size && !backgroundCache.isNull()) {
 		return;
 	}
 
@@ -654,25 +656,26 @@ void VolumeMeter::updateBackgroundCache(bool force)
 
 	QColor backgroundColor = palette().color(QPalette::Window);
 
-	backgroundCache = QPixmap(size() * devicePixelRatioF());
+	backgroundCache = QPixmap(size * devicePixelRatioF());
 	backgroundCache.setDevicePixelRatio(devicePixelRatioF());
 	backgroundCache.fill(backgroundColor);
 
 	QPainter bg{&backgroundCache};
-	QRect widgetRect = rect();
+	int length;
 
 	// Draw ticks
 	int x = INDICATOR_THICKNESS + 3;
 	int y = displayNrAudioChannels * (meterThickness + 1) - 1;
 	if (vertical) {
-		int length = widgetRect.height();
+		length = size.height();
 		bg.save();
 		bg.translate(0, length);
 		bg.rotate(-90);
 		paintTicks(bg, x, y, length - x);
 		bg.restore();
 	} else {
-		paintTicks(bg, x, y, widgetRect.width() - x);
+		length = size.width();
+		paintTicks(bg, x, y, length - x);
 	}
 
 	// Draw meter backgrounds
@@ -682,8 +685,7 @@ void VolumeMeter::updateBackgroundCache(bool force)
 	QColor error = disabledColors ? backgroundErrorColorDisabled : backgroundErrorColor;
 
 	int meterStart = INDICATOR_THICKNESS + 2;
-	int meterLength = vertical ? rect().height() - (INDICATOR_THICKNESS + 2)
-				   : rect().width() - (INDICATOR_THICKNESS + 2);
+	int meterLength = length - (INDICATOR_THICKNESS + 2);
 
 	qreal scale = meterLength / minimumLevel;
 
