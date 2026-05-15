@@ -294,8 +294,11 @@ bool OBSDock::eventFilter(QObject *watched, QEvent *event)
 		edges = getResizeEdges(pos);
 		updateCursor(pos);
 
-		// Don't forward to the widget if we can resize
-		return edges;
+		if (edges)
+			// Don't forward to the widget if we can resize
+			return true;
+
+		break;
 	}
 
 	case QEvent::MouseButtonPress: {
@@ -304,13 +307,21 @@ bool OBSDock::eventFilter(QObject *watched, QEvent *event)
 
 		QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
 		if (mouseEvent->button() != Qt::LeftButton)
-			break;
+			return true;
 
 		/* An edge was pressed.
 		 * We'll do a system resize when dragged far enough.
 		 */
 		pressPosition = mouseEvent->pos();
 		mouseState = Pressed;
+		return true;
+	}
+
+	case QEvent::MouseButtonDblClick: {
+		if (!edges)
+			break;
+
+		// Ignore double-clicks on the edges
 		return true;
 	}
 
@@ -340,8 +351,12 @@ bool OBSDock::eventFilter(QObject *watched, QEvent *event)
 		edges = getResizeEdges(pos);
 		updateCursor(pos);
 
-		if (edges == oldEdges)
-			return edges;
+		if (edges == oldEdges) {
+			if (edges)
+				return true;
+
+			break;
+		}
 
 		if (edges) {
 			/* Went from not being over an edge to being over one.
@@ -354,29 +369,34 @@ bool OBSDock::eventFilter(QObject *watched, QEvent *event)
 				QApplication::sendEvent(widget, &leaveEvent);
 				widget = widget->parentWidget();
 			}
+
+			return true;
 		}
 		else {
 			// We already ate the enter event, so we have to send a new one
 			const QPointF pos = mouseEvent->position();
 			QEnterEvent enterEvent(pos, pos, mouseEvent->globalPosition());
 			QApplication::sendEvent(window()->windowHandle(), &enterEvent);
-		}
 
-		return edges;
+			break;
+		}
 	}
 
 	case QEvent::MouseButtonRelease: {
+		if (!edges)
+			break;
+
 		QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
 		if (mouseEvent->button() != Qt::LeftButton)
-			break;
+			return true;
 
 		if (mouseState == Pressed) {
 			mouseState = NotPressed;
-			break;
+			return true;
 		}
 
 		if (mouseState != Resizing)
-			break;
+			return true;
 
 		// Done resizing
 		mouseState = NotPressed;
@@ -390,7 +410,7 @@ bool OBSDock::eventFilter(QObject *watched, QEvent *event)
 		QEnterEvent enterEvent(pos, pos, mouseEvent->globalPosition());
 		QApplication::sendEvent(window()->windowHandle(), &enterEvent);
 
-		break;
+		return true;
 	}
 
 	case QEvent::Leave: {
