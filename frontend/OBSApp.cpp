@@ -1508,7 +1508,7 @@ void UpdateTitleBarColor(QWidget *widget)
 		return;
 
 	// Set the caption (title bar) color from the palette
-	QColor qColor = widget->palette().color(QPalette::Base);
+	QColor qColor = widget->palette().color(widget->backgroundRole());
 	COLORREF color = RGB(qColor.red(), qColor.green(), qColor.blue());
 	DwmSetWindowAttribute(wnd, DWMWA_CAPTION_COLOR, &color, sizeof(color));
 }
