@@ -1411,3 +1411,24 @@ AudioMixer #vVolumeWidgets VolumeSlider {
 AudioMixer #vVolumeWidgets .mixer-category {
   margin: 2px 0;
 }
+
+#PluginManagerWindow #dialogInner {
+  margin: 10px;
+}
+#PluginManagerWindow #sectionList {
+  margin-right: 10px;
+}
+#PluginManagerWindow #label {
+  margin-bottom: 5px;
+}
+#PluginManagerWindow #modulesListContainer {
+  margin-bottom: 5px;
+}
+#PluginManagerWindow #modulesList QLabel {
+  font-size: var(--fontSizeLarge);
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+#PluginManagerWindow #manageRestartLabel {
+  margin-bottom: 5px;
+}
