@@ -185,8 +185,8 @@ OBSBasicSettings {
 QCheckBox::indicator,
 QGroupBox::indicator,
 QTableView::indicator {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   image: url(theme:Fusion/ui/checkbox/unchecked.svg);
 }
 QCheckBox::indicator:checked,
@@ -216,8 +216,8 @@ QTableView::indicator:disabled:checked {
 }
 
 QRadioButton::indicator {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   image: url(theme:Fusion/ui/radio/unchecked.svg);
 }
 QRadioButton::indicator:checked {
