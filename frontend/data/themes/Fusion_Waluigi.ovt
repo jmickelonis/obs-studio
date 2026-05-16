@@ -1432,3 +1432,8 @@ AudioMixer #vVolumeWidgets .mixer-category {
 #PluginManagerWindow #manageRestartLabel {
   margin-bottom: 5px;
 }
+
+#ScriptsTool #label_2,
+#ScriptsTool #label_3 {
+  font-weight: bold;
+}
