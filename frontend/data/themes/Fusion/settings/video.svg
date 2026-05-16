@@ -35,7 +35,7 @@
        type="text/css">.ColorScheme-Text { color:#dfdfdf; } .ColorScheme-Highlight { color:#4285f4; } .ColorScheme-NeutralText { color:#ff9800; } .ColorScheme-PositiveText { color:#4caf50; } .ColorScheme-NegativeText { color:#f44336; }</style>
   </defs>
   <rect
-     style="opacity:0.15;fill:#e8e8e8;fill-opacity:1;stroke-width:0.777778"
+     style="opacity:0.15;fill:#f8f8f8;fill-opacity:1;stroke-width:0.777778"
      id="rect1"
      width="14.181118"
      height="9.3225441"
@@ -44,6 +44,6 @@
   <path
      class="ColorScheme-Text"
      d="M 0.8888889,1.3333331 C 0,1.3333331 0,2.2222221 0,2.2222221 V 12 c 0,0.888889 0.8888889,0.888889 0.8888889,0.888889 h 5.3333333 c 0,0 -0.8888889,0 -0.8888889,0.888889 v 0.888889 h 5.3333337 v -0.888889 c 0,-0.888889 -0.888889,-0.888889 -0.888889,-0.888889 h 5.333333 C 16,12.888889 16,12 16,12 V 2.2222221 c 0,0 0,-0.888889 -0.888889,-0.888889 z M 1.7777778,3.1111109 H 14.222222 V 11.111111 H 1.7777778 Z"
-     style="fill:#e8e8e8;fill-opacity:1;stroke-width:0.888889"
+     style="fill:#f8f8f8;fill-opacity:1;stroke-width:0.888889"
      id="path1" />
 </svg>

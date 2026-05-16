@@ -37,7 +37,7 @@
   </style>
   </defs>
   <path
-     style="fill:#e8e8e8;fill-opacity:1;stroke-width:1"
+     style="fill:#f8f8f8;fill-opacity:1;stroke-width:1"
      class="ColorScheme-Text"
      d="M 10,2 A 2,2 0 0 0 8,0 2,2 0 0 0 6,2 2,2 0 0 0 8,4 2,2 0 0 0 10,2 Z m 0,6 A 2,2 0 0 0 8,6 2,2 0 0 0 6,8 2,2 0 0 0 8,10 2,2 0 0 0 10,8 Z m 0,6 a 2,2 0 0 0 -2,-2 2,2 0 0 0 -2,2 2,2 0 0 0 2,2 2,2 0 0 0 2,-2 z"
      id="path1" />

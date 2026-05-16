@@ -39,15 +39,15 @@
   <g
      transform="rotate(90,8,8)"
      id="g1"
-     style="fill:#e8e8e8;fill-opacity:1">
+     style="fill:#f8f8f8;fill-opacity:1">
     <path
-       style="fill:#e8e8e8;fill-opacity:1"
+       style="fill:#f8f8f8;fill-opacity:1"
        class="ColorScheme-Text"
        d="M 0,1 V 15 H 16 V 1 Z M 2,3 H 14 V 7 H 2 Z m 0,6 h 12 v 4 H 2 Z"
        id="path1" />
   </g>
   <rect
-     style="opacity:0.150066;fill:#e8e8e8;fill-opacity:1;stroke-width:0.777778"
+     style="opacity:0.150066;fill:#f8f8f8;fill-opacity:1;stroke-width:0.777778"
      id="rect1"
      width="13.788628"
      height="11.556405"

@@ -38,15 +38,15 @@
   </style>
   </defs>
   <path
-     style="fill:#e8e8e8;fill-opacity:1;stroke-width:1.14285"
+     style="fill:#f8f8f8;fill-opacity:1;stroke-width:1.14285"
      d="M 0,9.142857 V 16 H 16 V 9.142857 Z"
      id="path3" />
   <path
-     style="opacity:0.6;fill:#e8e8e8;fill-opacity:1;stroke-width:1.14285"
+     style="opacity:0.6;fill:#f8f8f8;fill-opacity:1;stroke-width:1.14285"
      d="M 11.428572,0 V 6.8571428 H 16 V 0 Z"
      id="path2" />
   <path
-     style="fill:#e8e8e8;fill-opacity:1;stroke-width:1.14285"
+     style="fill:#f8f8f8;fill-opacity:1;stroke-width:1.14285"
      d="M 0,0 V 6.8571428 H 9.142857 V 0 Z"
      id="path1" />
 </svg>

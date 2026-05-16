@@ -38,14 +38,14 @@
   </style>
   </defs>
   <path
-     style="color:#444444;display:inline;fill:#e8e8e8;fill-opacity:1;stroke-width:1.14292"
+     style="color:#444444;display:inline;fill:#f8f8f8;fill-opacity:1;stroke-width:1.14292"
      class="ColorScheme-Text"
      d="M 2.2854167,6.8568613 C 1.6522408,6.8568613 1.1425,7.3666012 1.1425,7.9997782 v 6.8574998 c 0,0.633175 0.5097408,1.142916 1.1429167,1.142916 H 13.714583 c 0.633176,0 1.142917,-0.509741 1.142917,-1.142916 V 7.9997782 c 0,-0.633177 -0.509741,-1.1429169 -1.142917,-1.1429169 z"
      id="path1-2"
      sodipodi:nodetypes="sssssssss" />
   <path
      id="path1-5"
-     style="color:#444444;display:inline;opacity:0.600266;fill:#e8e8e8;fill-opacity:1;stroke-width:1.14292"
+     style="color:#444444;display:inline;opacity:0.600266;fill:#f8f8f8;fill-opacity:1;stroke-width:1.14292"
      class="ColorScheme-Text"
      d="m 8.000444,-1.942e-4 c -2.5327029,0 -4.5712912,2.081312 -4.5712912,4.6424739 v 2.2153317 h 2.2847778 v -2.286514 c 0,-1.2663517 1.0201622,-2.2865139 2.2865134,-2.2865139 1.266352,0 2.286515,1.0201622 2.286515,2.2865139 v 2.286514 h 2.284777 V 4.6422797 c 0,-2.5601334 -2.038588,-4.6424739 -4.571292,-4.6424739 z" />
 </svg>

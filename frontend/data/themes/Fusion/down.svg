@@ -39,11 +39,11 @@
   <g
      transform="matrix(1.3333333,0,0,1.3333333,-2.6666664,-2.6666664)"
      id="g1"
-     style="fill:#e8e8e8;fill-opacity:1">
+     style="fill:#f8f8f8;fill-opacity:1">
     <path
        class="ColorScheme-Text"
        d="m 7,2 v 8 L 3.5,6.5 2,8 8,14 14,8 12.5,6.5 9,10 V 2 Z"
-       style="fill:#e8e8e8;fill-opacity:1"
+       style="fill:#f8f8f8;fill-opacity:1"
        id="path1" />
   </g>
 </svg>

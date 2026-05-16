@@ -37,7 +37,7 @@
   </style>
   </defs>
   <rect
-     style="opacity:0.15;fill:#e8e8e8;stroke-width:0.777778"
+     style="opacity:0.15;fill:#f8f8f8;stroke-width:0.777778"
      id="rect1"
      width="12.947977"
      height="9.2074499"
@@ -46,9 +46,9 @@
   <g
      transform="matrix(1.1428571,0,0,1.1428571,-1.1428568,-1.1428568)"
      id="g1"
-     style="fill:#e8e8e8;fill-opacity:1">
+     style="fill:#f8f8f8;fill-opacity:1">
     <path
-       style="fill:#e8e8e8;fill-opacity:1"
+       style="fill:#f8f8f8;fill-opacity:1"
        class="ColorScheme-Text"
        d="M 2,1 C 2,1 1,1 1,2 v 12 c 0,1 1,1 1,1 h 12 c 0,0 1,0 1,-1 V 2 C 15,1 14,1 14,1 Z m 1,5 h 10 v 7 H 3 Z"
        id="path1" />

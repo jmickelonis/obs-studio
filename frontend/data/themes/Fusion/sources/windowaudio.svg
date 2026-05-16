@@ -37,15 +37,15 @@
   </style>
   </defs>
   <path
-     style="opacity:1;fill:#e8e8e8;fill-opacity:1;stroke-width:0.941185"
+     style="opacity:1;fill:#f8f8f8;fill-opacity:1;stroke-width:0.941185"
      d="m 9.4117809,4.23525 v 7.5295 c 0,0 2.8237511,-0.941187 2.8235631,-3.76475 C 12.235155,5.1764375 9.4117809,4.23525 9.4117809,4.23525 Z"
      id="path3" />
   <path
-     style="opacity:0.6;fill:#e8e8e8;fill-opacity:1;stroke-width:0.941185"
+     style="opacity:0.6;fill:#f8f8f8;fill-opacity:1;stroke-width:0.941185"
      d="M 9.4117809,0.4705 V 2.352875 C 12.111464,3.1488467 14.117719,5.2356006 14.117719,8 c 0,2.7644 -2.006264,4.851154 -4.7059381,5.647125 V 15.5295 C 13.077283,14.690497 16.000094,11.657181 16.000094,8 c 0,-3.6571817 -2.922811,-6.6904973 -6.5883131,-7.5295 z"
      id="path2" />
   <path
-     style="fill:#e8e8e8;fill-opacity:1;stroke-width:0.941185"
+     style="fill:#f8f8f8;fill-opacity:1;stroke-width:0.941185"
      d="M 7.5294058,0.4705 2.8234688,5.1764375 H -9.385e-5 V 10.823563 H 2.8234688 l 4.705937,4.705937 z"
      id="path1" />
 </svg>
