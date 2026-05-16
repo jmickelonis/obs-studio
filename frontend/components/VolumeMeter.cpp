@@ -614,12 +614,12 @@ void VolumeMeter::paintTicks(QPainter &painter, int x, int y, int width)
 		QString str = QString::number(i);
 
 		// Center the number on the tick, but don't overflow
-		QRect textBounds = metrics.boundingRect(str);
+		int textWidth = metrics.horizontalAdvance(str);
 		int pos;
 		if (i == 0) {
-			pos = position - textBounds.width();
+			pos = position - textWidth;
 		} else {
-			pos = position - (textBounds.width() / 2);
+			pos = position - (textWidth / 2);
 			if (pos < 0) {
 				pos = 0;
 			}
