@@ -858,6 +858,10 @@ QDockWidget::window:active {
   border-color: #286766;
 }
 
+OBSDock {
+  qproperty-dropShadow: true;
+}
+
 QMainWindow {
   background: rgb(20.4, 20.4, 20.4);
 }
@@ -1007,6 +1011,18 @@ QListView {
   border: 1px solid rgb(20.4, 20.4, 20.4);
   border-radius: 3px;
   qproperty-spacing: 0;
+}
+
+QMenuBar {
+  background: transparent;
+  padding: 1px 0;
+}
+QMenuBar::item {
+  border-radius: 3px;
+  padding: 1px 3px;
+}
+QMenuBar::item:selected {
+  background: rgb(71.4, 71.4, 71.4);
 }
 
 QSizeGrip {
@@ -1203,15 +1219,15 @@ SceneTree {
   qproperty-gridItemWidth: 150;
   qproperty-gridItemHeight: 24;
 }
+SceneTree::item:selected:!active:!hover {
+  background: #286766;
+}
 SceneTree[viewMode=IconMode] {
   font-size: var(--fontSizeSmall);
   padding: 1px;
 }
 SceneTree[viewMode=IconMode]::item {
   margin: 1px;
-}
-SceneTree[viewMode=IconMode]::item:selected:!hover {
-  background: #286766;
 }
 
 SourceTreeItem {
