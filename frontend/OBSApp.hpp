@@ -148,6 +148,10 @@ public:
 #endif
 	}
 
+#ifdef _WIN32
+	static bool IsWindows11OrNewer();
+#endif
+
 	OBSApp(int &argc, char **argv, profiler_name_store_t *store);
 	~OBSApp();
 
@@ -178,6 +182,9 @@ public:
 	OBSTheme *GetTheme(const QString &name);
 	bool SetTheme(const QString &name);
 	bool IsThemeDark() const { return currentTheme ? currentTheme->isDark : false; }
+#ifdef _WIN32
+	void UpdateTitleBarColor(QWidget *widget);
+#endif
 	QStyle *GetInvisibleCursorStyle();
 
 	void SetBranchData(const std::string &data);
@@ -264,7 +271,6 @@ char *GetAppConfigPathPtr(const char *name);
 
 #ifdef _WIN32
 void InitializeNativeWindow(QWidget *widget);
-void UpdateTitleBarColor(QWidget *widget);
 #endif
 
 inline OBSApp *App()

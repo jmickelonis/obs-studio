@@ -1187,6 +1187,33 @@ static void ui_task_handler(obs_task_t task, void *param, bool wait)
 	QMetaObject::invokeMethod(App(), "Exec", wait ? WaitConnection() : Qt::AutoConnection, Q_ARG(VoidFunc, doTask));
 }
 
+#ifdef _WIN32
+typedef LONG NTSTATUS;
+typedef NTSTATUS(WINAPI *RtlGetVersionPtr)(PRTL_OSVERSIONINFOW);
+
+static bool _IsWindows11OrNewer()
+{
+	HMODULE module = GetModuleHandleW(L"ntdll.dll");
+	if (!module)
+		return false;
+	RtlGetVersionPtr fn = (RtlGetVersionPtr)GetProcAddress(module, "RtlGetVersion");
+	if (!fn)
+		return false;
+	RTL_OSVERSIONINFOW ovi = {0};
+	ovi.dwOSVersionInfoSize = sizeof(ovi);
+	if (fn(&ovi))
+		return false;
+	return ovi.dwMajorVersion > 10 || ovi.dwMajorVersion == 10 && ovi.dwBuildNumber >= 22000;
+}
+
+static bool isWindows11OrNewer = _IsWindows11OrNewer();
+
+bool OBSApp::IsWindows11OrNewer()
+{
+	return isWindows11OrNewer;
+}
+#endif
+
 bool OBSApp::OBSInit()
 {
 	ProfileScope("OBSApp::OBSInit");
@@ -1494,12 +1521,14 @@ void InitializeNativeWindow(QWidget *widget)
 		DwmSetWindowAttribute(wnd, DWMWA_BORDER_COLOR, &color, sizeof(color));
 	}
 
-	// Disable immersive/dark mode
-	BOOL darkMode = FALSE;
-	DwmSetWindowAttribute(wnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &darkMode, sizeof(darkMode));
+	if (isWindows11OrNewer) {
+		// Disable immersive/dark mode
+		BOOL darkMode = FALSE;
+		DwmSetWindowAttribute(wnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &darkMode, sizeof(darkMode));
+	}
 }
 
-void UpdateTitleBarColor(QWidget *widget)
+void OBSApp::UpdateTitleBarColor(QWidget *widget)
 {
 	HWND wnd = (HWND)widget->winId();
 	DWORD style = GetWindowLong(wnd, GWL_STYLE);
@@ -1507,10 +1536,17 @@ void UpdateTitleBarColor(QWidget *widget)
 	if (!(style & WS_CAPTION))
 		return;
 
-	// Set the caption (title bar) color from the palette
-	QColor qColor = widget->palette().color(widget->backgroundRole());
-	COLORREF color = RGB(qColor.red(), qColor.green(), qColor.blue());
-	DwmSetWindowAttribute(wnd, DWMWA_CAPTION_COLOR, &color, sizeof(color));
+	if (isWindows11OrNewer) {
+		// Set the caption (title bar) color from the palette
+		QColor qColor = widget->palette().color(widget->backgroundRole());
+		COLORREF color = RGB(qColor.red(), qColor.green(), qColor.blue());
+		DwmSetWindowAttribute(wnd, DWMWA_CAPTION_COLOR, &color, sizeof(color));
+	}
+	else {
+		// Set dark mode on or off
+		BOOL darkMode = GetTheme()->isDark;
+		DwmSetWindowAttribute(wnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &darkMode, sizeof(darkMode));
+	}
 }
 
 #endif
