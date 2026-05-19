@@ -371,8 +371,7 @@ bool OBSDock::eventFilter(QObject *watched, QEvent *event)
 			}
 
 			return true;
-		}
-		else {
+		} else {
 			// We already ate the enter event, so we have to send a new one
 			const QPointF pos = mouseEvent->position();
 			QEnterEvent enterEvent(pos, pos, mouseEvent->globalPosition());
@@ -648,14 +647,9 @@ bool OBSDock::nativeEvent(const QByteArray &eventType, void *message, qintptr *r
 		break;
 
 	case WM_SHOWWINDOW: {
-		/* This actually doesn't blur behind the window (as of Windows 8),
-		* but it DOES stop the window from painting a black background,
-		* which is needed for translucent window content.
-		*/
-		DWM_BLURBEHIND blurBehind = {};
-		blurBehind.fEnable = true;
-		blurBehind.dwFlags = DWM_BB_ENABLE;
-		DwmEnableBlurBehindWindow((HWND)winId(), &blurBehind);
+		// Request a transparent background
+		MARGINS margins = {-1};
+		DwmExtendFrameIntoClientArea((HWND)winId(), &margins);
 
 		setDropShadowInternal(dropShadow);
 		break;
