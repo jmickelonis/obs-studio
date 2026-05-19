@@ -205,6 +205,13 @@ void OBSBasic::AddDockWidget(QDockWidget *dock, Qt::DockWidgetArea area, bool ex
 	addDockWidget(area, dock);
 	QAction *action = dock->toggleViewAction();
 
+	// Raise the dock when it's shown via the menu action
+	connect(action, &QAction::triggered, this, [dock]() {
+		if (!dock->isVisible())
+			return;
+		dock->raise();
+	});
+
 #ifdef BROWSER_AVAILABLE
 	QMenu *menu = ui->menuDocks;
 	if (!extraBrowser && dock->objectName().startsWith("twitch")) {
