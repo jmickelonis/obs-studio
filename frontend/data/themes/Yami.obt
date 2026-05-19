@@ -165,7 +165,7 @@
     --half_border_radius: calc(var(--border_radius) / 2);
     --border_radius_small: 2px;
     --border_radius_large: 6px;
-    --border_radius_dock: calc(var(--border_radius) * 1.25);
+    --border_radius_dock: calc(var(--border_radius) + 1px);
 
     --input_font_scale: calc(var(--font_base_value) * 2.2);
     --input_font_padding: calc(var(--padding_base_value) * 2);
@@ -876,12 +876,11 @@ QDockWidget {
 
 QDockWidget::window {
     background: transparent;
-    border: 1px solid transparent;
+    border: 1.5px solid transparent;
     border-radius: var(--border_radius_dock);
 }
 
 QDockWidget::window:active {
-    background: var(--primary);
     border-color: var(--primary);
 }
 
