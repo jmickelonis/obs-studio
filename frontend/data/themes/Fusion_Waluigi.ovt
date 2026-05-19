@@ -850,9 +850,9 @@ QDockWidget > QCefWidget {
   padding: 1px;
 }
 QDockWidget::window {
-  background: rgb(40.8, 40.8, 40.8);
-  border: 1px solid rgb(72.9, 45.4, 91.4);
-  border-radius: 3px;
+  background: transparent;
+  border: 1.5px solid rgb(72.9, 45.4, 91.4);
+  border-radius: 4px;
 }
 QDockWidget::window:active {
   border-color: #69328E;
