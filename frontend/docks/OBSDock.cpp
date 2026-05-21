@@ -647,9 +647,24 @@ bool OBSDock::nativeEvent(const QByteArray &eventType, void *message, qintptr *r
 		break;
 
 	case WM_SHOWWINDOW: {
-		// Request a transparent background
-		MARGINS margins = {-1};
-		DwmExtendFrameIntoClientArea((HWND)winId(), &margins);
+		HWND hwnd = (HWND)winId();
+
+		// Make the background transparent
+		DWM_BLURBEHIND blurBehind = {};
+		blurBehind.fEnable = true;
+		blurBehind.dwFlags = DWM_BB_ENABLE;
+		DwmEnableBlurBehindWindow(hwnd, &blurBehind);
+
+		if (OBSApp::IsWindows11OrNewer()) {
+			// Disable rounded corners
+			DWM_WINDOW_CORNER_PREFERENCE cornerPreference = DWMWCP_DONOTROUND;
+			DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &cornerPreference,
+					      sizeof(cornerPreference));
+		} else {
+			// Enables drop shadows when WS_CAPTION is set
+			MARGINS margins = {-1};
+			DwmExtendFrameIntoClientArea(hwnd, &margins);
+		}
 
 		setDropShadowInternal(dropShadow);
 		break;
@@ -811,13 +826,24 @@ void OBSDock::clearCursor()
 #ifdef _WIN32
 void OBSDock::setDropShadowInternal(bool value)
 {
-	HWND handle = (HWND)winId();
-	/* Use small rounded corners, which gives us shadows for free,
-	 * and doesn't leave any kind of obvious artifacts.
-	 * The UI/theme has to account for the rounded corners, or risks being cut off.
-	 */
-	DWM_WINDOW_CORNER_PREFERENCE corner = value ? DWMWCP_ROUNDSMALL : DWMWCP_DONOTROUND;
-	DwmSetWindowAttribute(handle, DWMWA_WINDOW_CORNER_PREFERENCE, &corner, sizeof(corner));
+	HWND hwnd = (HWND)winId();
+
+	if (OBSApp::IsWindows11OrNewer()) {
+		/* Use small rounded corners, which gives us shadows for free,
+		 * and doesn't leave any kind of obvious artifacts.
+		 * The UI/theme has to account for the rounded corners, or risks being cut off.
+		 */
+		DWM_WINDOW_CORNER_PREFERENCE corner = value ? DWMWCP_ROUNDSMALL : DWMWCP_DONOTROUND;
+		DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &corner, sizeof(corner));
+	} else {
+		DWORD style = GetWindowLong(hwnd, GWL_STYLE);
+		auto flags = WS_CAPTION | WS_CLIPCHILDREN;
+		if (value)
+			style |= flags;
+		else
+			style &= ~flags;
+		SetWindowLong(hwnd, GWL_STYLE, style);
+	}
 }
 #endif
 
