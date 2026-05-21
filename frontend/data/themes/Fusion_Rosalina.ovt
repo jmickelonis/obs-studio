@@ -812,6 +812,7 @@ QTabWidget::pane[tabPosition=East] {
 }
 
 QDockWidget {
+  background: transparent;
   font-weight: bold;
 }
 QDockWidget::close-button, QDockWidget::float-button {
