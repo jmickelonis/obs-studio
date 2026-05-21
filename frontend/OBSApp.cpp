@@ -1541,11 +1541,15 @@ void OBSApp::UpdateTitleBarColor(QWidget *widget)
 		QColor qColor = widget->palette().color(widget->backgroundRole());
 		COLORREF color = RGB(qColor.red(), qColor.green(), qColor.blue());
 		DwmSetWindowAttribute(wnd, DWMWA_CAPTION_COLOR, &color, sizeof(color));
-	}
-	else {
+	} else {
 		// Set dark mode on or off
 		BOOL darkMode = GetTheme()->isDark;
-		DwmSetWindowAttribute(wnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &darkMode, sizeof(darkMode));
+		HRESULT result = DwmSetWindowAttribute(wnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &darkMode, sizeof(darkMode));
+		if (SUCCEEDED(result))
+			return;
+#define DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 19
+		// Try the old, undocumented way
+		DwmSetWindowAttribute(wnd, DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, &darkMode, sizeof(darkMode));
 	}
 }
 
