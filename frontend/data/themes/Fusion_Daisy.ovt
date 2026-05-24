@@ -623,7 +623,6 @@ QComboBox::down-arrow:!disabled:on {
 QComboBox QAbstractItemView {
   background: rgb(27.336, 27.336, 27.336);
   border: 1px solid #A63A01;
-  border-radius: 3px;
 }
 
 QHeaderView::section {
@@ -1091,10 +1090,81 @@ QSplitter::handle:hover {
 QToolBar {
   padding: 3px;
 }
+QToolBar::separator {
+  border: none;
+  padding: 3px;
+}
 
 QToolTip {
-  background: rgb(30.6, 30.6, 30.6);
+  background: rgb(34.068, 34.068, 34.068);
   border: 1px solid rgb(20.4, 20.4, 20.4);
+  border-radius: 3px;
+}
+
+QMenu {
+  background: rgb(34.068, 34.068, 34.068);
+  border: 1px solid rgb(20.4, 20.4, 20.4);
+  border-radius: 3px;
+  icon-size: 16px;
+}
+QMenu::item {
+  border-radius: 2px;
+  height: 1.5em;
+  margin: 0;
+  padding: 0 5px;
+}
+QMenu::item:selected {
+  background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 rgb(217.1419161677, 75.8688622754, 1.3080838323), stop: 0.5 #A63A01);
+}
+QMenu::icon {
+  position: relative;
+  left: 5px;
+}
+QMenu::indicator {
+  margin-left: 7px;
+  margin-right: 1px;
+  width: 12px;
+  height: 12px;
+}
+QMenu::indicator:exclusive {
+  image: url(theme:Fusion/ui/radio/unchecked.svg);
+}
+QMenu::indicator:exclusive:checked {
+  image: url(theme:Fusion/ui/radio/checked.svg);
+}
+QMenu::indicator:exclusive:hover:!pressed {
+  image: url(theme:Fusion/ui/radio/hover.svg);
+}
+QMenu::indicator:exclusive:hover:!pressed:checked {
+  image: url(theme:Fusion/ui/radio/checked hover.svg);
+}
+QMenu::indicator:exclusive:disabled {
+  image: url(theme:Fusion/ui/radio/disabled.svg);
+}
+QMenu::indicator:exclusive:disabled:checked {
+  image: url(theme:Fusion/ui/radio/checked disabled.svg);
+}
+QMenu::indicator:non-exclusive {
+  image: url(theme:Fusion/ui/checkbox/unchecked.svg);
+}
+QMenu::indicator:non-exclusive:checked {
+  image: url(theme:Fusion/ui/checkbox/checked.svg);
+}
+QMenu::indicator:non-exclusive:hover:!pressed {
+  image: url(theme:Fusion/ui/checkbox/hover.svg);
+}
+QMenu::indicator:non-exclusive:hover:!pressed:checked {
+  image: url(theme:Fusion/ui/checkbox/checked hover.svg);
+}
+QMenu::indicator:non-exclusive:disabled {
+  image: url(theme:Fusion/ui/checkbox/disabled.svg);
+}
+QMenu::indicator:non-exclusive:disabled:checked {
+  image: url(theme:Fusion/ui/checkbox/checked disabled.svg);
+}
+QMenu::separator {
+  background: rgb(20.4, 20.4, 20.4);
+  height: 1px;
 }
 
 .checkbox-icon {
