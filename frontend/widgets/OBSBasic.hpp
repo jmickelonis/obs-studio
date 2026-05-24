@@ -446,6 +446,7 @@ private:
 	QPointer<OBSDock> mixerDock;
 
 public:
+	void addDockWidget(Qt::DockWidgetArea area, QDockWidget *dockwidget);
 	void AddDockWidget(QDockWidget *dock, Qt::DockWidgetArea area, bool extraBrowser = false);
 	void RemoveDockWidget(const QString &name);
 	bool IsDockObjectNameUsed(const QString &name);

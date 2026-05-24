@@ -33,6 +33,9 @@ void setupDockAction(QDockWidget *dock)
 	auto newToggleView = [dock](bool check) {
 		QSignalBlocker block(dock);
 		dock->setVisible(check);
+		if (check)
+			// Raise the dock when it's shown via the menu action
+			dock->raise();
 	};
 
 	// Replace the slot connected by default
@@ -189,6 +192,17 @@ void OBSBasic::SortServiceDockMenu(const QString &objectName)
 }
 #endif
 
+void OBSBasic::addDockWidget(Qt::DockWidgetArea area, QDockWidget *dock)
+{
+	// Raise the dock when it's shown via the menu action
+	connect(dock->toggleViewAction(), &QAction::triggered, this, [dock]() {
+		if (dock->isVisible())
+			dock->raise();
+	});
+
+	QMainWindow::addDockWidget(area, dock);
+}
+
 void OBSBasic::AddDockWidget(QDockWidget *dock, Qt::DockWidgetArea area, bool extraBrowser)
 {
 	if (dock->objectName().isEmpty())
@@ -204,13 +218,6 @@ void OBSBasic::AddDockWidget(QDockWidget *dock, Qt::DockWidgetArea area, bool ex
 	dock->setFeatures(features);
 	addDockWidget(area, dock);
 	QAction *action = dock->toggleViewAction();
-
-	// Raise the dock when it's shown via the menu action
-	connect(action, &QAction::triggered, this, [dock]() {
-		if (!dock->isVisible())
-			return;
-		dock->raise();
-	});
 
 #ifdef BROWSER_AVAILABLE
 	QMenu *menu = ui->menuDocks;
