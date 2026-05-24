@@ -4,6 +4,10 @@
 #include <QStyleOption>
 #include <QPainterPath>
 
+#include <QAbstractItemView>
+#include <QComboBox>
+#include <QMenu>
+
 void OBSProxyStyle::drawControl(ControlElement element, const QStyleOption *option, QPainter *painter,
 				const QWidget *widget) const
 {
@@ -84,9 +88,53 @@ int OBSProxyStyle::styleHint(StyleHint hint, const QStyleOption *option, const Q
 	case SH_ComboBox_UseNativePopup:
 		return 1;
 #endif
-	default:
-		return QProxyStyle::styleHint(hint, option, widget, returnData);
+
+	/* HACK ALERT:
+	 * To allow for round corners on popup windows,
+	 * WA_TranslucentBackground and FramelessWindowHint need to be set on widgets.
+	 * There isn't an easy way to be notified when the widgets are created.
+	 * Catching these particular hints is a decent workaround.
+	 */
+
+	case SH_Menu_Scrollable: {
+		QMenu *menu = qobject_cast<QMenu *>(const_cast<QWidget *>(widget));
+		if (!menu || menu->testAttribute(Qt::WA_TranslucentBackground))
+			break;
+		menu->setAttribute(Qt::WA_TranslucentBackground);
+		menu->setWindowFlags(menu->windowFlags() | Qt::FramelessWindowHint);
+		break;
 	}
+
+	case SH_ToolTipLabel_Opacity: {
+		QWidget *toolTip = const_cast<QWidget *>(widget);
+		if (toolTip->foregroundRole() != QPalette::ToolTipText ||
+		    toolTip->testAttribute(Qt::WA_TranslucentBackground))
+			break;
+		toolTip->setAttribute(Qt::WA_TranslucentBackground);
+		toolTip->setWindowFlags(toolTip->windowFlags() | Qt::FramelessWindowHint);
+		break;
+	}
+
+	case SH_ComboBox_LayoutDirection: {
+		QComboBox *comboBox = qobject_cast<QComboBox *>(const_cast<QWidget *>(widget));
+		if (!comboBox)
+			break;
+		QAbstractItemView *itemView = comboBox->view();
+		if (!itemView)
+			break;
+		QWidget *window = itemView->window();
+		if (!window || window->testAttribute(Qt::WA_TranslucentBackground))
+			break;
+		window->setAttribute(Qt::WA_TranslucentBackground);
+		window->setWindowFlags(window->windowFlags() | Qt::FramelessWindowHint);
+		break;
+	}
+
+	default:
+		break;
+	}
+
+	return QProxyStyle::styleHint(hint, option, widget, returnData);
 }
 
 int OBSInvisibleCursorProxyStyle::pixelMetric(PixelMetric metric, const QStyleOption *option,
