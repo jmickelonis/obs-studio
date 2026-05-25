@@ -75,6 +75,26 @@ QPixmap OBSProxyStyle::generatedIconPixmap(QIcon::Mode iconMode, const QPixmap &
 	return QProxyStyle::generatedIconPixmap(iconMode, pixmap, option);
 }
 
+static void makeTranslucent(QWidget *widget)
+{
+	if (widget->testAttribute(Qt::WA_TranslucentBackground))
+		return;
+	widget->setAttribute(Qt::WA_TranslucentBackground);
+	widget->setWindowFlags(widget->windowFlags() |
+#ifdef _WIN32
+		// Don't go completely frameless,
+		// or we can't enable custom drop shadows later
+		Qt::NoDropShadowWindowHint
+#else
+		Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint
+#endif
+	);
+#ifdef _WIN32
+	// Tell NativeEventFilter_Windows that this is a special popup
+	widget->setProperty("POPUP_WITH_DROP_SHADOW", true);
+#endif
+}
+
 int OBSProxyStyle::styleHint(StyleHint hint, const QStyleOption *option, const QWidget *widget,
 			     QStyleHintReturn *returnData) const
 {
@@ -98,20 +118,15 @@ int OBSProxyStyle::styleHint(StyleHint hint, const QStyleOption *option, const Q
 
 	case SH_Menu_Scrollable: {
 		QMenu *menu = qobject_cast<QMenu *>(const_cast<QWidget *>(widget));
-		if (!menu || menu->testAttribute(Qt::WA_TranslucentBackground))
-			break;
-		menu->setAttribute(Qt::WA_TranslucentBackground);
-		menu->setWindowFlags(menu->windowFlags() | Qt::FramelessWindowHint);
+		if (menu)
+			makeTranslucent(menu);
 		break;
 	}
 
 	case SH_ToolTipLabel_Opacity: {
 		QWidget *toolTip = const_cast<QWidget *>(widget);
-		if (toolTip->foregroundRole() != QPalette::ToolTipText ||
-		    toolTip->testAttribute(Qt::WA_TranslucentBackground))
-			break;
-		toolTip->setAttribute(Qt::WA_TranslucentBackground);
-		toolTip->setWindowFlags(toolTip->windowFlags() | Qt::FramelessWindowHint);
+		if (toolTip->foregroundRole() == QPalette::ToolTipText)
+			makeTranslucent(toolTip);
 		break;
 	}
 
@@ -123,10 +138,8 @@ int OBSProxyStyle::styleHint(StyleHint hint, const QStyleOption *option, const Q
 		if (!itemView)
 			break;
 		QWidget *window = itemView->window();
-		if (!window || window->testAttribute(Qt::WA_TranslucentBackground))
-			break;
-		window->setAttribute(Qt::WA_TranslucentBackground);
-		window->setWindowFlags(window->windowFlags() | Qt::FramelessWindowHint);
+		if (window)
+			makeTranslucent(window);
 		break;
 	}
 

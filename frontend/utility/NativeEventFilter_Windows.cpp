@@ -21,7 +21,7 @@
 
 #include <sstream>
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "../OBSWin32.hpp"
 
 namespace OBS {
 
@@ -36,6 +36,38 @@ bool NativeEventFilter::nativeEventFilter(const QByteArray &eventType, void *mes
 		}
 
 		switch (msg->message) {
+
+		case WM_NCCALCSIZE:
+			if (msg->wParam) {
+				QWidget *widget = QWidget::find((WId)msg->hwnd);
+				if (widget && widget->property("POPUP_WITH_DROP_SHADOW").toBool()) {
+					// Hides the caption/frame but still allows shadows
+					*result = 0;
+					return true;
+				}
+			}
+			break;
+
+		case WM_SHOWWINDOW: {
+			HWND wnd = msg->hwnd;
+			QWidget *widget = QWidget::find((WId)wnd);
+			if (widget && widget->property("POPUP_WITH_DROP_SHADOW").toBool()) {
+				// Set up our popup menu/tooltip styles
+				if (Win32::is11OrNewer()) {
+					Win32::setBorderColor(wnd, DWMWA_COLOR_NONE);
+					Win32::setCornerPreference(wnd, DWMWCP_DONOTROUND);
+				}
+				Win32::setBlurBehind(wnd, true);
+				Win32::enableSheetOfGlass(wnd);
+
+				// Show drop shadows on everything but tooltips
+				// (until we can find a way to make the shadows smaller)
+				if (widget->foregroundRole() != QPalette::ToolTipText)
+					Win32::setStyle(wnd, Win32::getStyle(wnd) | WS_CAPTION | WS_CLIPCHILDREN);
+			}
+			break;
+		}
+
 		case WM_QUERYENDSESSION:
 			main->saveAll();
 			if (msg->lParam == ENDSESSION_CRITICAL) {
