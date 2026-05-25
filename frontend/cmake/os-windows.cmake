@@ -39,6 +39,8 @@ target_sources(
     utility/update-helpers.cpp
     utility/update-helpers.hpp
     utility/win-dll-blocklist.c
+    OBSWin32.cpp
+    OBSWin32.hpp
 )
 
 add_library(obs-updater-manifest INTERFACE)
