@@ -53,9 +53,7 @@
 #ifdef _WIN32
 #include <sstream>
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <dwmapi.h>
-#pragma comment(lib, "dwmapi")
+#include "OBSWin32.hpp"
 #else
 #include <unistd.h>
 #include <sys/socket.h>
@@ -1187,33 +1185,6 @@ static void ui_task_handler(obs_task_t task, void *param, bool wait)
 	QMetaObject::invokeMethod(App(), "Exec", wait ? WaitConnection() : Qt::AutoConnection, Q_ARG(VoidFunc, doTask));
 }
 
-#ifdef _WIN32
-typedef LONG NTSTATUS;
-typedef NTSTATUS(WINAPI *RtlGetVersionPtr)(PRTL_OSVERSIONINFOW);
-
-static bool _IsWindows11OrNewer()
-{
-	HMODULE module = GetModuleHandleW(L"ntdll.dll");
-	if (!module)
-		return false;
-	RtlGetVersionPtr fn = (RtlGetVersionPtr)GetProcAddress(module, "RtlGetVersion");
-	if (!fn)
-		return false;
-	RTL_OSVERSIONINFOW ovi = {0};
-	ovi.dwOSVersionInfoSize = sizeof(ovi);
-	if (fn(&ovi))
-		return false;
-	return ovi.dwMajorVersion > 10 || ovi.dwMajorVersion == 10 && ovi.dwBuildNumber >= 22000;
-}
-
-static bool isWindows11OrNewer = _IsWindows11OrNewer();
-
-bool OBSApp::IsWindows11OrNewer()
-{
-	return isWindows11OrNewer;
-}
-#endif
-
 bool OBSApp::OBSInit()
 {
 	ProfileScope("OBSApp::OBSInit");
@@ -1508,48 +1479,37 @@ static SpinBoxEventFilter *spinBoxEventFilter = nullptr;
 void InitializeNativeWindow(QWidget *widget)
 {
 	HWND wnd = (HWND)widget->winId();
-	LONG exStyle = GetWindowLongW(wnd, GWL_EXSTYLE);
+	LONG exStyle = Win32::getExtendedStyle(wnd);
 
 	/* Force compositing.
 	 * Avoids white flashes when windows are shown (and other artifacts).
 	 */
-	SetWindowLongW(wnd, GWL_EXSTYLE, exStyle | WS_EX_COMPOSITED);
+	Win32::setExtendedStyle(wnd, exStyle | WS_EX_COMPOSITED);
 
-	if ((exStyle & WS_EX_WINDOWEDGE) || (widget->windowFlags() & Qt::Dialog) == Qt::Dialog) {
+	if ((exStyle & WS_EX_WINDOWEDGE) || (widget->windowFlags() & Qt::Dialog) == Qt::Dialog)
 		// Don't draw a native border
-		COLORREF color = DWMWA_COLOR_NONE;
-		DwmSetWindowAttribute(wnd, DWMWA_BORDER_COLOR, &color, sizeof(color));
-	}
+		Win32::setBorderColor(wnd, DWMWA_COLOR_NONE);
 
-	if (isWindows11OrNewer) {
+	if (Win32::is11OrNewer())
 		// Disable immersive/dark mode
-		BOOL darkMode = FALSE;
-		DwmSetWindowAttribute(wnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &darkMode, sizeof(darkMode));
-	}
+		Win32::setUseImmersiveDarkMode(wnd, false);
 }
 
 void OBSApp::UpdateTitleBarColor(QWidget *widget)
 {
 	HWND wnd = (HWND)widget->winId();
-	DWORD style = GetWindowLong(wnd, GWL_STYLE);
+	LONG style = Win32::getStyle(wnd);
 
 	if (!(style & WS_CAPTION))
 		return;
 
-	if (isWindows11OrNewer) {
+	if (Win32::is11OrNewer()) {
 		// Set the caption (title bar) color from the palette
-		QColor qColor = widget->palette().color(widget->backgroundRole());
-		COLORREF color = RGB(qColor.red(), qColor.green(), qColor.blue());
-		DwmSetWindowAttribute(wnd, DWMWA_CAPTION_COLOR, &color, sizeof(color));
+		QColor color = widget->palette().color(widget->backgroundRole());
+		Win32::setCaptionColor(wnd, Win32::getColor(color));
 	} else {
 		// Set dark mode on or off
-		BOOL darkMode = GetTheme()->isDark;
-		HRESULT result = DwmSetWindowAttribute(wnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &darkMode, sizeof(darkMode));
-		if (SUCCEEDED(result))
-			return;
-#define DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 19
-		// Try the old, undocumented way
-		DwmSetWindowAttribute(wnd, DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, &darkMode, sizeof(darkMode));
+		Win32::setUseImmersiveDarkMode(wnd, GetTheme()->isDark);
 	}
 }
 

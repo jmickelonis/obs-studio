@@ -148,10 +148,6 @@ public:
 #endif
 	}
 
-#ifdef _WIN32
-	static bool IsWindows11OrNewer();
-#endif
-
 	OBSApp(int &argc, char **argv, profiler_name_store_t *store);
 	~OBSApp();
 

@@ -9,9 +9,7 @@
 #include "moc_OBSDock.cpp"
 
 #ifdef _WIN32
-#include <windowsx.h>
-#include <dwmapi.h>
-#pragma comment(lib, "dwmapi")
+#include "../OBSWin32.hpp"
 #endif
 
 TitleBarWidget::TitleBarWidget(OBSDock *dock) : QWidget(dock)
@@ -647,24 +645,17 @@ bool OBSDock::nativeEvent(const QByteArray &eventType, void *message, qintptr *r
 		break;
 
 	case WM_SHOWWINDOW: {
-		HWND hwnd = (HWND)winId();
+		HWND wnd = (HWND)winId();
 
 		// Make the background transparent
-		DWM_BLURBEHIND blurBehind = {};
-		blurBehind.fEnable = true;
-		blurBehind.dwFlags = DWM_BB_ENABLE;
-		DwmEnableBlurBehindWindow(hwnd, &blurBehind);
+		Win32::setBlurBehind(wnd, true);
 
-		if (OBSApp::IsWindows11OrNewer()) {
+		if (Win32::is11OrNewer())
 			// Disable rounded corners
-			DWM_WINDOW_CORNER_PREFERENCE cornerPreference = DWMWCP_DONOTROUND;
-			DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &cornerPreference,
-					      sizeof(cornerPreference));
-		} else {
+			Win32::setCornerPreference(wnd, DWMWCP_DONOTROUND);
+		else
 			// Enables drop shadows when WS_CAPTION is set
-			MARGINS margins = {-1};
-			DwmExtendFrameIntoClientArea(hwnd, &margins);
-		}
+			Win32::enableSheetOfGlass(wnd);
 
 		setDropShadowInternal(dropShadow);
 		break;
@@ -826,23 +817,22 @@ void OBSDock::clearCursor()
 #ifdef _WIN32
 void OBSDock::setDropShadowInternal(bool value)
 {
-	HWND hwnd = (HWND)winId();
+	HWND wnd = (HWND)winId();
 
-	if (OBSApp::IsWindows11OrNewer()) {
+	if (Win32::is11OrNewer()) {
 		/* Use small rounded corners, which gives us shadows for free,
 		 * and doesn't leave any kind of obvious artifacts.
 		 * The UI/theme has to account for the rounded corners, or risks being cut off.
 		 */
-		DWM_WINDOW_CORNER_PREFERENCE corner = value ? DWMWCP_ROUNDSMALL : DWMWCP_DONOTROUND;
-		DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &corner, sizeof(corner));
+		Win32::setCornerPreference(wnd, value ? DWMWCP_ROUNDSMALL : DWMWCP_DONOTROUND);
 	} else {
-		DWORD style = GetWindowLong(hwnd, GWL_STYLE);
-		auto flags = WS_CAPTION | WS_CLIPCHILDREN;
+		LONG style = Win32::getStyle(wnd);
+		LONG flags = WS_CAPTION | WS_CLIPCHILDREN;
 		if (value)
 			style |= flags;
 		else
 			style &= ~flags;
-		SetWindowLong(hwnd, GWL_STYLE, style);
+		Win32::setStyle(wnd, style);
 	}
 }
 #endif
