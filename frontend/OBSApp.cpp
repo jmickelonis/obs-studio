@@ -1223,6 +1223,14 @@ bool OBSApp::OBSInit()
 	}
 #endif
 
+#ifdef __linux__
+	// Register the KF6 plugins path so kde-shadow-helper can work
+	try {
+		std::filesystem::path path = std::filesystem::canonical(KF6WindowSystem_DIR "/../../plugins");
+		addLibraryPath(path.c_str());
+	} catch (const std::filesystem::filesystem_error& e) { }
+#endif
+
 #if QT_VERSION < QT_VERSION_CHECK(6, 5, 0)
 	QPlatformNativeInterface *native = QGuiApplication::platformNativeInterface();
 	obs_set_nix_platform_display(native->nativeResourceForIntegration("display"));

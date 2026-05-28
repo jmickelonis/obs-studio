@@ -28,6 +28,13 @@ endif()
 add_subdirectory(kde-shadow-helper)
 add_subdirectory(linux-process-priority)
 
+# Create a preprocessor definition so OBSApp can find KF6
+target_compile_definitions(
+  obs-studio
+  PRIVATE
+  KF6WindowSystem_DIR="${KF6WindowSystem_DIR}"
+)
+
 if(NOT DEFINED APPDATA_RELEASE_DATE)
   if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
     execute_process(
