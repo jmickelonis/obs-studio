@@ -1,0 +1,6 @@
+
+This is a stripped-down version of the Breeze style's shadow routines.
+It allows us to use drop shadows within Fusion (or any other style).
+
+See: https://invent.kde.org/plasma/breeze/-/tree/master/kstyle
+Based on: v6.6.5
