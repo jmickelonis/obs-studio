@@ -25,6 +25,9 @@ if(TARGET OBS::python)
   target_link_options(obs-studio PRIVATE LINKER:-no-as-needed)
 endif()
 
+add_subdirectory(kde-shadow-helper)
+add_subdirectory(linux-process-priority)
+
 if(NOT DEFINED APPDATA_RELEASE_DATE)
   if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
     execute_process(
