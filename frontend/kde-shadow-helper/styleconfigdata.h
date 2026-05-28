@@ -15,8 +15,8 @@ public:
 	enum ShadowSize { ShadowNone, ShadowSmall, ShadowMedium, ShadowLarge, ShadowVeryLarge };
 
 	static QColor shadowColor() { return QColor(0, 0, 0); }
-	static ShadowSize shadowSize() { return ShadowSize::ShadowLarge; }
-	static int shadowStrength() { return 255; }
+	static ShadowSize shadowSize() { return ShadowSize::ShadowMedium; }
+	static qreal shadowStrength() { return 2.0; }
 };
 
 } // namespace ShadowHelper
