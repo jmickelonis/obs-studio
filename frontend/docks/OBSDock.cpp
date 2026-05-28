@@ -10,6 +10,8 @@
 
 #ifdef _WIN32
 #include "../OBSWin32.hpp"
+#elif defined(__linux__)
+#include "../kde-shadow-helper/shadowhelper.h"
 #endif
 
 TitleBarWidget::TitleBarWidget(OBSDock *dock) : QWidget(dock)
@@ -430,11 +432,24 @@ bool OBSDock::event(QEvent *e)
 #ifdef __QT_SUPPORTS_SYSTEM_RESIZE
 
 	case QEvent::Show:
-		if (!isFloating())
+		if (isFloating()) {
+#ifdef __linux__
+			ShadowHelper::ShadowHelper::sharedInstance()->registerWidget(this);
+#endif
+		}
+		else {
 			break;
+		}
 		edges = Qt::Edges();
 		window()->windowHandle()->installEventFilter(this);
 		break;
+
+#ifdef __linux__
+	case QEvent::Hide:
+		if (isFloating())
+			ShadowHelper::ShadowHelper::sharedInstance()->unregisterWidget(this);
+		break;
+#endif
 
 	case QEvent::ChildAdded: {
 		QChildEvent *childEvent = static_cast<QChildEvent *>(e);

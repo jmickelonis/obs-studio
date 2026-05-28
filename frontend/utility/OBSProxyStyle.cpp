@@ -8,6 +8,10 @@
 #include <QComboBox>
 #include <QMenu>
 
+#ifdef __linux__
+#include "../kde-shadow-helper/shadowhelper.h"
+#endif
+
 void OBSProxyStyle::drawControl(ControlElement element, const QStyleOption *option, QPainter *painter,
 				const QWidget *widget) const
 {
@@ -92,6 +96,8 @@ static void makeTranslucent(QWidget *widget)
 #ifdef _WIN32
 	// Tell NativeEventFilter_Windows that this is a special popup
 	widget->setProperty("POPUP_WITH_DROP_SHADOW", true);
+#elif defined(__linux__)
+    ShadowHelper::ShadowHelper::sharedInstance()->registerWidget(widget);
 #endif
 }
 
