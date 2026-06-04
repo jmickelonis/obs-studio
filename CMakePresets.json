@@ -27,28 +27,28 @@
         "obsproject.com/obs-studio": {
           "dependencies": {
               "prebuilt": {
-                  "version": "2026-05-16",
+                  "version": "2026-06-04",
                   "baseUrl": "https://github.com/jmickelonis/obs-deps/releases/download",
                   "label": "Pre-Built obs-deps",
                   "hashes": {
-                      "macos-universal": "cee6d2e764fbb1af010860c4664d51877c699276ffd94f7de36e9890feb83ae3",
-                      "windows-x64": "104279118853a2610e21faf4add9cf2afb7d1e5088dd973585844bc558e2c8bf",
-                      "windows-x86": "93c5c46deb50d2c8752680bf39d59e9feb75c271214372157febe7be404e719c",
-                      "windows-arm64": "3185bc673296af03c6aeb29246acf1318cb065cf5e784bb48ef5b58cde44d3b7"
+                      "macos-universal": "6956d3b439447f9729bf48e9f263eec2c6f82ef1279397f0e14dd833c009721b",
+                      "windows-x64": "465b5bac67048f35abcd750ea6f364af026a96ee977599c8da4585ec58e98e4e",
+                      "windows-x86": "c3b83398ee1d3630f7bf0adbe2b48ff4155e0ebeb0e9f4582189aff77ec82595",
+                      "windows-arm64": "b6982068738ae11e49445bc41dc400edcca69c1092eb22189936604f406648bf"
                   }
               },
               "qt6": {
-                  "version": "2026-05-16",
+                  "version": "2026-06-04",
                   "baseUrl": "https://github.com/jmickelonis/obs-deps/releases/download",
                   "label": "Pre-Built Qt6",
                   "hashes": {
-                      "macos-universal": "a705710402630a9cb56dc2d001a8cca7297eb81e8265cb835d7354a37b21a003",
-                      "windows-x64": "51ca1601fb5658d54a5028944284690c8809701be7c4804f230d80221a961eb6",
-                      "windows-arm64": "ddc05730e05ffe6f28cc98c80dac00d1c8dd6d3dc58acd64f51197b22faef0e9"
+                      "macos-universal": "737f612ca1be25c6f64c40d6a48033e5c7fb8267b843060d177fe654f0713846",
+                      "windows-x64": "696cbbbdde561d31f9c3471c2f3201d7cdb1f26ad195eea68829b2e913bead61",
+                      "windows-arm64": "15f45799a232ca040eb3b756358b6b1858716d9ac7977d327883c4219a2884e2"
                   },
                   "debugSymbols": {
-                      "windows-x64": "8967162e92a8bdda1b419f7307d7884ce16281089e6315902e586e45f0110602",
-                      "windows-arm64": "057b2cf04e0913447d1fe6880052703b9b3bf52321691bcb7d6800b816c439d8"
+                      "windows-x64": "b2e02058cbe5e72f9c5e725e1ef432378c027aca0d674a1415e064f3c438d9e7",
+                      "windows-arm64": "49adbaf66ef2c14c0c573b7875c4acc1ca0b2dc62b21303f534dbd1a1a80456a"
                   }
               },
               "cef": {
@@ -74,10 +74,10 @@
             },
             "tools": {
               "sparkle": {
-                  "version": "2.6.4",
+                  "version": "2.9.2",
                   "baseUrl": "https://github.com/sparkle-project/Sparkle/releases/download",
                   "label": "Sparkle 2",
-                  "hash": "50612a06038abc931f16011d7903b8326a362c1074dabccb718404ce8e585f0b"
+                  "hash": "1cb340cbbef04c6c0d162078610c25e2221031d794a3449d89f2f56f4df77c95"
               }
             }
           }
