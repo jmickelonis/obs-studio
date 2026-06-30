@@ -1333,6 +1333,9 @@ OBSBasicStats QScrollArea {
   margin-left: -8px;
 }
 
+OBSBasic #contextContainer #line, OBSBasic #contextContainer #line_3 {
+  border: none;
+}
 OBSBasic #controlsFrame {
   margin: 1px;
 }
