@@ -149,6 +149,8 @@ shared_ptr<VulkanDevice> createDevice(AMFContext1Ptr context, uint32_t id, const
 	vector<VkQueueFamilyProperties2> queueFamilies = getQueueFamilies(physicalDevice);
 	size_t queueFamilyCount = queueFamilies.size();
 
+// This isn't defined in older Vulkan libraries
+#define VK_QUEUE_VIDEO_DECODE_BIT_KHR 0x00000020
 	static const int REQUIRED_QUEUE_FLAGS = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT |
 						VK_QUEUE_VIDEO_DECODE_BIT_KHR;
 	vector<VkDeviceQueueCreateInfo> queueCreateInfos;
