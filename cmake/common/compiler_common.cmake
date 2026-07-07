@@ -2,7 +2,7 @@
 
 include_guard(GLOBAL)
 
-option(OBS_COMPILE_DEPRECATION_AS_WARNING "Downgrade deprecation warnings to actual warnings" FALSE)
+option(OBS_COMPILE_DEPRECATION_AS_WARNING "Downgrade deprecation warnings to actual warnings" TRUE)
 mark_as_advanced(OBS_COMPILE_DEPRECATION_AS_WARNING)
 
 # Set C and C++ language standards to C17 and C++20
@@ -76,6 +76,7 @@ set(
   -Wmove
   -Werror=block-capture-autoreleasing
   -Wrange-loop-analysis
+  -Wno-error=deprecated-this-capture
 )
 
 if(CMAKE_CXX_STANDARD GREATER_EQUAL 20)
