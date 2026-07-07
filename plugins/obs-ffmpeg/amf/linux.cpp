@@ -95,6 +95,8 @@ static VkPhysicalDevice getPhysicalDevice(VkInstance instance, uint32_t id = 0)
 			case VK_DRIVER_ID_AMD_OPEN_SOURCE:
 			case VK_DRIVER_ID_MESA_RADV:
 				return device;
+			default:
+				break;
 			}
 		}
 	}
@@ -145,7 +147,7 @@ shared_ptr<VulkanDevice> createDevice(AMFContext1Ptr context, uint32_t id, const
 	device.hPhysicalDevice = physicalDevice;
 
 	vector<VkQueueFamilyProperties2> queueFamilies = getQueueFamilies(physicalDevice);
-	unsigned int queueFamilyCount = queueFamilies.size();
+	size_t queueFamilyCount = queueFamilies.size();
 
 	static const int REQUIRED_QUEUE_FLAGS = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT |
 						VK_QUEUE_VIDEO_DECODE_BIT_KHR;
@@ -562,7 +564,8 @@ inline VkCommandBuffer TextureEncoder::getCopyCommandBuffer(AMFSurfacePtr &surfa
 
 	const Plane *planes = planesPtr.get();
 
-	VkImageMemoryBarrier memoryBarriers[planeCount];
+	unique_ptr<VkImageMemoryBarrier[]> memoryBarriersPtr(new VkImageMemoryBarrier[planeCount]);
+	VkImageMemoryBarrier *memoryBarriers = memoryBarriersPtr.get();
 	for (int i = planeCount; i-- > 0;) {
 		memoryBarriers[i] = {
 			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,

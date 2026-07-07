@@ -208,6 +208,8 @@ void OBSDock::setDropShadow(bool value)
 	dropShadow = value;
 	if (isFloating())
 		setDropShadowInternal(value);
+#else
+	UNUSED_PARAMETER(value);
 #endif
 }
 
@@ -292,7 +294,7 @@ bool OBSDock::eventFilter(QObject *watched, QEvent *event)
 		QEnterEvent *enterEvent = static_cast<QEnterEvent *>(event);
 		const QPoint &pos = enterEvent->position().toPoint();
 		edges = getResizeEdges(pos);
-		updateCursor(pos);
+		updateCursor();
 
 		if (edges)
 			// Don't forward to the widget if we can resize
@@ -349,7 +351,7 @@ bool OBSDock::eventFilter(QObject *watched, QEvent *event)
 		const QPoint &pos = mouseEvent->pos();
 		Qt::Edges oldEdges = edges;
 		edges = getResizeEdges(pos);
-		updateCursor(pos);
+		updateCursor();
 
 		if (edges == oldEdges) {
 			if (edges)
@@ -418,6 +420,9 @@ bool OBSDock::eventFilter(QObject *watched, QEvent *event)
 		edges = Qt::Edges();
 		break;
 	}
+
+	default:
+		break;
 	}
 
 END:
@@ -498,8 +503,7 @@ bool OBSDock::event(QEvent *e)
 		if (mouseState != NotPressed)
 			break;
 
-		QHoverEvent *hoverEvent = static_cast<QHoverEvent *>(e);
-		updateCursor(hoverEvent->position().toPoint());
+		updateCursor();
 		break;
 	}
 
@@ -525,7 +529,7 @@ bool OBSDock::event(QEvent *e)
 				     !hasFeature(QDockWidget::DockWidgetFloatable))) {
 			// Will do a system move on drag
 			mouseState = CtrlPressed;
-			updateCursor(pressPosition);
+			updateCursor();
 			return true;
 		}
 
@@ -534,7 +538,7 @@ bool OBSDock::event(QEvent *e)
 
 		// Stock implementation will handle a drag
 		mouseState = Pressed;
-		updateCursor(pressPosition);
+		updateCursor();
 		break;
 	}
 
@@ -590,7 +594,7 @@ bool OBSDock::event(QEvent *e)
 
 			temporarilyDisableAnimations();
 			mouseState = NotPressed;
-			updateCursor(mouseEvent->pos());
+			updateCursor();
 			break;
 		}
 
@@ -612,7 +616,7 @@ bool OBSDock::event(QEvent *e)
 #endif
 
 		mouseState = NotPressed;
-		updateCursor(mouseEvent->pos());
+		updateCursor();
 		break;
 	}
 
@@ -773,7 +777,7 @@ Qt::Edges OBSDock::getResizeEdges(const QPoint &position)
 }
 #endif
 
-Qt::CursorShape OBSDock::getCursor(const QPoint &position)
+Qt::CursorShape OBSDock::getCursor()
 {
 	if (floatButton->underMouse() || closeButton->underMouse())
 		return Qt::BlankCursor;
@@ -805,9 +809,9 @@ Qt::CursorShape OBSDock::getCursor(const QPoint &position)
 	}
 }
 
-void OBSDock::updateCursor(const QPoint &position)
+void OBSDock::updateCursor()
 {
-	updateCursor(getCursor(position));
+	updateCursor(getCursor());
 }
 
 void OBSDock::updateCursor(Qt::CursorShape cursor)

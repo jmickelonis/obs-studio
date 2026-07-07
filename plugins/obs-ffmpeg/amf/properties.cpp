@@ -451,8 +451,8 @@ const PropertyTypes &getPreAnalysisProperties()
 
 static string nameToString(const wchar_t *name)
 {
-	wstring_convert<codecvt_utf8<wchar_t>> converter;
-	return converter.to_bytes(name);
+	wstring s = name;
+	return string(s.begin(), s.end());
 }
 
 template<typename T> static T getProperty(const AMFPropertyStorage *storage, const wchar_t *name)

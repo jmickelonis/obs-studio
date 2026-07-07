@@ -173,7 +173,10 @@ static inline void boxBlurAlpha(QImage &image, int radius, const QRect &rect = {
 
 	const QRect blurRect = rect.isNull() ? image.rect() : rect;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunreachable-code"
 	const int alphaOffset = QSysInfo::ByteOrder == QSysInfo::BigEndian ? 0 : 3;
+#pragma GCC diagnostic pop
 	const int width = blurRect.width();
 	const int height = blurRect.height();
 	const int rowStride = image.bytesPerLine();
@@ -209,7 +212,10 @@ static inline void mirrorTopLeftQuadrant(QImage &image)
 	const int centerX = qCeil(width * 0.5);
 	const int centerY = qCeil(height * 0.5);
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunreachable-code"
 	const int alphaOffset = QSysInfo::ByteOrder == QSysInfo::BigEndian ? 0 : 3;
+#pragma GCC diagnostic pop
 	const int stride = image.depth() >> 3;
 
 	for (int y = 0; y < centerY; ++y) {

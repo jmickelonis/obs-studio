@@ -12,7 +12,7 @@ namespace preset {
 
 int getValue(CodecType codec, const char *s)
 {
-#define PRESET(NAME) AMF_PROPERTY(QUALITY_PRESET_ ## NAME)
+#define PRESET(NAME) AMF_PROPERTY_INT(QUALITY_PRESET_ ## NAME)
 #define ITEM(NAME) STR_EQ(s, NAME) ? PRESET(NAME)
 	if (STR_EQ(s, HIGH_QUALITY))
 		return supportsHighQuality(codec) ? PRESET(HIGH_QUALITY) : PRESET(QUALITY);
@@ -64,7 +64,7 @@ bool usesBitrate(const char *value)
 
 int getValue(CodecType codec, const char *s)
 {
-#define RC(NAME) AMF_PROPERTY(RATE_CONTROL_METHOD_ ## NAME)
+#define RC(NAME) AMF_PROPERTY_INT(RATE_CONTROL_METHOD_ ## NAME)
 #define ITEM(A, B) STR_EQ(s, A) ? RC(B)
 	return ITEM(CQP, CONSTANT_QP)
 		: ITEM(VBR, PEAK_CONSTRAINED_VBR)

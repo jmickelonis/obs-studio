@@ -35,8 +35,8 @@ class TitleBarLayout : public QLayout {
 public:
 	TitleBarLayout(QWidget *parent) : QLayout(parent) {}
 
-	QLayoutItem *itemAt(int index) const override { return nullptr; }
-	QLayoutItem *takeAt(int index) override { return nullptr; };
+	QLayoutItem *itemAt(int /*index*/) const override { return nullptr; }
+	QLayoutItem *takeAt(int /*index*/) override { return nullptr; };
 	void addItem(QLayoutItem *) override {}
 	int count() const override { return 0; }
 
@@ -67,8 +67,8 @@ public:
 
 	bool hasFeature(QDockWidget::DockWidgetFeature feature);
 	virtual void setVisible(bool visible) override;
-	virtual void closeEvent(QCloseEvent *event);
-	virtual void showEvent(QShowEvent *event);
+	virtual void closeEvent(QCloseEvent *event) override;
+	virtual void showEvent(QShowEvent *event) override;
 
 protected:
 	friend class TitleBarLayout;
@@ -103,8 +103,8 @@ private:
 #ifdef __QT_SUPPORTS_SYSTEM_RESIZE
 	Qt::Edges getResizeEdges(const QPoint &position);
 #endif
-	Qt::CursorShape getCursor(const QPoint &position);
-	void updateCursor(const QPoint &position);
+	Qt::CursorShape getCursor();
+	void updateCursor();
 	void updateCursor(Qt::CursorShape cursor);
 	void clearCursor();
 

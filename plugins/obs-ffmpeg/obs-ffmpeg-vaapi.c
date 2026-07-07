@@ -256,7 +256,7 @@ static enum encoder_type vaapi_encoder_type_for_display(VADisplay dpy)
 					 : ENCODER_TYPE_UNKNOWN;
 }
 
-static enum encoder_type vaapi_encoder_type_for_device(char *device)
+static enum encoder_type vaapi_encoder_type_for_device(const char *device)
 {
 	int drm_fd = -1;
 	VADisplay va_dpy = vaapi_open_device(&drm_fd, device, "vaapi_encoder_type_for_device");
@@ -412,6 +412,8 @@ static bool vaapi_update(void *data, obs_data_t *settings)
 		av_opt_set(enc->context->priv_data, "preset", preset, 0);
 		break;
 	}
+	default:
+		break;
 	}
 
 	char *opts_str = NULL;
@@ -461,6 +463,8 @@ static bool vaapi_update(void *data, obs_data_t *settings)
 		info("QSV settings:\n"
 		     "\tpreset: %s\n",
 		     preset);
+		break;
+	default:
 		break;
 	}
 
@@ -1076,17 +1080,19 @@ static bool vaapi_device_modified(obs_properties_t *ppts, obs_property_t *p, obs
 
 	if (is_amd) {
 		obs_data_set_default_string(settings, "preset", DEFAULT_AMD_PRESET);
-		for (int i = 0; i < N_AMD_PRESETS; i++) {
-			char *preset = AMD_PRESETS[i];
+		for (unsigned int i = 0; i < N_AMD_PRESETS; i++) {
+			const char *preset = AMD_PRESETS[i];
 			static char *locale_key_prefix = "AMF.Preset.";
-			char locale_key[strlen(locale_key_prefix) + strlen(preset) + 1];
+			size_t len = strlen(locale_key_prefix) + strlen(preset) + 1;
+			char *locale_key = (char *)malloc(len);
 			sprintf(locale_key, "%s%s", locale_key_prefix, preset);
 			obs_property_list_add_string(preset_p, obs_module_text(locale_key), preset);
+			free(locale_key);
 		}
 	} else if (is_qsv) {
 		obs_data_set_default_string(settings, "preset", DEFAULT_QSV_PRESET);
-		for (int i = 0; i < N_QSV_PRESETS; i++) {
-			char *preset = QSV_PRESETS[i];
+		for (unsigned int i = 0; i < N_QSV_PRESETS; i++) {
+			const char *preset = QSV_PRESETS[i];
 			obs_property_list_add_string(preset_p, preset, preset);
 		}
 	}

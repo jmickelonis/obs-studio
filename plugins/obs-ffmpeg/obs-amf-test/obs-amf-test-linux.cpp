@@ -102,7 +102,6 @@ static VkDevice createDevice(AMFContext1Ptr amfContext, VkPhysicalDevice physica
 
 	vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 	for (unsigned int i = 0; i < queueFamilyCount; i++) {
-		VkQueueFamilyProperties &queueFamilyProps = queueFamilies.at(i).queueFamilyProperties;
 		static const float PRIORITY = 1.0;
 		VkDeviceQueueCreateInfo queueCreateInfo = {
 			.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
@@ -182,7 +181,7 @@ int main(void)
 			field("error", s);
 		};
 
-		for (int i = 0; i < physicalDevices.size(); i++) {
+		for (unsigned int i = 0; i < physicalDevices.size(); i++) {
 			VkPhysicalDevice &physicalDevice = physicalDevices.at(i);
 			vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProps);
 

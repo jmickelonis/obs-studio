@@ -103,6 +103,10 @@ amf_int64 getInt(AMFPropertyStorage *storage, const wchar_t *name, amf_int64 val
 	((codec == CodecType::AV1) ? AV1_PROPERTY(NAME) \
 		: (codec == CodecType::HEVC) ? HEVC_PROPERTY(NAME) \
 		: AVC_PROPERTY(NAME))
+#define AMF_PROPERTY_INT(NAME) \
+	((codec == CodecType::AV1) ? (int)AV1_PROPERTY(NAME) \
+		: (codec == CodecType::HEVC) ? (int)HEVC_PROPERTY(NAME) \
+		: (int)AVC_PROPERTY(NAME))
 #define AMF_GET(NAME, VALUE) getProperty(AMF_PROPERTY(NAME), VALUE)
 #define AMF_GET_BOOL(NAME) getBool(storage, AMF_PROPERTY(NAME))
 #define AMF_GET_INT(NAME) getInt(storage, AMF_PROPERTY(NAME))

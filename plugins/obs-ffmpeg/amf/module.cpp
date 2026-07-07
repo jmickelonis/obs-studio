@@ -230,7 +230,7 @@ bool onPropertyModified(void *typeData, obs_properties_t *props, obs_property_t 
 	if (STR_EQ(changedProperty, settings::DEVICE)) {
 		setVisible(B_FRAMES, capabilities.bFrames);
 
-		int expectedCount = preAnalysisCap ? 7 : 4;
+		unsigned int expectedCount = preAnalysisCap ? 7 : 4;
 		prop = obs_properties_get(props, RATE_CONTROL);
 		if (obs_property_list_item_count(prop) != expectedCount) {
 			// Rebuild the Rate Control list
@@ -250,7 +250,7 @@ bool onPropertyModified(void *typeData, obs_properties_t *props, obs_property_t 
 		}
 
 		// Figure out how many levels we support
-		int levelCount = 0;
+		unsigned int levelCount = 0;
 		const Levels &levels = getLevels(codec);
 		const amf_int64 &maxLevel = capabilities.level;
 		for (const Level &level : levels) {
@@ -264,7 +264,7 @@ bool onPropertyModified(void *typeData, obs_properties_t *props, obs_property_t 
 			// Rebuild the Level list
 			obs_property_list_clear(prop);
 			LIST_STRING_CAPITALIZED(AUTO);
-			for (int i = 0; i < levelCount; i++) {
+			for (unsigned int i = 0; i < levelCount; i++) {
 				const Level &level = levels.at(i);
 				LIST_STRING(level.name, level.name);
 			}
@@ -296,7 +296,7 @@ bool onPropertyModified(void *typeData, obs_properties_t *props, obs_property_t 
 		bool showTAQ = settings.paTAQSupported;
 
 		// Figure out how many AQ values we support
-		int expectedCount = 2;
+		unsigned int expectedCount = 2;
 		if (showVBAQ)
 			expectedCount++;
 		if (showTAQ)
@@ -313,7 +313,7 @@ bool onPropertyModified(void *typeData, obs_properties_t *props, obs_property_t 
 			if (showTAQ)
 				LIST_STRING("Temporal (TAQ)", pa_aq::TAQ);
 
-			if (!showVBAQ && STR_EQ(aq, pa_aq::VBAQ) || !showTAQ && STR_EQ(aq, pa_aq::TAQ)) {
+			if ((!showVBAQ && STR_EQ(aq, pa_aq::VBAQ)) || (!showTAQ && STR_EQ(aq, pa_aq::TAQ))) {
 				// Change to CAQ when the selected item disappears
 				aq = pa_aq::CAQ;
 				obs_data_set_string(data, PA_AQ, aq);
@@ -547,9 +547,9 @@ static void registerEncoder(const char *codec, EncoderType &type)
 	info.type_data = getTypeData();
 	info.caps = OBS_ENCODER_CAP_INTERNAL | CAPS;
 #ifdef _WIN32
-	info.encode_texture = nullptr,
+	info.encode_texture = nullptr;
 #else
-	info.encode_texture2 = nullptr,
+	info.encode_texture2 = nullptr;
 #endif
 	obs_register_encoder(&info);
 }
@@ -673,7 +673,7 @@ extern "C" void amf_load(void)
 
 		AMF_CHECK(getVersion(&amfVersion), "AMFQueryVersion failed");
 
-		blog(LOG_INFO, "Loaded AMF v%d.%d.%d.%d", AMF_GET_MAJOR_VERSION(amfVersion),
+		blog(LOG_INFO, "Loaded AMF v%lu.%lu.%lu.%lu", AMF_GET_MAJOR_VERSION(amfVersion),
 		     AMF_GET_MINOR_VERSION(amfVersion), AMF_GET_SUBMINOR_VERSION(amfVersion),
 		     AMF_GET_BUILD_VERSION(amfVersion));
 

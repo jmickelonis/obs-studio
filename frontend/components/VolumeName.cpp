@@ -64,13 +64,15 @@ QSize VolumeLabel::sizeHint() const
 	const QSize size = QLabel::sizeHint();
 	switch (direction) {
 	case Left:
-	case Right:
+	case Right: {
 		QMargins margins = contentsMargins();
 		int mw = margins.left() + margins.right();
 		int mh = margins.top() + margins.bottom();
 		return QSize(size.height() - mh + mw, size.width() - mw + mh);
 	}
-	return size;
+	default:
+		return size;
+	}
 }
 
 QSize VolumeLabel::minimumSizeHint() const
@@ -78,16 +80,18 @@ QSize VolumeLabel::minimumSizeHint() const
 	const QSize size = QLabel::minimumSizeHint();
 	switch (direction) {
 	case Left:
-	case Right:
+	case Right: {
 		QMargins margins = contentsMargins();
 		int mw = margins.left() + margins.right();
 		int mh = margins.top() + margins.bottom();
 		return QSize(size.height() - mh + mw, size.width() - mw + mh);
 	}
-	return size;
+	default:
+		return size;
+	}
 }
 
-void VolumeLabel::paintEvent(QPaintEvent *event)
+void VolumeLabel::paintEvent(QPaintEvent */*event*/)
 {
 	QStyleOption opt;
 	opt.initFrom(this);
@@ -128,7 +132,7 @@ void VolumeLabel::paintEvent(QPaintEvent *event)
 
 VolumeNameLayout::VolumeNameLayout() : QHBoxLayout() {}
 
-void VolumeNameLayout::setGeometry(const QRect &r)
+void VolumeNameLayout::setGeometry(const QRect &)
 {
 	VolumeName *name = qobject_cast<VolumeName *>(parentWidget());
 

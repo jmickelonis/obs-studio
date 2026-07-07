@@ -24,12 +24,12 @@ void OBSElidedLabel::setText(const QString &text)
 	updateElidedText();
 }
 
-void OBSElidedLabel::resizeEvent(QResizeEvent *event)
+void OBSElidedLabel::resizeEvent(QResizeEvent *)
 {
 	updateElidedText();
 }
 
-void OBSElidedLabel::paintEvent(QPaintEvent *event)
+void OBSElidedLabel::paintEvent(QPaintEvent *)
 {
 	QStylePainter p(this);
 	QStyleOption opt;

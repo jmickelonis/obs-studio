@@ -38,7 +38,6 @@ void FallbackEncoder::encode(encoder_frame *frame, struct encoder_packet *packet
 
 	HostBufferPtr buffer = getBuffer();
 	uint8_t *data = buffer.get();
-	int offset = 0;
 	for (amf_size i = planeCount; i-- > 0;) {
 		auto &size = planeSizes.at(i);
 		memcpy(&data[size.first], frame->data[i], size.second);

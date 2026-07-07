@@ -595,7 +595,7 @@ void Encoder::update(Settings &settings, const char *opts, bool init)
 
 	auto field = [&](const char *name) -> stringstream & {
 		ss << "\n\t" << name << ": ";
-		for (int i = 0; i < 12 - strlen(name); i++)
+		for (unsigned int i = 0; i < 12 - strlen(name); i++)
 			ss << " ";
 		return ss;
 	};
