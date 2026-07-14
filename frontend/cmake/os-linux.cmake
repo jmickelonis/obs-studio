@@ -29,10 +29,11 @@ add_subdirectory(kde-shadow-helper)
 add_subdirectory(linux-process-priority)
 
 # Create a preprocessor definition so OBSApp can find KF6
+set(KF6_PLUGINS_DIR "" CACHE STRING "Path to the KF6 plugins directory")
 target_compile_definitions(
   obs-studio
   PRIVATE
-  KF6WindowSystem_DIR="${KF6WindowSystem_DIR}"
+  KF6_PLUGINS_DIR="${KF6_PLUGINS_DIR}"
 )
 
 if(NOT DEFINED APPDATA_RELEASE_DATE)

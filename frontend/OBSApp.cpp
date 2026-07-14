@@ -1226,9 +1226,11 @@ bool OBSApp::OBSInit()
 #ifdef __linux__
 	// Register the KF6 plugins path so kde-shadow-helper can work
 	try {
-		std::filesystem::path path = std::filesystem::canonical(KF6WindowSystem_DIR "/../../plugins");
-		addLibraryPath(path.c_str());
-	} catch (const std::filesystem::filesystem_error& e) { }
+		std::filesystem::path path = KF6_PLUGINS_DIR;
+		if (std::filesystem::is_directory(path))
+			addLibraryPath(path.c_str());
+	} catch (const std::filesystem::filesystem_error &e) {
+	}
 #endif
 
 #if QT_VERSION < QT_VERSION_CHECK(6, 5, 0)
