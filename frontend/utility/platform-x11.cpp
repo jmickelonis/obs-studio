@@ -128,8 +128,10 @@ void SetProcessPriority(const char *priority)
 
 	// First, try directly
 	int res = setpriority(PRIO_PROCESS, pid, p);
-	if (!res)
+	if (!res) {
+		blog(LOG_INFO, "Changed our priority to %d (PID %d)", p, pid);
 		return;
+	}
 
 	// Failed (can only lower priority without root, not raise)
 	// Try to use the helper binary
