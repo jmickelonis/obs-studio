@@ -2,9 +2,9 @@
 /* Allows process priority to be set on Linux without root.
  * This is important because if OBS itself has elevated privileges,
  * it won't be able to capture displays and windows through PipeWire.
- * Uses kdesu to elevate privileges if the direct attempt fails.
+ * Uses pkexec to elevate privileges if the direct attempt fails.
  * Use setcap to allow the binary to adjust nice levels:
- * $ sudo setcap 'cap_sys_nice=ep' ./obs-process-priority
+ * $ sudo setcap 'cap_sys_nice=+ep' ./obs-process-priority
  */
 
 #include <algorithm>
@@ -20,35 +20,34 @@
 using namespace std;
 using namespace std::filesystem;
 
-static string get_kdesu_path(const path root)
+static string get_pkexec_path(const path root)
 {
-	path lib = root / "lib";
-	path p = lib / "x86_64-linux-gnu/libexec/kf6/kdesu";
-	if (exists(p))
-		return p.string();
-	p = lib / "libexec/kf6/kdesu";
-	if (exists(p))
-		return p.string();
-	return "";
+	path p = root / "pkexec";
+	return exists(p) ? p.string() : "";
 }
 
-/* Tries to find kdesu from the system path. */
-static string find_kdesu_path()
+/* Tries to find pkexec from the system path. */
+static string find_pkexec_path()
 {
 	string s = getenv("PATH");
 	size_t i = 0, j;
 	while ((j = s.find(':', i)) != string::npos) {
 		string item = s.substr(i, j - i);
 		i = j + 1;
-		path root = path(item).parent_path();
-		string p = get_kdesu_path(root);
-		if (p != "")
+		string p = get_pkexec_path(item);
+		if (!p.empty())
 			return p;
 	}
-	return get_kdesu_path("/usr");
+	return get_pkexec_path("/usr/bin");
 }
 
-static string KDESU = find_kdesu_path();
+static string get_helper_command()
+{
+	string p = find_pkexec_path();
+	return !p.empty() ? "\"" + p + "\"" : "";
+}
+
+static string HELPER_COMMAND = get_helper_command();
 static int ERROR = -1;
 
 static bool parse_int(const char *c, int &i)
@@ -96,9 +95,9 @@ static void set_single_priority(const int id, const int priority, const bool try
 		if (!res)
 			return;
 	}
-	// Use kdesu to request elevation and use renice
+	// Use the helper to request elevation and use renice
 	stringstream ss;
-	ss << KDESU << " -- renice " << priority << " " << id;
+	ss << HELPER_COMMAND << " renice " << priority << " " << id;
 	system(ss.str().c_str());
 }
 
@@ -143,7 +142,8 @@ static void set_multiple_priority(const string exe, const int priority)
 	if (error_ids.empty())
 		return;
 
-	// Use kdesu to change the remaining IDs
+	// Change the remaining IDs
+	
 	if (error_ids.size() == 1) {
 		set_single_priority(error_ids.front(), priority, false);
 		return;
@@ -151,7 +151,7 @@ static void set_multiple_priority(const string exe, const int priority)
 
 	ss.str("");
 	ss.clear();
-	ss << KDESU << " -- bash -c 'for id in";
+	ss << HELPER_COMMAND << " bash -c 'for id in";
 	for (int id : error_ids)
 		ss << " " << id;
 	ss << "; do renice " << priority << " $id; done'";
@@ -165,8 +165,8 @@ int main(const int argc, const char *argv[])
 		return ERROR;
 	}
 
-	if (KDESU == "") {
-		cerr << "Could not find kdesu binary!" << endl;
+	if (HELPER_COMMAND.empty()) {
+		cerr << "Could not find pkexec binary!" << endl;
 		return ERROR;
 	}
 
