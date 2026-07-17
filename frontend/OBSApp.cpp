@@ -2166,11 +2166,16 @@ static void enableVKCapture(const QStringList &dirs)
 	if (!libraryPath.is_string())
 		return;
 
+	string filePathString = filePath.toStdString();
+	fs::path fsFilePath = filePathString;
+	fs::path fsLibraryPath = fs::weakly_canonical(fsFilePath.parent_path() / libraryPath.string_value());
+	string libraryPathString = fsLibraryPath.string();
+
 	blog(LOG_INFO,
 	     "Found game capture layer"
 	     "\n    Path: %s"
 	     "\n    Library Path: %s",
-	     filePath.toStdString().c_str(), libraryPath.string_value().c_str());
+	     filePathString.c_str(), libraryPathString.c_str());
 
 	QStringList path(fileInfo.dir().absolutePath());
 	const char *env = getenv("VK_ADD_LAYER_PATH");
