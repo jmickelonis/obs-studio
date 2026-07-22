@@ -55,12 +55,14 @@ void OBSBasic::LoadExtraBrowserDocks()
 
 	std::string err;
 	Json json = Json::parse(jsonStr, err);
-	if (!err.empty())
+	if (!err.empty()) {
 		return;
+	}
 
 	Json::array array = json.array_items();
-	if (!array.empty())
+	if (!array.empty()) {
 		extraBrowserMenuDocksSeparator = ui->menuDocks->addSeparator();
+	}
 
 	for (Json &item : array) {
 		std::string title = item["title"].string_value();
@@ -121,8 +123,9 @@ void OBSBasic::AddExtraBrowserDock(const QString &title, const QString &url, con
 	dock->setAllowedAreas(Qt::AllDockWidgetAreas);
 
 	QCefWidget *browser = cef->create_widget(dock, QT_TO_UTF8(url), nullptr);
-	if (browser && panel_version >= 1)
+	if (browser && panel_version >= 1) {
 		browser->allowAllPopups(true);
+	}
 
 	dock->SetWidget(browser);
 
@@ -135,7 +138,7 @@ void OBSBasic::AddExtraBrowserDock(const QString &title, const QString &url, con
 			std::string script;
 			script = "Object.defineProperty(document, 'referrer', { get: () => '";
 			script += "https://twitch.tv/";
-			script += QT_TO_UTF8(username);
+			script += username.toStdString();
 			script += "/dashboard/live";
 			script += "'});";
 			browser->setStartupScript(script);
@@ -179,8 +182,9 @@ static std::string GenId()
 void CheckExistingCookieId()
 {
 	OBSBasic *main = OBSBasic::Get();
-	if (config_has_user_value(main->Config(), "Panels", "CookieId"))
+	if (config_has_user_value(main->Config(), "Panels", "CookieId")) {
 		return;
+	}
 
 	config_set_string(main->Config(), "Panels", "CookieId", GenId().c_str());
 }
@@ -188,10 +192,12 @@ void CheckExistingCookieId()
 #ifdef BROWSER_AVAILABLE
 static void InitPanelCookieManager()
 {
-	if (!cef)
+	if (!cef) {
 		return;
-	if (panel_cookies)
+	}
+	if (panel_cookies) {
 		return;
+	}
 
 	CheckExistingCookieId();
 
@@ -270,8 +276,9 @@ void DuplicateCurrentCookieProfile(ConfigFile &config)
 void OBSBasic::InitBrowserPanelSafeBlock()
 {
 #ifdef BROWSER_AVAILABLE
-	if (!cef)
+	if (!cef) {
 		return;
+	}
 	if (cef->init_browser()) {
 		InitPanelCookieManager();
 		return;

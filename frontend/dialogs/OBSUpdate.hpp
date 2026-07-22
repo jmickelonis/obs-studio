@@ -4,6 +4,10 @@
 
 #include "ui_OBSUpdate.h"
 
+#include <memory>
+
+class Ui_OBSUpdate;
+
 class OBSUpdate : public QDialog {
 	Q_OBJECT
 

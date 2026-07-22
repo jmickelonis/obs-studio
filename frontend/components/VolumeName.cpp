@@ -159,6 +159,7 @@ VolumeName::VolumeName(obs_source_t *source, QWidget *parent) : QAbstractButton(
 
 	label = new VolumeLabel(this);
 	label->setIndent(0);
+	label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
 	layout->addWidget(label);
 
 	layout->setContentsMargins(0, 0, 0, 0);
@@ -294,6 +295,7 @@ void VolumeName::setText(const QString &text)
 void VolumeName::updateLabelText(const QString &name)
 {
 	QString plainText = getPlainText(name);
+	fullText = name;
 
 	QFontMetrics metrics(label->font());
 
@@ -301,26 +303,21 @@ void VolumeName::updateLabelText(const QString &name)
 	int availableWidth = vertical ? contentsRect.height() : contentsRect.width();
 	if (availableWidth <= 0) {
 		label->clear();
-		fullText = name;
 		setToolTip(plainText);
 		return;
 	}
 
 	int textWidth = metrics.horizontalAdvance(plainText);
 
-	bool isRichText = (plainText != name);
-	bool needsElide = textWidth > availableWidth;
-
-	if (needsElide && !isRichText) {
-		QString elided = metrics.elidedText(plainText, Qt::ElideRight, availableWidth);
-		label->setText(elided);
-		setToolTip(plainText);
-	} else {
+	if (availableWidth > textWidth) {
 		label->setText(name);
 		setToolTip("");
+		return;
 	}
 
-	fullText = name;
+	QString elided = metrics.elidedText(plainText, Qt::ElideRight, availableWidth);
+	label->setText(elided);
+	setToolTip(plainText);
 }
 
 void VolumeName::onRemoved()

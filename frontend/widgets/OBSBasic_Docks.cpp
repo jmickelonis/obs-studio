@@ -57,8 +57,9 @@ void OBSBasic::on_resetDocks_triggered(bool force)
 		QMessageBox::StandardButton button =
 			OBSMessageBox::question(this, QTStr("ResetUIWarning.Title"), QTStr("ResetUIWarning.Text"));
 
-		if (button == QMessageBox::No)
+		if (button == QMessageBox::No) {
 			return;
+		}
 	}
 
 #define RESET_DOCKLIST(dockList)                                                                               \
@@ -120,15 +121,18 @@ void OBSBasic::on_lockDocks_toggled(bool lock)
 	controlsDock->setFeatures(mainFeatures);
 	statsDock->setFeatures(features);
 
-	for (int i = extraDocks.size() - 1; i >= 0; i--)
+	for (int i = extraDocks.size() - 1; i >= 0; i--) {
 		extraDocks[i]->setFeatures(features);
+	}
 
-	for (int i = extraCustomDocks.size() - 1; i >= 0; i--)
+	for (int i = extraCustomDocks.size() - 1; i >= 0; i--) {
 		extraCustomDocks[i]->setFeatures(features);
+	}
 
 #ifdef BROWSER_AVAILABLE
-	for (int i = extraBrowserDocks.size() - 1; i >= 0; i--)
+	for (int i = extraBrowserDocks.size() - 1; i >= 0; i--) {
 		extraBrowserDocks[i]->setFeatures(features);
+	}
 #endif
 }
 
@@ -205,8 +209,9 @@ void OBSBasic::addDockWidget(Qt::DockWidgetArea area, QDockWidget *dock)
 
 void OBSBasic::AddDockWidget(QDockWidget *dock, Qt::DockWidgetArea area, bool extraBrowser)
 {
-	if (dock->objectName().isEmpty())
+	if (dock->objectName().isEmpty()) {
 		return;
+	}
 
 	bool lock = ui->lockDocks->isChecked();
 	QDockWidget::DockWidgetFeatures features =
@@ -226,16 +231,19 @@ void OBSBasic::AddDockWidget(QDockWidget *dock, Qt::DockWidgetArea area, bool ex
 		menu = GetServiceDockMenu("twitchMenu", "Twitch");
 		menu->addAction(action);
 	} else {
-		if (extraBrowser && extraBrowserMenuDocksSeparator.isNull())
+		if (extraBrowser && extraBrowserMenuDocksSeparator.isNull()) {
 			extraBrowserMenuDocksSeparator = ui->menuDocks->addSeparator();
+		}
 
-		if (!extraBrowser && !extraBrowserMenuDocksSeparator.isNull())
+		if (!extraBrowser && !extraBrowserMenuDocksSeparator.isNull()) {
 			menu->insertAction(extraBrowserMenuDocksSeparator, action);
-		else
+		} else {
 			menu->addAction(action);
+		}
 
-		if (extraBrowser)
+		if (extraBrowser) {
 			return;
+		}
 	}
 #else
 	UNUSED_PARAMETER(extraBrowser);

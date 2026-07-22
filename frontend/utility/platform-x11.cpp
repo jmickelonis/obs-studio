@@ -226,8 +226,9 @@ bool GetDataFilePath(const char *data, string &output)
 {
 	char *data_path = getenv("OBS_DATA_PATH");
 	if (data_path != NULL) {
-		if (check_path(data, data_path, output))
+		if (check_path(data, data_path, output)) {
 			return true;
+		}
 	}
 
 	char *relative_data_path = os_get_executable_path_ptr("../" OBS_DATA_PATH "/obs-studio/");
@@ -241,11 +242,13 @@ bool GetDataFilePath(const char *data, string &output)
 		}
 	}
 
-	if (check_path(data, OBS_DATA_PATH "/obs-studio/", output))
+	if (check_path(data, OBS_DATA_PATH "/obs-studio/", output)) {
 		return true;
+	}
 
-	if (check_path(data, INSTALL_DATA_PATH, output))
+	if (check_path(data, INSTALL_DATA_PATH, output)) {
 		return true;
+	}
 
 	return false;
 }
@@ -259,19 +262,23 @@ vector<string> GetPreferredLocales()
 {
 	vector<string> matched;
 	string messages = setlocale(LC_MESSAGES, NULL);
-	if (!messages.size() || messages == "C" || messages == "POSIX")
+	if (!messages.size() || messages == "C" || messages == "POSIX") {
 		return {};
+	}
 
-	if (messages.size() > 2)
+	if (messages.size() > 2) {
 		messages[2] = '-';
+	}
 
 	for (auto &locale_pair : GetLocaleNames()) {
 		auto &locale = locale_pair.first;
-		if (locale == messages.substr(0, locale.size()))
+		if (locale == messages.substr(0, locale.size())) {
 			return {locale};
+		}
 
-		if (locale.substr(0, 2) == messages.substr(0, 2))
+		if (locale.substr(0, 2) == messages.substr(0, 2)) {
 			matched.push_back(locale);
+		}
 	}
 
 	return matched;
@@ -286,10 +293,11 @@ void SetAlwaysOnTop(QWidget *window, bool enable)
 {
 	Qt::WindowFlags flags = window->windowFlags();
 
-	if (enable)
+	if (enable) {
 		flags |= Qt::WindowStaysOnTopHint;
-	else
+	} else {
 		flags &= ~Qt::WindowStaysOnTopHint;
+	}
 
 	window->setWindowFlags(flags);
 	window->show();

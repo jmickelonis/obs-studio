@@ -17,8 +17,9 @@
 
 #pragma once
 
-#include <utility/OBSTheme.hpp>
 #include <utility/NativeEventFilter.hpp>
+#include <utility/OBSTheme.hpp>
+#include <utility/ThumbnailManager.hpp>
 #include <widgets/OBSMainWindow.hpp>
 
 #include <obs-frontend-api.h>
@@ -28,6 +29,7 @@
 
 #include <QAbstractNativeEventFilter>
 #include <QApplication>
+#include <QHash>
 #include <QPalette>
 #include <QPointer>
 #include <QUuid>
@@ -90,6 +92,8 @@ private:
 	bool enableHotkeysOutOfFocus = true;
 
 	std::deque<obs_frontend_translate_ui_cb> translatorHooks;
+
+	ThumbnailManager *thumbnailManager = nullptr;
 
 	std::unique_ptr<OBS::PluginManager> pluginManager_;
 
@@ -216,20 +220,25 @@ public:
 
 	inline void IncrementSleepInhibition()
 	{
-		if (!sleepInhibitor)
+		if (!sleepInhibitor) {
 			return;
-		if (sleepInhibitRefs++ == 0)
+		}
+		if (sleepInhibitRefs++ == 0) {
 			os_inhibit_sleep_set_active(sleepInhibitor, true);
+		}
 	}
 
 	inline void DecrementSleepInhibition()
 	{
-		if (!sleepInhibitor)
+		if (!sleepInhibitor) {
 			return;
-		if (sleepInhibitRefs == 0)
+		}
+		if (sleepInhibitRefs == 0) {
 			return;
-		if (--sleepInhibitRefs == 0)
+		}
+		if (--sleepInhibitRefs == 0) {
 			os_inhibit_sleep_set_active(sleepInhibitor, false);
+		}
 	}
 
 	inline void PushUITranslation(obs_frontend_translate_ui_cb cb) { translatorHooks.emplace_front(cb); }
@@ -243,6 +252,8 @@ public:
 #endif
 
 	void loadAppModules(struct obs_module_failure_info &mfi);
+
+	ThumbnailManager *thumbnails() const { return thumbnailManager; }
 
 	// Plugin Manager Accessors
 	void pluginManagerOpenDialog();

@@ -105,14 +105,17 @@ int OBSProxyStyle::styleHint(StyleHint hint, const QStyleOption *option, const Q
 			     QStyleHintReturn *returnData) const
 {
 	switch (hint) {
-	case SH_ComboBox_AllowWheelScrolling:
+	case SH_ComboBox_AllowWheelScrolling: {
 		return 0;
-	case SH_Widget_Animation_Duration:
+	}
+	case SH_Widget_Animation_Duration: {
 		// Make widget animations a little faster
 		return 125;
+	}
 #ifdef __APPLE__
-	case SH_ComboBox_UseNativePopup:
+	case SH_ComboBox_UseNativePopup: {
 		return 1;
+	}
 #endif
 
 	/* HACK ALERT:
@@ -160,8 +163,9 @@ int OBSInvisibleCursorProxyStyle::pixelMetric(PixelMetric metric, const QStyleOp
 					      const QWidget *widget) const
 {
 
-	if (metric == PM_TextCursorWidth)
+	if (metric == PM_TextCursorWidth) {
 		return 0;
+	}
 
 	return QProxyStyle::pixelMetric(metric, option, widget);
 }
