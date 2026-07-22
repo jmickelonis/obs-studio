@@ -81,23 +81,24 @@ QPixmap OBSProxyStyle::generatedIconPixmap(QIcon::Mode iconMode, const QPixmap &
 
 static void makeTranslucent(QWidget *widget)
 {
-	if (widget->testAttribute(Qt::WA_TranslucentBackground))
+	if (widget->testAttribute(Qt::WA_TranslucentBackground)) {
 		return;
+	}
 	widget->setAttribute(Qt::WA_TranslucentBackground);
 	widget->setWindowFlags(widget->windowFlags() |
 #ifdef _WIN32
-		// Don't go completely frameless,
-		// or we can't enable custom drop shadows later
-		Qt::NoDropShadowWindowHint
+			       // Don't go completely frameless,
+			       // or we can't enable custom drop shadows later
+			       Qt::NoDropShadowWindowHint
 #else
-		Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint
+			       Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint
 #endif
 	);
 #ifdef _WIN32
 	// Tell NativeEventFilter_Windows that this is a special popup
 	widget->setProperty("POPUP_WITH_DROP_SHADOW", true);
 #elif defined(__linux__)
-    ShadowHelper::ShadowHelper::sharedInstance()->registerWidget(widget);
+	ShadowHelper::ShadowHelper::sharedInstance()->registerWidget(widget);
 #endif
 }
 
@@ -118,7 +119,7 @@ int OBSProxyStyle::styleHint(StyleHint hint, const QStyleOption *option, const Q
 	}
 #endif
 
-	/* HACK ALERT:
+		/* HACK ALERT:
 	 * To allow for round corners on popup windows,
 	 * WA_TranslucentBackground and FramelessWindowHint need to be set on widgets.
 	 * There isn't an easy way to be notified when the widgets are created.
@@ -127,28 +128,33 @@ int OBSProxyStyle::styleHint(StyleHint hint, const QStyleOption *option, const Q
 
 	case SH_Menu_Scrollable: {
 		QMenu *menu = qobject_cast<QMenu *>(const_cast<QWidget *>(widget));
-		if (menu)
+		if (menu) {
 			makeTranslucent(menu);
+		}
 		break;
 	}
 
 	case SH_ToolTipLabel_Opacity: {
 		QWidget *toolTip = const_cast<QWidget *>(widget);
-		if (toolTip->foregroundRole() == QPalette::ToolTipText)
+		if (toolTip->foregroundRole() == QPalette::ToolTipText) {
 			makeTranslucent(toolTip);
+		}
 		break;
 	}
 
 	case SH_ComboBox_LayoutDirection: {
 		QComboBox *comboBox = qobject_cast<QComboBox *>(const_cast<QWidget *>(widget));
-		if (!comboBox)
+		if (!comboBox) {
 			break;
+		}
 		QAbstractItemView *itemView = comboBox->view();
-		if (!itemView)
+		if (!itemView) {
 			break;
+		}
 		QWidget *window = itemView->window();
-		if (window)
+		if (window) {
 			makeTranslucent(window);
+		}
 		break;
 	}
 

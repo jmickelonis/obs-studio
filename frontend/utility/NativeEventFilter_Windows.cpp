@@ -62,8 +62,9 @@ bool NativeEventFilter::nativeEventFilter(const QByteArray &eventType, void *mes
 
 				// Show drop shadows on everything but tooltips
 				// (until we can find a way to make the shadows smaller)
-				if (widget->foregroundRole() != QPalette::ToolTipText)
+				if (widget->foregroundRole() != QPalette::ToolTipText) {
 					Win32::setStyle(wnd, Win32::getStyle(wnd) | WS_CAPTION | WS_CLIPCHILDREN);
+				}
 			}
 			break;
 		}

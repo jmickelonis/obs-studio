@@ -14,8 +14,9 @@ int getValue(CodecType codec, const char *s)
 {
 #define PRESET(NAME) AMF_PROPERTY_INT(QUALITY_PRESET_ ## NAME)
 #define ITEM(NAME) STR_EQ(s, NAME) ? PRESET(NAME)
-	if (STR_EQ(s, HIGH_QUALITY))
+	if (STR_EQ(s, HIGH_QUALITY)) {
 		return supportsHighQuality(codec) ? PRESET(HIGH_QUALITY) : PRESET(QUALITY);
+	}
 	return ITEM(QUALITY) : ITEM(SPEED) : PRESET(BALANCED);
 #undef PRESET
 #undef ITEM
@@ -114,8 +115,9 @@ AMF_PA_TAQ_MODE_ENUM getValue(const char *s)
 
 void Capabilities::set(CodecType codec, AMFCaps *caps)
 {
-	if (!caps)
+	if (!caps) {
 		return;
+	}
 
 	preAnalysis = AMF_GET_BOOL_CAP(PRE_ANALYSIS);
 	level = AMF_GET_INT_CAP(MAX_LEVEL);
@@ -157,11 +159,13 @@ Settings::Settings(const Capabilities &capabilities, obs_data_t *data)
 	}
 
 	keyFrameInterval = (int)obs_data_get_int(data, settings::KEY_FRAME_INTERVAL);
-	if (!keyFrameInterval)
+	if (!keyFrameInterval) {
 		keyFrameInterval = 4;
+	}
 
-	if (capabilities.bFrames)
+	if (capabilities.bFrames) {
 		bFrames = (int)obs_data_get_int(data, settings::B_FRAMES);
+	}
 
 	// Pre-Encode messes up quality rate control modes
 	preEncodeSupported = !isQuality;
@@ -208,8 +212,9 @@ void cacheCapabilities(uint32_t deviceID, CodecType codec, Capabilities &capabil
 	scoped_lock lock(cacheMutex);
 
 	auto it = capabilitiesCache.find(deviceID);
-	if (it == capabilitiesCache.end())
+	if (it == capabilitiesCache.end()) {
 		capabilitiesCache[deviceID] = unordered_map<CodecType, const Capabilities *>();
+	}
 
 	unordered_map<CodecType, const Capabilities *> &deviceCapabilities = capabilitiesCache[deviceID];
 	deviceCapabilities[codec] = new Capabilities(capabilities);
@@ -221,24 +226,28 @@ const Capabilities *getCapabilities(uint32_t deviceID, CodecType codec, bool loa
 
 	auto cacheIterator = capabilitiesCache.find(deviceID);
 	if (cacheIterator == capabilitiesCache.end()) {
-		if (!load)
+		if (!load) {
 			return nullptr;
+		}
 		capabilitiesCache[deviceID] = unordered_map<CodecType, const Capabilities *>();
 	}
 
 	unordered_map<CodecType, const Capabilities *> &deviceCapabilities = capabilitiesCache[deviceID];
 
 	auto it = deviceCapabilities.find(codec);
-	if (it != deviceCapabilities.end())
+	if (it != deviceCapabilities.end()) {
 		return it->second;
+	}
 
-	if (!load)
+	if (!load) {
 		return nullptr;
+	}
 
 	Capabilities *capabilities = new Capabilities{};
 	AMFCapsPtr caps;
-	if (getCaps(deviceID, codec, &caps))
+	if (getCaps(deviceID, codec, &caps)) {
 		capabilities->set(codec, caps);
+	}
 	deviceCapabilities[codec] = capabilities;
 	return capabilities;
 }
@@ -247,17 +256,21 @@ Levels::Levels(initializer_list<Level> init) : vector(init) {}
 
 const Level *const Levels::get(const char *name) const
 {
-	for (const Level &level : *this)
-		if (STR_EQ(level.name, name))
+	for (const Level &level : *this) {
+		if (STR_EQ(level.name, name)) {
 			return &level;
+		}
+	}
 	return nullptr;
 }
 
 const Level *const Levels::get(int value) const
 {
-	for (const Level &level : *this)
-		if (level.value == value)
+	for (const Level &level : *this) {
+		if (level.value == value) {
 			return &level;
+		}
+	}
 	return nullptr;
 }
 
@@ -268,8 +281,9 @@ const Levels &getLevels(CodecType codec)
 	scoped_lock lock(cacheMutex);
 
 	auto it = levelsCache.find(codec);
-	if (it != levelsCache.end())
+	if (it != levelsCache.end()) {
 		return *it->second;
+	}
 
 	Levels *levels;
 

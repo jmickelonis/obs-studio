@@ -34,9 +34,11 @@ uint32_t getDeviceID(CodecType codec, uint32_t requestedID)
 {
 	if (!requestedID) {
 		// If no device in settings, just use the first available
-		for (AdapterCapabilities &info : caps)
-			if (info.supports(codec))
+		for (AdapterCapabilities &info : caps) {
+			if (info.supports(codec)) {
 				return info.deviceID;
+			}
+		}
 		return 0;
 	}
 
@@ -45,11 +47,13 @@ uint32_t getDeviceID(CodecType codec, uint32_t requestedID)
 	// Try to match the requested ID
 	// If not found, it'll still end up using the first available
 	for (auto it = caps.rbegin(); it != caps.rend(); ++it) {
-		if (!it->supports(codec))
+		if (!it->supports(codec)) {
 			continue;
+		}
 		id = it->deviceID;
-		if (id == requestedID)
+		if (id == requestedID) {
 			break;
+		}
 	}
 
 	return id;
@@ -78,9 +82,11 @@ obs_properties_t *createProperties(void *, void *typeData)
 #define setModifiedCallback() obs_property_set_modified_callback2(prop, onPropertyModified, typeData)
 
 	prop = obs_properties_add_list(props, settings::DEVICE, "Device", OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
-	for (AdapterCapabilities &adapterCaps : caps)
-		if (adapterCaps.supports(codec))
+	for (AdapterCapabilities &adapterCaps : caps) {
+		if (adapterCaps.supports(codec)) {
 			obs_property_list_add_int(prop, adapterCaps.device, adapterCaps.deviceID);
+		}
+	}
 	setModifiedCallback();
 
 	LIST(RATE_CONTROL, obs_module_text("RateControl"));
@@ -111,8 +117,9 @@ obs_properties_t *createProperties(void *, void *typeData)
 		return obs_module_text(s.c_str());
 	};
 #define ITEM(NAME) LIST_STRING(getPresetText(preset::NAME), preset::NAME)
-	if (preset::supportsHighQuality(codec))
+	if (preset::supportsHighQuality(codec)) {
 		ITEM(HIGH_QUALITY);
+	}
 	ITEM(QUALITY);
 	ITEM(BALANCED);
 	ITEM(SPEED);
@@ -219,8 +226,9 @@ bool onPropertyModified(void *typeData, obs_properties_t *props, obs_property_t 
 
 	auto setVisible = [&](const char *name, bool visible) {
 		obs_property_t *prop = obs_properties_get(props, name);
-		if (visible == obs_property_visible(prop))
+		if (visible == obs_property_visible(prop)) {
 			return;
+		}
 		obs_property_set_visible(prop, visible);
 		updated = true;
 	};
@@ -254,8 +262,9 @@ bool onPropertyModified(void *typeData, obs_properties_t *props, obs_property_t 
 		const Levels &levels = getLevels(codec);
 		const amf_int64 &maxLevel = capabilities.level;
 		for (const Level &level : levels) {
-			if (maxLevel && level.value > maxLevel)
+			if (maxLevel && level.value > maxLevel) {
 				break;
+			}
 			levelCount++;
 		}
 
@@ -297,21 +306,25 @@ bool onPropertyModified(void *typeData, obs_properties_t *props, obs_property_t 
 
 		// Figure out how many AQ values we support
 		unsigned int expectedCount = 2;
-		if (showVBAQ)
+		if (showVBAQ) {
 			expectedCount++;
-		if (showTAQ)
+		}
+		if (showTAQ) {
 			expectedCount++;
+		}
 
 		prop = obs_properties_get(props, PA_AQ);
 		if (obs_property_list_item_count(prop) != expectedCount) {
 			// Rebuild the AQ list
 			obs_property_list_clear(prop);
 			LIST_STRING_CAPITALIZED(pa_aq::NONE);
-			if (showVBAQ)
+			if (showVBAQ) {
 				LIST_STRING("Variance-Based (VBAQ)", pa_aq::VBAQ);
+			}
 			LIST_STRING("Content (CAQ)", pa_aq::CAQ);
-			if (showTAQ)
+			if (showTAQ) {
 				LIST_STRING("Temporal (TAQ)", pa_aq::TAQ);
+			}
 
 			if ((!showVBAQ && STR_EQ(aq, pa_aq::VBAQ)) || (!showTAQ && STR_EQ(aq, pa_aq::TAQ))) {
 				// Change to CAQ when the selected item disappears
@@ -381,11 +394,13 @@ void *createTextureEncoder(obs_data_t *data, obs_encoder_t *encoder)
 
 		allowFallback = true;
 
-		if (obs_encoder_scaling_enabled(encoder) && !obs_encoder_gpu_scaling_enabled(encoder))
+		if (obs_encoder_scaling_enabled(encoder) && !obs_encoder_gpu_scaling_enabled(encoder)) {
 			throw "Encoder scaling is active";
+		}
 
-		if (videoInfo.format == AMF_SURFACE_BGRA)
+		if (videoInfo.format == AMF_SURFACE_BGRA) {
 			throw "Cannot use textures with BGRA format";
+		}
 
 		uint32_t deviceID = getDeviceID(codec, (uint32_t)obs_data_get_int(data, settings::DEVICE));
 
@@ -403,8 +418,9 @@ void *createTextureEncoder(obs_data_t *data, obs_encoder_t *encoder)
 		logEncoderError(name, __func__);
 	}
 
-	if (!allowFallback)
+	if (!allowFallback) {
 		return nullptr;
+	}
 
 	ss.str("");
 	ss << type->id << "_fallback_amf";
@@ -564,13 +580,15 @@ extern "C" void amf_load(void)
 #ifdef _WIN32
 		// Load it as data so it can't crash us
 		HMODULE moduleTest = LoadLibraryExW(AMF_DLL_NAME, nullptr, LOAD_LIBRARY_AS_DATAFILE);
-		if (!moduleTest)
+		if (!moduleTest) {
 			throw "AMF library not found";
+		}
 		FreeLibrary(moduleTest);
 #else
 		module = os_dlopen(AMF_DLL_NAMEA);
-		if (!module)
+		if (!module) {
 			throw "AMF library not found";
+		}
 #endif
 
 		// Check for supported codecs
@@ -593,25 +611,30 @@ extern "C" void amf_load(void)
 #endif
 		FILE *pipe = popen(ss.str().c_str(), "r");
 
-		if (!pipe)
+		if (!pipe) {
 			throw "Failed to launch the AMF test process";
+		}
 
 		ss.str("");
 		char buffer[bufferSize];
-		while (fgets(buffer, bufferSize, pipe) != nullptr)
+		while (fgets(buffer, bufferSize, pipe) != nullptr) {
 			ss << buffer;
+		}
 		pclose(pipe);
 
-		if (!ss.tellp())
+		if (!ss.tellp()) {
 			throw "The AMF test subprocess crashed; not loading AMF";
+		}
 
 		ConfigFile config;
-		if (config.OpenString(ss.str().c_str()) != 0)
+		if (config.OpenString(ss.str().c_str()) != 0) {
 			throw "Failed to open AMF config string";
+		}
 
 		const char *error = config_get_string(config, "error", "string");
-		if (error)
+		if (error) {
 			throw error;
+		}
 
 		bool anyAVC = false;
 		bool anyHEVC = false;
@@ -623,15 +646,17 @@ extern "C" void amf_load(void)
 			string sectionString = to_string(i);
 			const char *section = sectionString.c_str();
 
-			if (!config_get_bool(config, section, "is_amd"))
+			if (!config_get_bool(config, section, "is_amd")) {
 				continue;
+			}
 
 #define SUPPORTS(NAME) config_get_bool(config, section, "supports_" #NAME)
 			bool avc = SUPPORTS(avc);
 			bool hevc = SUPPORTS(hevc);
 			bool av1 = SUPPORTS(av1);
-			if (!(avc || hevc || av1))
+			if (!(avc || hevc || av1)) {
 				continue;
+			}
 #undef SUPPORTS
 
 			const char *device = strdup(config_get_string(config, section, "device"));
@@ -644,20 +669,23 @@ extern "C" void amf_load(void)
 			anyAV1 |= av1;
 		}
 
-		if (caps.empty())
+		if (caps.empty()) {
 			throw "Neither AVC, HEVC, nor AV1 are supported by any devices";
+		}
 
 		// Initialize AMF
 
 		if (!module) {
 			module = os_dlopen(AMF_DLL_NAMEA);
-			if (!module)
+			if (!module) {
 				throw "AMF library failed to load";
+			}
 		}
 
 		AMFInit_Fn init = (AMFInit_Fn)os_dlsym(module, AMF_INIT_FUNCTION_NAME);
-		if (!init)
+		if (!init) {
 			throw "Failed to get AMFInit address";
+		}
 
 		AMF_CHECK(init(AMF_FULL_VERSION, &amfFactory), "AMFInit failed");
 		AMF_CHECK(amfFactory->GetTrace(&amfTrace), "GetTrace failed");
@@ -668,8 +696,9 @@ extern "C" void amf_load(void)
 #endif
 
 		AMFQueryVersion_Fn getVersion = (AMFQueryVersion_Fn)os_dlsym(module, AMF_QUERY_VERSION_FUNCTION_NAME);
-		if (!getVersion)
+		if (!getVersion) {
 			throw "Failed to get AMFQueryVersion address";
+		}
 
 		AMF_CHECK(getVersion(&amfVersion), "AMFQueryVersion failed");
 
@@ -714,12 +743,14 @@ extern "C" void amf_load(void)
 		blog(LOG_ERROR, "[%s::%s] %s (%ls)", __FILE_NAME__, __func__, e.message, e.resultText);
 	}
 
-	if (module)
+	if (module) {
 		os_dlclose(module);
+	}
 }
 
 extern "C" void amf_unload(void)
 {
-	if (amfTrace)
+	if (amfTrace) {
 		amfTrace->TraceFlush();
+	}
 }

@@ -121,8 +121,9 @@ inline void ROI::update(obs_encoder_roi *dataPtr)
 	obs_encoder_roi &data = *dataPtr;
 
 	// AMF does not support negative priority
-	if (data.priority < 0)
+	if (data.priority < 0) {
 		return;
+	}
 
 	// Importance value range is 0..10
 	amf_uint32 priority = (amf_uint32)(data.priority * 10);
@@ -135,8 +136,9 @@ inline void ROI::update(obs_encoder_roi *dataPtr)
 	unsigned int yOffset;
 	for (uint32_t y = top; y <= bottom; y++) {
 		yOffset = y * pitch;
-		for (uint32_t x = left; x <= right; x++)
+		for (uint32_t x = left; x <= right; x++) {
 			buffer[yOffset + x] = priority;
+		}
 	}
 }
 
@@ -192,8 +194,9 @@ void Encoder::updateSettings(obs_data_t *data)
 {
 	// This is called with blank data after a connection attempt fails,
 	// and if we proceed, we'll end up deadlocked during the drain process
-	if (!obs_encoder_active(encoder))
+	if (!obs_encoder_active(encoder)) {
 		return;
+	}
 
 	uint32_t deviceID = (uint32_t)obs_data_get_int(data, settings::DEVICE);
 	if (deviceID && deviceID != this->deviceID) {
@@ -241,15 +244,17 @@ void Encoder::updateSettings(obs_data_t *data)
 	PropertyValues values = getPropertyValues(amfEncoder, properties);
 	stringstream ss;
 	printChangedPropertyValues(ss, oldValues, values);
-	if (ss.tellp())
+	if (ss.tellp()) {
 		info("updated properties:\n%s", ss.str().c_str());
+	}
 #endif
 }
 
 bool Encoder::getExtraData(uint8_t **data, size_t *size)
 {
-	if (!extraData)
+	if (!extraData) {
 		return false;
+	}
 
 	*data = (uint8_t *)extraData->GetNative();
 	*size = extraData->GetSize();
@@ -258,8 +263,9 @@ bool Encoder::getExtraData(uint8_t **data, size_t *size)
 
 void Encoder::submit(AMFSurfacePtr &surface, encoder_packet *packet, bool *receivedPacket)
 {
-	if (capabilities.roi)
+	if (capabilities.roi) {
 		updateROI(surface);
+	}
 
 	AMF_RESULT res;
 	AMFDataPtr data;
@@ -277,9 +283,10 @@ LOOP:
 			break;
 		case AMF_INPUT_FULL: {
 			os_sleep_ms(1);
-			if (os_gettime_ns() - startTime >= 5'000'000'000ULL)
+			if (os_gettime_ns() - startTime >= 5'000'000'000ULL) {
 				// Time out after 5 seconds of full input
 				throw AMFException("SubmitInput timed out", res);
+			}
 			break;
 		}
 		default:
@@ -301,8 +308,9 @@ LOOP:
 		}
 	}
 
-	if (!queryQueue.size())
+	if (!queryQueue.size()) {
 		return;
+	}
 
 	data = queryQueue.front();
 	queryQueue.pop_front();
@@ -324,14 +332,16 @@ void Encoder::terminate()
 {
 	terminateEncoder();
 	queryQueue.clear();
-	if (amfContext)
+	if (amfContext) {
 		amfContext->Terminate();
+	}
 }
 
 void Encoder::terminateEncoder()
 {
-	if (amfEncoder)
+	if (amfEncoder) {
 		amfEncoder->Terminate();
+	}
 	roi.reset();
 }
 
@@ -343,8 +353,9 @@ template<typename T> bool Encoder::getProperty(const wchar_t *name, T *value)
 template<typename T> void Encoder::setProperty(const wchar_t *name, const T &value)
 {
 	AMF_RESULT result = amfEncoder->SetProperty(name, value);
-	if (result != AMF_OK)
+	if (result != AMF_OK) {
 		error("Failed to set property '%ls': %ls", name, amfTrace->GetResultText(result));
+	}
 }
 
 void Encoder::createEncoder(obs_data_t *data, bool init)
@@ -402,8 +413,9 @@ void Encoder::createEncoder(obs_data_t *data, bool init)
 
 #if __OBS_AMF_SHOW_PROPERTIES
 		if (showProperties) {
-			if (cachedCapabilities)
+			if (cachedCapabilities) {
 				amfEncoder->GetCaps(&caps);
+			}
 
 			if (caps) {
 				stringstream ss;
@@ -450,8 +462,9 @@ void Encoder::createEncoder(obs_data_t *data, bool init)
 
 	AMFVariant variant;
 	if (AMF_SUCCEEDED(amfEncoder->GetProperty(extraDataProperty, &variant)) &&
-	    variant.type == AMF_VARIANT_INTERFACE)
+	    variant.type == AMF_VARIANT_INTERFACE) {
 		extraData = AMFBufferPtr(variant.pInterface);
+	}
 
 #if __OBS_AMF_SHOW_PROPERTIES
 	if (init && showProperties) {
@@ -585,26 +598,30 @@ void Encoder::update(Settings &settings, const char *opts, bool init)
 	// Look up the final level (may have been changed in user options)
 	getProperty(levelProperty, &level);
 	const Level *levelInfo = levels.get(level);
-	if (!levelInfo)
+	if (!levelInfo) {
 		warn("Level information not found (%d)", level);
+	}
 
-	if (!init)
+	if (!init) {
 		return;
+	}
 
 	stringstream ss;
 
 	auto field = [&](const char *name) -> stringstream & {
 		ss << "\n\t" << name << ": ";
-		for (unsigned int i = 0; i < 12 - strlen(name); i++)
+		for (unsigned int i = 0; i < 12 - strlen(name); i++) {
 			ss << " ";
+		}
 		return ss;
 	};
 
 	field("rate_control") << settings.rateControl;
 	if (settings.bitrateSupported) {
 		field("bitrate") << settings.bitrate / 1000;
-		if (settings.useBufferSize)
+		if (settings.useBufferSize) {
 			field("buffer_size") << settings.getBufferSize() / 1000;
+		}
 	} else {
 		field("qp") << settings.qp;
 	}
@@ -612,8 +629,9 @@ void Encoder::update(Settings &settings, const char *opts, bool init)
 	field("preset") << settings.preset;
 	field("profile") << settings.profile;
 	field("level") << (levelInfo ? levelInfo->name : "Unknown");
-	if (capabilities.bFrames)
+	if (capabilities.bFrames) {
 		field("b-frames") << settings.bFrames;
+	}
 	field("width") << width;
 	field("height") << height;
 	field("params") << ((*opts) ? opts : "(none)");
@@ -650,10 +668,11 @@ void Encoder::updateAVC(Settings &settings)
 		SET(ADAPTIVE_MINIGOP, settings.dynamicBFrames);
 
 		amf_int64 bFrames;
-		if (GET(B_PIC_PATTERN, &bFrames))
+		if (GET(B_PIC_PATTERN, &bFrames)) {
 			dtsOffset = bFrames + 1;
-		else
+		} else {
 			dtsOffset = 0;
+		}
 	}
 
 	obs_data_t *data = settings.data;
@@ -732,10 +751,11 @@ void Encoder::updateAV1(Settings &settings)
 		SET(ADAPTIVE_MINIGOP, settings.dynamicBFrames);
 
 		amf_int64 bFrames;
-		if (GET(B_PIC_PATTERN, &bFrames))
+		if (GET(B_PIC_PATTERN, &bFrames)) {
 			dtsOffset = bFrames + 1;
-		else
+		} else {
 			dtsOffset = 0;
+		}
 	}
 
 	obs_data_t *data = settings.data;
@@ -744,16 +764,18 @@ void Encoder::updateAV1(Settings &settings)
 	    settings.hmqbSupported && obs_data_get_bool(data, settings::HIGH_MOTION_QUALITY_BOOST));
 	SET(RATE_CONTROL_PREENCODE, settings.preEncodeSupported && obs_data_get_bool(data, settings::PRE_ENCODE));
 
-	if (obs_data_get_bool(data, settings::LOW_LATENCY))
+	if (obs_data_get_bool(data, settings::LOW_LATENCY)) {
 		SET_ENUM(ENCODING_LATENCY_MODE, LOWEST_LATENCY);
-	else
+	} else {
 		SET_ENUM(ENCODING_LATENCY_MODE, NONE);
+	}
 
 	if (settings.aqSupported && (settings.preAnalysis ? STR_EQ(settings.paAQ, pa_aq::CAQ)
-							  : obs_data_get_bool(data, settings::ADAPTIVE_QUANTIZATION)))
+							  : obs_data_get_bool(data, settings::ADAPTIVE_QUANTIZATION))) {
 		SET_ENUM(AQ_MODE, CAQ);
-	else
+	} else {
 		SET_ENUM(AQ_MODE, NONE);
+	}
 
 #undef GET
 #undef SET
@@ -772,9 +794,10 @@ int Encoder::getLevel(const Levels &levels, obs_data_t *data)
 		if (info) {
 			int level = info->value;
 			if (!maxLevel || level <= maxLevel) {
-				if (size > info->size || rate > info->rate)
+				if (size > info->size || rate > info->rate) {
 					warn("Sample rate (%dx%d@%d) is too high for level %s", width, height,
 					     videoInfo.frameRate.num / videoInfo.frameRate.den, name);
+				}
 				return level;
 			}
 
@@ -786,8 +809,9 @@ int Encoder::getLevel(const Levels &levels, obs_data_t *data)
 
 	const Level *highest = &levels.back();
 
-	if (maxLevel && maxLevel < highest->value)
+	if (maxLevel && maxLevel < highest->value) {
 		highest = levels.get(maxLevel);
+	}
 
 	if (size > highest->size || rate > highest->rate) {
 		warn("Sample rate (%dx%d@%d) is too high for maximum supported level (%s)", width, height,
@@ -798,8 +822,9 @@ int Encoder::getLevel(const Levels &levels, obs_data_t *data)
 	int value = 0;
 	// Prefer higher levels that have identical values to the one before
 	for (auto it = levels.rbegin(); it != levels.rend(); ++it) {
-		if (size > it->size || rate > it->rate)
+		if (size > it->size || rate > it->rate) {
 			break;
+		}
 		value = it->value;
 	}
 	return value;
@@ -807,16 +832,18 @@ int Encoder::getLevel(const Levels &levels, obs_data_t *data)
 
 bool Encoder::setPreAnalysis(Settings &settings)
 {
-	if (!capabilities.preAnalysis)
+	if (!capabilities.preAnalysis) {
 		return false;
+	}
 
 	obs_data_t *data = settings.data;
 
 	bool enabled = settings.preAnalysis;
 	bool wasEnabled;
 	AMF_GET(PRE_ANALYSIS_ENABLE, &wasEnabled);
-	if (enabled != wasEnabled)
+	if (enabled != wasEnabled) {
 		AMF_SET(PRE_ANALYSIS_ENABLE, enabled);
+	}
 
 	if (!enabled) {
 		if (!capabilities.roi) {
@@ -861,14 +888,16 @@ bool Encoder::setPreAnalysis(Settings &settings)
 
 void Encoder::applyOpts(const char *s)
 {
-	if (!(*s))
+	if (!(*s)) {
 		return;
+	}
 	obs_options opts = obs_parse_options(s);
 	obs_option *opt = opts.options;
 	wstringstream ss;
 	for (size_t i = 0; i < opts.count; i++) {
-		if (ss.tellp())
+		if (ss.tellp()) {
 			ss.str(L"");
+		}
 		ss << opt->name;
 		const wstring name = ss.str();
 		setProperty(name.c_str(), opt->value);
@@ -880,9 +909,10 @@ void Encoder::applyOpts(const char *s)
 inline void Encoder::updateROI(AMFSurfacePtr &surface)
 {
 	if (!obs_encoder_has_roi(encoder)) {
-		if (roi)
+		if (roi) {
 			// We had an ROI at one point; clear out everything
 			roi.reset();
+		}
 		return;
 	}
 
@@ -996,6 +1026,7 @@ void Encoder::receivePacket(AMFDataPtr &data, encoder_packet *packetPtr)
 	packet.dts = timestampToOBS(data->GetPts());
 	packet.keyframe = type == AMF_VIDEO_ENCODER_OUTPUT_DATA_TYPE_IDR;
 
-	if (dtsOffset)
+	if (dtsOffset) {
 		packet.dts -= dtsOffset;
+	}
 }

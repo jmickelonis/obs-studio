@@ -572,8 +572,9 @@ std::optional<std::vector<GoLiveApi::Gpu>> system_gpu_data()
 			// This allows custom Mesa drivers to work.
 			std::regex pattern(R"(^(.* Mesa \d+(?:\.\d+)+).*$)");
 			std::smatch match;
-			if (std::regex_match(gs_driver_version, match, pattern))
+			if (std::regex_match(gs_driver_version, match, pattern)) {
 				gs_driver_version = match[1].str();
+			}
 
 			gpu.driver_version = gs_driver_version;
 			gpu.dedicated_video_memory = dedicated_video_memory;

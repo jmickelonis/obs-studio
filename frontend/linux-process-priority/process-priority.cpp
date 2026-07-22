@@ -35,8 +35,9 @@ static string find_pkexec_path()
 		string item = s.substr(i, j - i);
 		i = j + 1;
 		string p = get_pkexec_path(item);
-		if (!p.empty())
+		if (!p.empty()) {
 			return p;
+		}
 	}
 	return get_pkexec_path("/usr/bin");
 }
@@ -56,8 +57,9 @@ static bool parse_int(const char *c, int &i)
 	try {
 		size_t pos;
 		i = stoi(s, &pos);
-		if (pos == s.size())
+		if (pos == s.size()) {
 			return true;
+		}
 	} catch (invalid_argument const &ex) {
 	} catch (out_of_range const &ex) {
 		cerr << "Int out of range: " << s << endl;
@@ -78,8 +80,9 @@ static string run(const string cmd, int &res)
 
 	stringstream ss;
 	char buffer[128];
-	while (fgets(buffer, sizeof buffer, pipe) != NULL)
+	while (fgets(buffer, sizeof buffer, pipe) != NULL) {
 		ss << buffer;
+	}
 	res = pclose(pipe);
 
 	string s = ss.str();
@@ -92,8 +95,9 @@ static void set_single_priority(const int id, const int priority, const bool try
 	cout << "Setting priority " << priority << " for PID: " << id << endl;
 	if (try_direct) {
 		int res = setpriority(PRIO_PROCESS, id, priority);
-		if (!res)
+		if (!res) {
 			return;
+		}
 	}
 	// Use the helper to request elevation and use renice
 	stringstream ss;
@@ -117,8 +121,9 @@ static void set_multiple_priority(const string exe, const int priority)
 	list<int> ids;
 	istringstream iss(output);
 	string id_str;
-	while (getline(iss, id_str, ' '))
+	while (getline(iss, id_str, ' ')) {
 		ids.push_back(stoi(id_str));
+	}
 
 	if (ids.size() == 1) {
 		// There's only 1 ID
@@ -127,23 +132,26 @@ static void set_multiple_priority(const string exe, const int priority)
 	}
 
 	cout << "Setting priority " << priority << " for IDs:";
-	for (int id : ids)
+	for (int id : ids) {
 		cout << " " << id;
+	}
 	cout << endl;
 
 	// Keep track of the IDs that couldn't be changed directly
 	list<int> error_ids;
 	for (int id : ids) {
 		int res = setpriority(PRIO_PROCESS, id, priority);
-		if (res)
+		if (res) {
 			error_ids.push_back(id);
+		}
 	}
 
-	if (error_ids.empty())
+	if (error_ids.empty()) {
 		return;
+	}
 
 	// Change the remaining IDs
-	
+
 	if (error_ids.size() == 1) {
 		set_single_priority(error_ids.front(), priority, false);
 		return;
@@ -152,8 +160,9 @@ static void set_multiple_priority(const string exe, const int priority)
 	ss.str("");
 	ss.clear();
 	ss << HELPER_COMMAND << " bash -c 'for id in";
-	for (int id : error_ids)
+	for (int id : error_ids) {
 		ss << " " << id;
+	}
 	ss << "; do renice " << priority << " $id; done'";
 	system(ss.str().c_str());
 }
@@ -171,8 +180,9 @@ int main(const int argc, const char *argv[])
 	}
 
 	int priority;
-	if (!parse_int(argv[1], priority))
+	if (!parse_int(argv[1], priority)) {
 		return ERROR;
+	}
 
 	path directory = canonical(argv[0]).parent_path();
 
@@ -184,8 +194,9 @@ int main(const int argc, const char *argv[])
 	}
 
 	int id;
-	if (!parse_int(argv[2], id))
+	if (!parse_int(argv[2], id)) {
 		return ERROR;
+	}
 
 	stringstream ss;
 	ss << "readlink -f /proc/" << id << "/exe";

@@ -10,15 +10,18 @@ namespace Win32 {
 static bool _is11OrNewer()
 {
 	HMODULE module = GetModuleHandleW(L"ntdll.dll");
-	if (!module)
+	if (!module) {
 		return false;
+	}
 	RtlGetVersionPtr fn = (RtlGetVersionPtr)GetProcAddress(module, "RtlGetVersion");
-	if (!fn)
+	if (!fn) {
 		return false;
+	}
 	RTL_OSVERSIONINFOW ovi = {0};
 	ovi.dwOSVersionInfoSize = sizeof(ovi);
-	if (fn(&ovi))
+	if (fn(&ovi)) {
 		return false;
+	}
 	return ovi.dwMajorVersion > 10 || ovi.dwMajorVersion == 10 && ovi.dwBuildNumber >= 22000;
 }
 
@@ -44,8 +47,9 @@ bool setBlurBehind(const HWND &handle, const bool &enable)
 {
 	DWM_BLURBEHIND blurBehind = {};
 	blurBehind.fEnable = enable;
-	if (enable)
+	if (enable) {
 		blurBehind.dwFlags = DWM_BB_ENABLE;
+	}
 	HRESULT result = DwmEnableBlurBehindWindow(handle, &blurBehind);
 	return SUCCEEDED(result);
 }
@@ -88,12 +92,14 @@ void setStyle(const HWND &handle, const LONG &style)
 bool setUseImmersiveDarkMode(const HWND &handle, const bool &enable)
 {
 	BOOL value = enable;
-	if (setAttribute(handle, DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(value)))
+	if (setAttribute(handle, DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(value))) {
 		return true;
-	if (!_11OrNewer)
+	}
 	// Try the old, undocumented way
 #define DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 19
+	if (!_11OrNewer) {
 		return setAttribute(handle, DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, &value, sizeof(value));
+	}
 	return false;
 }
 

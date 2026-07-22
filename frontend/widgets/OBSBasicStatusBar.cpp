@@ -246,10 +246,12 @@ static inline void updateUsage(QLabel *label, const char *name, double value, QF
 {
 	QString text = QString{} + name + ": " + QString::number(value, 'f', 1) + "%";
 	setText(label, text);
-	if (!frame)
+	if (!frame) {
 		return;
-	if (value && !frame->isVisible())
+	}
+	if (value && !frame->isVisible()) {
 		frame->setVisible(true);
+	}
 }
 
 void OBSBasicStatusBar::UpdateCPUUsage()
@@ -263,14 +265,16 @@ void OBSBasicStatusBar::UpdateCPUUsage()
 	UpdateCurrentFPS();
 
 #ifdef __linux__
-	if (!gpuUsage)
+	if (!gpuUsage) {
 		return;
+	}
 
 	if (!gpuUsage->found) {
 		gpuUsage->init(getpid());
 
-		if (!gpuUsage->found)
+		if (!gpuUsage->found) {
 			return; // Try again next time
+		}
 
 		if (gpuUsage->pdev.empty()) {
 			// Didn't find a supported GPU to monitor

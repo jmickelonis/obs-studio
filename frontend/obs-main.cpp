@@ -554,9 +554,10 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 	 * elements (e.g. Hotkeys) and it is actually faster to disable it. */
 	qputenv("QT_NO_SUBTRACTOPAQUESIBLINGS", "1");
 
-	if (shouldForceFusionStyle())
+	if (shouldForceFusionStyle()) {
 		// Use Fusion to improve cross-platform looks
 		qputenv("QT_STYLE_OVERRIDE", "Fusion");
+	}
 
 	OBSApp program(argc, argv, profilerNameStore.get());
 	try {

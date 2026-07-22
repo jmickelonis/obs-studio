@@ -1277,8 +1277,9 @@ bool OBSApp::OBSInit()
 	// Register the KF6 plugins path so kde-shadow-helper can work
 	try {
 		std::filesystem::path path = KF6_PLUGINS_DIR;
-		if (std::filesystem::is_directory(path))
+		if (std::filesystem::is_directory(path)) {
 			addLibraryPath(path.c_str());
+		}
 	} catch (const std::filesystem::filesystem_error &e) {
 	}
 #endif
@@ -1537,13 +1538,15 @@ void InitializeNativeWindow(QWidget *widget)
 	 */
 	Win32::setExtendedStyle(wnd, exStyle | WS_EX_COMPOSITED);
 
-	if ((exStyle & WS_EX_WINDOWEDGE) || (widget->windowFlags() & Qt::Dialog) == Qt::Dialog)
+	if ((exStyle & WS_EX_WINDOWEDGE) || (widget->windowFlags() & Qt::Dialog) == Qt::Dialog) {
 		// Don't draw a native border
 		Win32::setBorderColor(wnd, DWMWA_COLOR_NONE);
+	}
 
-	if (Win32::is11OrNewer())
+	if (Win32::is11OrNewer()) {
 		// Disable immersive/dark mode
 		Win32::setUseImmersiveDarkMode(wnd, false);
+	}
 }
 
 void OBSApp::UpdateTitleBarColor(QWidget *widget)
@@ -1551,8 +1554,9 @@ void OBSApp::UpdateTitleBarColor(QWidget *widget)
 	HWND wnd = (HWND)widget->winId();
 	LONG style = Win32::getStyle(wnd);
 
-	if (!(style & WS_CAPTION))
+	if (!(style & WS_CAPTION)) {
 		return;
+	}
 
 	if (Win32::is11OrNewer()) {
 		// Set the caption (title bar) color from the palette
@@ -1585,11 +1589,13 @@ bool OBSApp::notify(QObject *receiver, QEvent *e)
 			/* Stop the scroll wheel from adjusting this spin box
 			 * when it doesn't have full focus (hasn't been clicked on)
 			 */
-			if (spinBox->focusPolicy() == Qt::WheelFocus)
+			if (spinBox->focusPolicy() == Qt::WheelFocus) {
 				spinBox->setFocusPolicy(Qt::StrongFocus);
+			}
 
-			if (!spinBoxEventFilter)
+			if (!spinBoxEventFilter) {
 				spinBoxEventFilter = new SpinBoxEventFilter();
+			}
 			spinBox->installEventFilter(spinBoxEventFilter);
 
 			goto skip;
@@ -2160,23 +2166,26 @@ static QStringList getXDGDirectories()
 	const char *env = getenv("XDG_DATA_HOME");
 	dirs << (env ? env : "~/.local/share");
 	env = getenv("XDG_DATA_DIRS");
-	if (env)
+	if (env) {
 		dirs << QString(env).split(':', Qt::SkipEmptyParts);
-	else
+	} else {
 		dirs << "/usr/local/share" << "/usr/share";
+	}
 	return dirs;
 }
 
 static bool loadJSON(const QString &path, Json &out)
 {
 	QFile file(path);
-	if (!file.open(QFile::ReadOnly | QFile::Text))
+	if (!file.open(QFile::ReadOnly | QFile::Text)) {
 		return false;
+	}
 	QTextStream in(&file);
 	string error;
 	Json data = Json::parse(in.readAll().toStdString(), error);
-	if (!error.empty())
+	if (!error.empty()) {
 		return false;
+	}
 	out = data;
 	return true;
 }
@@ -2184,8 +2193,9 @@ static bool loadJSON(const QString &path, Json &out)
 static bool getVKCapturePath(const QStringList &dirs, QFileInfo &out)
 {
 	for (QString dir : dirs) {
-		if (dir.startsWith("~"))
+		if (dir.startsWith("~")) {
 			dir.replace(0, 1, QDir::homePath());
+		}
 
 		const QFileInfo file(dir + "/vulkan/implicit_layer.d/obs_vkcapture_64.json");
 		string path = file.filePath().toStdString();
@@ -2211,14 +2221,17 @@ static void enableVKCapture(const QStringList &dirs)
 
 	QString filePath = fileInfo.filePath();
 	Json json;
-	if (!loadJSON(filePath, json))
+	if (!loadJSON(filePath, json)) {
 		return;
+	}
 	Json layer = json["layer"];
-	if (!layer.is_object())
+	if (!layer.is_object()) {
 		return;
+	}
 	Json libraryPath = layer["library_path"];
-	if (!libraryPath.is_string())
+	if (!libraryPath.is_string()) {
 		return;
+	}
 
 	string filePathString = filePath.toStdString();
 	fs::path fsFilePath = filePathString;
@@ -2233,16 +2246,18 @@ static void enableVKCapture(const QStringList &dirs)
 
 	QStringList path(fileInfo.dir().absolutePath());
 	const char *env = getenv("VK_ADD_LAYER_PATH");
-	if (env)
+	if (env) {
 		path << QString(env).split(':', Qt::SkipEmptyParts);
+	}
 	QString s = path.join(':');
 	blog(LOG_DEBUG, "env VK_ADD_LAYER_PATH = %s", s.toStdString().c_str());
 	qputenv("VK_ADD_LAYER_PATH", s.toUtf8());
 
 	QStringList enable("VK_LAYER_OBS_vkcapture_*");
 	env = getenv("VK_LOADER_LAYERS_ENABLE");
-	if (env)
+	if (env) {
 		enable << QString(env).split(',', Qt::SkipEmptyParts);
+	}
 	s = enable.join(',');
 	blog(LOG_DEBUG, "env VK_LOADER_LAYERS_ENABLE = %s", s.toStdString().c_str());
 	qputenv("VK_LOADER_LAYERS_ENABLE", s.toUtf8());
@@ -2254,10 +2269,11 @@ static QStringList getVulkanDriverDiscoveryDirectories()
 	const char *env = getenv("XDG_CONFIG_HOME");
 	dirs << (env ? env : "~/.config");
 	env = getenv("XDG_CONFIG_DIRS");
-	if (env)
+	if (env) {
 		dirs << QString(env).split(':', Qt::SkipEmptyParts);
-	else
+	} else {
 		dirs << "/etc/xdg";
+	}
 	dirs << "/etc";
 	return dirs;
 }
@@ -2268,8 +2284,9 @@ static bool getAMDGPUProICDPath(const QStringList &xdgDirs, QFileInfo &out)
 	driverDirs << xdgDirs;
 
 	for (QString dir : driverDirs) {
-		if (dir.startsWith("~"))
+		if (dir.startsWith("~")) {
 			dir.replace(0, 1, QDir::homePath());
+		}
 
 		const QFileInfo file(dir + "/vulkan/icd.d/amd_icd64.json");
 		string path = file.filePath().toStdString();
@@ -2296,18 +2313,21 @@ static void enableAMF(const QStringList &xdgDirs)
 
 	// Check for the encoder library
 	unique_ptr<FILE, decltype(&pclose)> pipe(popen("ldconfig -v 2>/dev/null | grep libamfrt64", "r"), pclose);
-	if (!pipe)
+	if (!pipe) {
 		return;
+	}
 
 	string config;
 	array<char, 64> buffer;
-	while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe.get()) != nullptr)
+	while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe.get()) != nullptr) {
 		config += buffer.data();
+	}
 
 	regex pattern(R"(libamfrt64\.so\.(\d+\.\d+\.\d+))");
 	smatch match;
-	if (!regex_search(config, match, pattern))
+	if (!regex_search(config, match, pattern)) {
 		return;
+	}
 
 	QString amfVersion = match[1].str().c_str();
 	blog(LOG_INFO, "Found AMD HW encoder: libamfrt64.so v%s", amfVersion.toStdString().c_str());
@@ -2328,17 +2348,20 @@ static void enableAMF(const QStringList &xdgDirs)
 
 	QString filePath = fileInfo.filePath();
 	Json json;
-	if (!loadJSON(filePath, json))
+	if (!loadJSON(filePath, json)) {
 		return;
+	}
 
 	Json icd = json["ICD"];
-	if (!icd.is_object())
+	if (!icd.is_object()) {
 		return;
+	}
 
 	Json version = icd["api_version"];
 	Json libraryPath = icd["library_path"];
-	if (!(version.is_string() && libraryPath.is_string()))
+	if (!(version.is_string() && libraryPath.is_string())) {
 		return;
+	}
 
 	blog(LOG_INFO,
 	     "Found AMDGPU Pro Vulkan ICD"
@@ -2349,8 +2372,9 @@ static void enableAMF(const QStringList &xdgDirs)
 
 	QStringList fileNames(filePath);
 	env = getenv("VK_ICD_FILENAMES");
-	if (env)
+	if (env) {
 		fileNames << QString(env).split(':', Qt::SkipEmptyParts);
+	}
 
 	qputenv("AMD_VULKAN_ICD", "AMDVLK-PRO");
 	QString s = fileNames.join(':');

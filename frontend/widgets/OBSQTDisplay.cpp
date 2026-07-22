@@ -194,8 +194,9 @@ void OBSQTDisplay::resizeEvent(QResizeEvent *event)
 {
 	QWidget::resizeEvent(event);
 
-	if (!isVisible())
+	if (!isVisible()) {
 		return;
+	}
 
 	CreateDisplay();
 

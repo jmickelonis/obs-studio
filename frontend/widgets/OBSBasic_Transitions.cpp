@@ -435,7 +435,7 @@ void OBSBasic::SetTransition(OBSSource transition)
 	ui->transitionDuration->setVisible(!fixed);
 
 	bool configurable = transition ? obs_source_configurable(transition) : false;
-	auto updateEnabled = [this, configurable](QAction *action){
+	auto updateEnabled = [this, configurable](QAction *action) {
 		ui->transitionsToolbar->widgetForAction(action)->setEnabled(configurable);
 	};
 	updateEnabled(ui->actionRemoveTransition);

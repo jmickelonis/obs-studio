@@ -418,8 +418,9 @@ void VolumeControl::showVolumeControlMenu(QPoint pos)
 	// Add layout toggle and advanced properties actions,
 	// so they can be accessed from any context menu
 	QAction *layoutToggleAction = new QAction(QTStr("Basic.AudioMixer.Layout.Vertical"), popup);
-	if (vertical)
+	if (vertical) {
 		layoutToggleAction->setText(QTStr("Basic.AudioMixer.Layout.Horizontal"));
+	}
 	QAction *openAdvancedProperties = new QAction(QTStr("Basic.AdvAudio"), popup);
 	connect(layoutToggleAction, &QAction::triggered, main, &OBSBasic::toggleMixerLayout, Qt::DirectConnection);
 	connect(openAdvancedProperties, &QAction::triggered, main, &OBSBasic::on_actionAdvAudioProperties_triggered,
@@ -449,13 +450,15 @@ void VolumeControl::showVolumeControlMenu(QPoint pos)
 		if (!OBSApp::IsWayland()) {
 			QRect available = QApplication::screenAt(QCursor::pos())->availableGeometry();
 			if (vertical) {
-				if (menuSize.width() > available.right() - menuPos.x())
+				if (menuSize.width() > available.right() - menuPos.x()) {
 					// Out of bounds; move to the left of the button
 					menuPos.rx() -= nameBounds.width() + menuSize.width();
+				}
 			} else {
-				if (menuSize.height() > available.bottom() - menuPos.y())
+				if (menuSize.height() > available.bottom() - menuPos.y()) {
 					// Out of bounds; move above the button
 					menuPos.ry() -= nameBounds.height() + menuSize.height();
+				}
 			}
 		}
 
@@ -821,9 +824,10 @@ void VolumeControl::updateText()
 		text = "-inf dB";
 	} else {
 		text = QString::number(db, 'f', 1);
-		if (text.endsWith(".0"))
+		if (text.endsWith(".0")) {
 			// Ignore .0
 			text.truncate(text.size() - 2);
+		}
 		text = text.append(" dB");
 	}
 

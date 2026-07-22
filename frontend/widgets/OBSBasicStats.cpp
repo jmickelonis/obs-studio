@@ -108,8 +108,9 @@ OBSBasicStats::OBSBasicStats(QWidget *parent, bool closable)
 	newStat("SkippedFrames", skippedFrames, 2);
 
 	int stretch[] = {0, 1, 0, 1};
-	for (int i = 0; i < 4; i++)
+	for (int i = 0; i < 4; i++) {
 		topLayout->setColumnStretch(i, stretch[i]);
+	}
 
 	/* --------------------------------------------- */
 	QPushButton *closeButton = nullptr;

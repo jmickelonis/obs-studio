@@ -53,8 +53,9 @@ VolumeLabel::Direction VolumeLabel::getDirection()
 void VolumeLabel::setDirection(Direction value)
 {
 	Direction old = direction;
-	if (value == old)
+	if (value == old) {
 		return;
+	}
 	direction = value;
 	update();
 }
@@ -91,7 +92,7 @@ QSize VolumeLabel::minimumSizeHint() const
 	}
 }
 
-void VolumeLabel::paintEvent(QPaintEvent */*event*/)
+void VolumeLabel::paintEvent(QPaintEvent * /*event*/)
 {
 	QStyleOption opt;
 	opt.initFrom(this);
@@ -140,10 +141,11 @@ void VolumeNameLayout::setGeometry(const QRect &)
 	opt.initFrom(name);
 
 	QRect bounds = name->style()->subElementRect(QStyle::SE_PushButtonContents, &opt, name);
-	if (name->vertical)
+	if (name->vertical) {
 		bounds.setTop(bounds.top() + name->indicatorWidth);
-	else
+	} else {
 		bounds.setRight(bounds.right() - name->indicatorWidth);
+	}
 	name->label->setGeometry(bounds);
 }
 
@@ -184,8 +186,9 @@ void VolumeName::setAlignment(Qt::Alignment alignment_)
 void VolumeName::setVertical(bool value)
 {
 	bool old = vertical;
-	if (value == old)
+	if (value == old) {
 		return;
+	}
 	vertical = value;
 	label->setDirection(vertical ? VolumeLabel::Direction::Left : VolumeLabel::Direction::Up);
 	update();
@@ -200,8 +203,9 @@ QSize VolumeName::sizeHint() const
 	int width = metrics.horizontalAdvance(plainText) + indicatorWidth;
 	int height = metrics.height();
 
-	if (vertical)
+	if (vertical) {
 		std::swap(width, height);
+	}
 
 	QMargins margins = label->contentsMargins();
 	QSize size = QSize(width, height).grownBy(margins);

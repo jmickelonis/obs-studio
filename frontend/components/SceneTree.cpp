@@ -39,9 +39,10 @@ void SceneTree::SetGridMode(bool grid)
 	const QSize size = this->size();
 	QResizeEvent event(size, size);
 	resizeEvent(&event);
-	if (gridMode)
+	if (gridMode) {
 		// For some reason, it needs to be called twice for grids
 		resizeEvent(&event);
+	}
 }
 
 bool SceneTree::GetGridMode()
@@ -101,14 +102,16 @@ void SceneTree::resizeEvent(QResizeEvent *event)
 			itemWidth = std::min(w / columns, maxWidth);
 			setGridSize(QSize(itemWidth, itemHeight));
 
-			for (int i = 0; i < count; i++)
+			for (int i = 0; i < count; i++) {
 				item(i)->setSizeHint(QSize(itemWidth, itemHeight));
+			}
 		}
 	} else {
 		setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
 		setGridSize(QSize());
-		for (int i = 0; i < count; i++)
+		for (int i = 0; i < count; i++) {
 			item(i)->setData(Qt::SizeHintRole, QVariant());
+		}
 	}
 
 	QListWidget::resizeEvent(event);
@@ -127,8 +130,9 @@ void SceneTree::dropEvent(QDropEvent *event)
 	}
 
 	if (gridMode) {
-		if (dropIndex < 0 || dropIndex >= count())
+		if (dropIndex < 0 || dropIndex >= count()) {
 			return;
+		}
 
 		// The position has to correspond to a grid location,
 		// or Qt will not allow the move
@@ -173,8 +177,9 @@ void SceneTree::RepositionGrid(QDragMoveEvent *event)
 			// If out of bounds in the last row,
 			// move to the row above
 			int remainder = count % columns;
-			if (remainder && column >= remainder)
+			if (remainder && column >= remainder) {
 				row--;
+			}
 		}
 
 		int src = selectedIndexes()[0].row();
@@ -189,10 +194,11 @@ void SceneTree::RepositionGrid(QDragMoveEvent *event)
 			int incIndex = dst > src ? dst + 1 : dst;
 			for (int i = 0; i < count; i++) {
 				auto *wItem = item(i);
-				if (i == incIndex)
+				if (i == incIndex) {
 					offset += 1;
-				else if (i == src)
+				} else if (i == src) {
 					offset -= 1;
+				}
 				int j = wItem->isSelected() ? dst : i + offset;
 				QPoint position = QPoint((j % columns) * itemWidth, (j / columns) * itemHeight);
 				QModelIndex index = indexFromItem(wItem);

@@ -13,8 +13,9 @@ using fs::directory_iterator;
 static inline string getFileContents(const string &path)
 {
 	ifstream file(path);
-	if (!file.is_open())
+	if (!file.is_open()) {
 		return "";
+	}
 	return string(istreambuf_iterator<char>(file), istreambuf_iterator<char>());
 }
 
@@ -40,20 +41,23 @@ void GPUUsage::init(pid_t pid)
 		}
 	}
 
-	if (fd.empty())
+	if (fd.empty()) {
 		return; // Couldn't find one
+	}
 
 	found = true;
 
 	path fdInfoFile = fdInfoDirectory / fd;
 	const string s = getFileContents(fdInfoFile.string());
 
-	if (!std::regex_search(s, match, driverPattern) || match[1] != "amdgpu")
+	if (!std::regex_search(s, match, driverPattern) || match[1] != "amdgpu") {
 		// We currently only support AMDGPU
 		return;
+	}
 
-	if (!std::regex_search(s, match, pdevPattern))
+	if (!std::regex_search(s, match, pdevPattern)) {
 		return;
+	}
 
 	// We'll only use information matching this pdev
 	pdev = match[1];
@@ -75,8 +79,9 @@ void GPUUsage::update()
 		// Ensure it's a link to a DRI device
 		try {
 			path link = fs::read_symlink(file);
-			if (link.parent_path() != driDirectory)
+			if (link.parent_path() != driDirectory) {
 				continue;
+			}
 		} catch (...) {
 			continue;
 		}
@@ -84,18 +89,21 @@ void GPUUsage::update()
 		path fdInfoFile = fdInfoDirectory / file.filename();
 		const string s = getFileContents(fdInfoFile.string());
 
-		if (!std::regex_search(s, match, pdevPattern) || match[1] != pdev)
+		if (!std::regex_search(s, match, pdevPattern) || match[1] != pdev) {
 			// Not our pdev
 			continue;
+		}
 
-		if (!std::regex_search(s, match, clientIDPattern))
+		if (!std::regex_search(s, match, clientIDPattern)) {
 			// No client-id
 			continue;
+		}
 
 		// Don't count client information more than once
 		uint32_t clientID = std::stoul(match[1]);
-		if (clientIDs.find(clientID) != clientIDs.end())
+		if (clientIDs.find(clientID) != clientIDs.end()) {
 			continue;
+		}
 		clientIDs.insert(clientID);
 
 		auto it = fdInfoMap.find(clientID);
@@ -123,38 +131,47 @@ inline void GPUUsage::parse(FDInfo &fdInfo, const string &s, uint64_t &timestamp
 
 		if (engineType == "gfx") {
 			uint64_t value = std::stoull(match[2]);
-			if (value > previousValues.gfx)
+			if (value > previousValues.gfx) {
 				fdInfo.gfx = value;
+			}
 		} else if (engineType == "compute") {
 			uint64_t value = std::stoull(match[2]);
-			if (value > previousValues.compute)
+			if (value > previousValues.compute) {
 				fdInfo.compute = value;
+			}
 		} else if (engineType == "enc") {
 			uint64_t value = std::stoull(match[2]);
-			if (value > previousValues.enc)
+			if (value > previousValues.enc) {
 				fdInfo.enc = value;
+			}
 		} else if (engineType == "enc_1") {
 			uint64_t value = std::stoull(match[2]);
-			if (value > previousValues.enc1)
+			if (value > previousValues.enc1) {
 				fdInfo.enc1 = value;
+			}
 		}
 	}
 
 	fdInfo.timestamp = timestamp;
-	if (!previousValues.timestamp)
+	if (!previousValues.timestamp) {
 		return;
+	}
 
 	double duration = fdInfo.timestamp - previousValues.timestamp;
 
-	if (previousValues.gfx && fdInfo.gfx > previousValues.gfx)
+	if (previousValues.gfx && fdInfo.gfx > previousValues.gfx) {
 		gfx += (fdInfo.gfx - previousValues.gfx) / duration;
+	}
 
-	if (previousValues.compute && fdInfo.compute > previousValues.compute)
+	if (previousValues.compute && fdInfo.compute > previousValues.compute) {
 		compute += (fdInfo.compute - previousValues.compute) / duration;
+	}
 
-	if (previousValues.enc && fdInfo.enc > previousValues.enc)
+	if (previousValues.enc && fdInfo.enc > previousValues.enc) {
 		enc += (fdInfo.enc - previousValues.enc) / duration;
+	}
 
-	if (previousValues.enc1 && fdInfo.enc1 > previousValues.enc1)
+	if (previousValues.enc1 && fdInfo.enc1 > previousValues.enc1) {
 		enc1 += (fdInfo.enc1 - previousValues.enc1) / duration;
+	}
 }

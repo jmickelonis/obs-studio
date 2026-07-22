@@ -12,10 +12,11 @@ void OBSElidedLabel::setToolTip(const QString &text)
 	// If a tooltip was specifically set,
 	// don't override it when eliding
 	hasToolTip = !text.isEmpty();
-	if (hasToolTip)
+	if (hasToolTip) {
 		QLabel::setToolTip(text);
-	else
+	} else {
 		updateElidedText();
+	}
 }
 
 void OBSElidedLabel::setText(const QString &text)
@@ -49,7 +50,8 @@ void OBSElidedLabel::updateElidedText()
 	elidedText = fontMetrics().elidedText(text, Qt::TextElideMode::ElideRight, elidedTextBounds.width(),
 					      Qt::TextShowMnemonic);
 
-    // Provide a tooltip with the full text if necessary
-	if (!hasToolTip)
+	// Provide a tooltip with the full text if necessary
+	if (!hasToolTip) {
 		QLabel::setToolTip(elidedText != text ? text : "");
+	}
 }

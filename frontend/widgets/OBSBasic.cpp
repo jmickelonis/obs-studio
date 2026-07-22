@@ -2131,17 +2131,21 @@ void OBSBasic::UpdateTitleBar()
 	const char *profile = config_get_string(App()->GetUserConfig(), "Basic", "Profile");
 	const char *sceneCollection = config_get_string(App()->GetUserConfig(), "Basic", "SceneCollection");
 
-	if (safe_mode)
+	if (safe_mode) {
 		name << " • " << Str("TitleBar.SafeMode");
-	if (App()->IsPortableMode())
+	}
+	if (App()->IsPortableMode()) {
 		name << " • " << Str("TitleBar.PortableMode");
+	}
 
 	// Only show Profile/Scenes names if they're non-default
 	const char *untitled = Str("Untitled");
-	if (strcmp(profile, untitled))
+	if (strcmp(profile, untitled)) {
 		name << " • " << Str("TitleBar.Profile") << ": " << profile;
-	if (strcmp(sceneCollection, untitled))
+	}
+	if (strcmp(sceneCollection, untitled)) {
 		name << " • " << Str("TitleBar.Scenes") << ": " << sceneCollection;
+	}
 
 	setWindowTitle(QT_UTF8(name.str().c_str()));
 }

@@ -81,14 +81,16 @@ static VkPhysicalDevice getPhysicalDevice(VkInstance instance, uint32_t id = 0)
 	for (VkPhysicalDevice device : devices) {
 		vkGetPhysicalDeviceProperties2(device, &props);
 
-		if (id && props.properties.deviceID != id)
+		if (id && props.properties.deviceID != id) {
 			continue;
+		}
 
 		VkDriverId &driverID = driverProps.driverID;
 
 		if (requiresProprietary) {
-			if (driverID == VK_DRIVER_ID_AMD_PROPRIETARY)
+			if (driverID == VK_DRIVER_ID_AMD_PROPRIETARY) {
 				return device;
+			}
 		} else {
 			switch (driverID) {
 			case VK_DRIVER_ID_AMD_PROPRIETARY:
@@ -159,9 +161,10 @@ shared_ptr<VulkanDevice> createDevice(AMFContext1Ptr context, uint32_t id, const
 		VkQueueFamilyProperties &props = queueFamilies.at(i).queueFamilyProperties;
 		VkQueueFlags &queueFlags = props.queueFlags;
 
-		if (!(queueFlags & REQUIRED_QUEUE_FLAGS))
+		if (!(queueFlags & REQUIRED_QUEUE_FLAGS)) {
 			// Don't create queues not needed by us or AMF (like compute, encode, etc)
 			continue;
+		}
 
 		static const float PRIORITY = 1.0;
 		VkDeviceQueueCreateInfo info = {
@@ -180,8 +183,9 @@ shared_ptr<VulkanDevice> createDevice(AMFContext1Ptr context, uint32_t id, const
 		  "GetVulkanDeviceExtensions failed");
 
 	extensions.reserve(extensionCount + otherExtensions.size());
-	for (const char *name : otherExtensions)
+	for (const char *name : otherExtensions) {
 		extensions.push_back(name);
+	}
 
 	VkDeviceCreateInfo deviceInfo{
 		.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
@@ -213,8 +217,9 @@ TextureEncoder::TextureEncoder(obs_encoder_t *encoder, CodecType codec, VideoInf
 
 TextureEncoder::~TextureEncoder()
 {
-	if (!vkDevice)
+	if (!vkDevice) {
 		return;
+	}
 
 	vkDeviceWaitIdle(vkDevice);
 	vkDestroyCommandPool(vkDevice, vkCommandPool, nullptr);
@@ -232,8 +237,9 @@ TextureEncoder::~TextureEncoder()
 	}
 	gl->DeleteSemaphoresEXT(1, &glSemaphore);
 	vkDestroySemaphore(vkDevice, vkSemaphore, nullptr);
-	for (auto &item : readFBOs)
+	for (auto &item : readFBOs) {
 		gl->DeleteFramebuffers(1, &item.second);
+	}
 	obs_leave_graphics();
 
 	terminate();
@@ -267,8 +273,9 @@ shared_ptr<VulkanDevice> TextureEncoder::createDevice()
 
 	if (!gl) {
 		scoped_lock lock(glMutex);
-		if (!gl)
+		if (!gl) {
 			gl = new GLFunctions;
+		}
 	}
 
 	return result;
@@ -276,11 +283,13 @@ shared_ptr<VulkanDevice> TextureEncoder::createDevice()
 
 bool TextureEncoder::encode(encoder_texture *texture, int64_t pts, encoder_packet *packet, bool *receivedPacket)
 {
-	if (!texture)
+	if (!texture) {
 		throw "Encode failed: bad texture handle";
+	}
 
-	if (!vkCommandPool)
+	if (!vkCommandPool) {
 		createTextures(texture);
+	}
 
 	obs_enter_graphics();
 	const Plane *planes = planesPtr.get();
@@ -476,8 +485,9 @@ void TextureEncoder::createTextures(encoder_texture *from)
 
 		obs_leave_graphics();
 
-		if (!imported)
+		if (!imported) {
 			throw "OpenGL texture import failed";
+		}
 
 		glTextures[i] = plane.glTexture;
 		glDstLayouts[i] = GL_LAYOUT_TRANSFER_SRC_EXT;
@@ -525,8 +535,9 @@ void TextureEncoder::createTextures(encoder_texture *from)
 	bool imported = gl->IsSemaphoreEXT(glSemaphore);
 	obs_leave_graphics();
 
-	if (!imported)
+	if (!imported) {
 		throw "OpenGL semaphore import failed";
+	}
 
 	VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 	vkCopySubmitInfo = {
@@ -541,8 +552,9 @@ void TextureEncoder::createTextures(encoder_texture *from)
 inline GLuint TextureEncoder::getReadFBO(gs_texture *tex)
 {
 	auto it = readFBOs.find(tex);
-	if (it != readFBOs.end())
+	if (it != readFBOs.end()) {
 		return it->second;
+	}
 	GLuint *obj = static_cast<GLuint *>(gs_texture_get_obj(tex));
 	GLuint fbo;
 	GL_CHECK(gl->GenFramebuffers(1, &fbo));
@@ -557,8 +569,9 @@ inline VkCommandBuffer TextureEncoder::getCopyCommandBuffer(AMFSurfacePtr &surfa
 	VkImage vkImage = ((AMFVulkanView *)surface->GetPlaneAt(0)->GetNative())->pSurface->hImage;
 	auto it = copyCommandBuffers.find(vkImage);
 
-	if (it != copyCommandBuffers.end())
+	if (it != copyCommandBuffers.end()) {
 		return it->second;
+	}
 
 	VkCommandBuffer buffer;
 	allocateCommandBuffer(buffer);
@@ -659,15 +672,18 @@ uint32_t TextureEncoder::getMemoryTypeIndex(VkMemoryPropertyFlags properties, ui
 {
 	VkPhysicalDeviceMemoryProperties prop;
 	vkGetPhysicalDeviceMemoryProperties(vkPhysicalDevice, &prop);
-	for (uint32_t i = 0; i < prop.memoryTypeCount; i++)
-		if ((prop.memoryTypes[i].propertyFlags & properties) == properties && typeBits & (1 << i))
+	for (uint32_t i = 0; i < prop.memoryTypeCount; i++) {
+		if ((prop.memoryTypes[i].propertyFlags & properties) == properties && typeBits & (1 << i)) {
 			return i;
+		}
+	}
 	return 0xFFFFFFFF;
 }
 
 void TextureEncoder::onReinitialize()
 {
-	for (auto &[vkImage, buffer] : copyCommandBuffers)
+	for (auto &[vkImage, buffer] : copyCommandBuffers) {
 		vkFreeCommandBuffers(vkDevice, vkCommandPool, 1, &buffer);
+	}
 	copyCommandBuffers.clear();
 }

@@ -63,8 +63,9 @@ void TitleBarWidget::onTopLevelChanged(bool floating)
 	dock->clearCursor();
 
 #ifdef _WIN32
-	if (dock->isFloating() && dock->mouseState == OBSDock::MouseState::NotPressed)
+	if (dock->isFloating() && dock->mouseState == OBSDock::MouseState::NotPressed) {
 		dock->setDropShadowInternal(dock->dropShadow);
+	}
 #endif
 
 	// Stop from showing hover after setting floatable
@@ -72,12 +73,14 @@ void TitleBarWidget::onTopLevelChanged(bool floating)
 
 	// Activate the window when [un]floating
 	QWindow *window = this->window()->windowHandle();
-	if (window)
+	if (window) {
 		window->requestActivate();
+	}
 
-	if (!floating)
+	if (!floating) {
 		// Stock doesn't normally bring it to the top for some reason
 		dock->raise();
+	}
 }
 
 QSize TitleBarLayout::sizeHint() const
@@ -129,8 +132,9 @@ void TitleBarLayout::setGeometry(const QRect &geometry)
 
 	auto handleButton = [&](QAbstractButton *button, QStyle::SubElement subElement) {
 		QRect rect = style->subElementRect(subElement, &opt, dock);
-		if (rect.isNull())
+		if (rect.isNull()) {
 			return;
+		}
 		int w = rect.width();
 		int h = rect.height();
 		/*
@@ -182,9 +186,11 @@ OBSDock::OBSDock(const QString &title, QWidget *parent) : QDockWidget(title, par
 #ifdef __QT_SUPPORTS_SYSTEM_RESIZE
 	// Go scorched-Earth to remove the stock resizer
 	QList<QObject *> objects = findChildren<QObject *>();
-	for (QObject *object : objects)
-		if (!qobject_cast<QWidget *>(object))
+	for (QObject *object : objects) {
+		if (!qobject_cast<QWidget *>(object)) {
 			removeEventFilter(object);
+		}
+	}
 #endif
 
 	connect(this, &QDockWidget::visibilityChanged, this, &OBSDock::onVisibilityChanged);
@@ -203,11 +209,13 @@ void OBSDock::setDropShadow(bool value)
 {
 #ifdef _WIN32
 	bool old = dropShadow;
-	if (value == old)
+	if (value == old) {
 		return;
+	}
 	dropShadow = value;
-	if (isFloating())
+	if (isFloating()) {
 		setDropShadowInternal(value);
+	}
 #else
 	UNUSED_PARAMETER(value);
 #endif
@@ -277,8 +285,9 @@ void OBSDock::showEvent(QShowEvent *event)
 #ifdef __QT_SUPPORTS_SYSTEM_RESIZE
 bool OBSDock::eventFilter(QObject *watched, QEvent *event)
 {
-	if (!isFloating() || watched != window()->windowHandle())
+	if (!isFloating() || watched != window()->windowHandle()) {
 		goto END;
+	}
 
 	/* Filter events going to the floating window.
 	 * This allows us to better support native resizing.
@@ -287,8 +296,9 @@ bool OBSDock::eventFilter(QObject *watched, QEvent *event)
 	switch (event->type()) {
 
 	case QEvent::Enter: {
-		if (mouseState != NotPressed)
+		if (mouseState != NotPressed) {
 			break;
+		}
 
 		// Update the edges and cursor
 		QEnterEvent *enterEvent = static_cast<QEnterEvent *>(event);
@@ -296,20 +306,23 @@ bool OBSDock::eventFilter(QObject *watched, QEvent *event)
 		edges = getResizeEdges(pos);
 		updateCursor();
 
-		if (edges)
+		if (edges) {
 			// Don't forward to the widget if we can resize
 			return true;
+		}
 
 		break;
 	}
 
 	case QEvent::MouseButtonPress: {
-		if (mouseState != NotPressed || !edges)
+		if (mouseState != NotPressed || !edges) {
 			break;
+		}
 
 		QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
-		if (mouseEvent->button() != Qt::LeftButton)
+		if (mouseEvent->button() != Qt::LeftButton) {
 			return true;
+		}
 
 		/* An edge was pressed.
 		 * We'll do a system resize when dragged far enough.
@@ -320,8 +333,9 @@ bool OBSDock::eventFilter(QObject *watched, QEvent *event)
 	}
 
 	case QEvent::MouseButtonDblClick: {
-		if (!edges)
+		if (!edges) {
 			break;
+		}
 
 		// Ignore double-clicks on the edges
 		return true;
@@ -330,8 +344,9 @@ bool OBSDock::eventFilter(QObject *watched, QEvent *event)
 	case QEvent::MouseMove: {
 		if (mouseState == Pressed && edges) {
 			QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
-			if (!shouldStartDrag(mouseEvent))
+			if (!shouldStartDrag(mouseEvent)) {
 				return true;
+			}
 
 			// Dragged an edge far enough to start a system resize
 
@@ -343,8 +358,9 @@ bool OBSDock::eventFilter(QObject *watched, QEvent *event)
 			return true;
 		}
 
-		if (mouseState != NotPressed)
+		if (mouseState != NotPressed) {
 			break;
+		}
 
 		// Update the edges and cursor
 		QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
@@ -354,8 +370,9 @@ bool OBSDock::eventFilter(QObject *watched, QEvent *event)
 		updateCursor();
 
 		if (edges == oldEdges) {
-			if (edges)
+			if (edges) {
 				return true;
+			}
 
 			break;
 		}
@@ -384,20 +401,23 @@ bool OBSDock::eventFilter(QObject *watched, QEvent *event)
 	}
 
 	case QEvent::MouseButtonRelease: {
-		if (!edges)
+		if (!edges) {
 			break;
+		}
 
 		QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
-		if (mouseEvent->button() != Qt::LeftButton)
+		if (mouseEvent->button() != Qt::LeftButton) {
 			return true;
+		}
 
 		if (mouseState == Pressed) {
 			mouseState = NotPressed;
 			return true;
 		}
 
-		if (mouseState != Resizing)
+		if (mouseState != Resizing) {
 			return true;
+		}
 
 		// Done resizing
 		mouseState = NotPressed;
@@ -415,8 +435,9 @@ bool OBSDock::eventFilter(QObject *watched, QEvent *event)
 	}
 
 	case QEvent::Leave: {
-		if (mouseState != NotPressed)
+		if (mouseState != NotPressed) {
 			break;
+		}
 		edges = Qt::Edges();
 		break;
 	}
@@ -441,8 +462,7 @@ bool OBSDock::event(QEvent *e)
 #ifdef __linux__
 			ShadowHelper::ShadowHelper::sharedInstance()->registerWidget(this);
 #endif
-		}
-		else {
+		} else {
 			break;
 		}
 		edges = Qt::Edges();
@@ -451,8 +471,9 @@ bool OBSDock::event(QEvent *e)
 
 #ifdef __linux__
 	case QEvent::Hide:
-		if (isFloating())
+		if (isFloating()) {
 			ShadowHelper::ShadowHelper::sharedInstance()->unregisterWidget(this);
+		}
 		break;
 #endif
 
@@ -472,18 +493,21 @@ bool OBSDock::event(QEvent *e)
 #endif
 
 	case QEvent::ContextMenu: {
-		if (mouseState != NotPressed)
+		if (mouseState != NotPressed) {
 			break;
+		}
 
 		QContextMenuEvent *contextMenuEvent = static_cast<QContextMenuEvent *>(e);
-		if (!isOverTitleBar(contextMenuEvent->pos()))
+		if (!isOverTitleBar(contextMenuEvent->pos())) {
 			break;
+		}
 
-		if (isFloating() && OBSApp::IsWayland())
+		if (isFloating() && OBSApp::IsWayland()) {
 			/* Wayland can't accurately get the global mouse position here.
 			 * Just disable the context menu when floating.
 			 */
 			return false;
+		}
 
 		clearCursor();
 		QMenu *menu = App()->GetMainWindow()->findChild<QMenu *>("menuDocks");
@@ -493,37 +517,43 @@ bool OBSDock::event(QEvent *e)
 
 	case QEvent::WindowActivate:
 	case QEvent::WindowDeactivate:
-		if (isFloating())
+		if (isFloating()) {
 			// Update the window border
 			update();
+		}
 		break;
 
 	case QEvent::HoverEnter:
 	case QEvent::HoverMove: {
-		if (mouseState != NotPressed)
+		if (mouseState != NotPressed) {
 			break;
+		}
 
 		updateCursor();
 		break;
 	}
 
 	case QEvent::HoverLeave:
-		if (mouseState != Dragging)
+		if (mouseState != Dragging) {
 			clearCursor();
+		}
 		break;
 
 	case QEvent::MouseButtonPress: {
-		if (mouseState != NotPressed)
+		if (mouseState != NotPressed) {
 			break;
+		}
 
 		QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(e);
-		if (mouseEvent->button() != Qt::LeftButton)
+		if (mouseEvent->button() != Qt::LeftButton) {
 			break;
+		}
 
 		pressPosition = mouseEvent->pos();
 
-		if (!isOverTitleBar(pressPosition))
+		if (!isOverTitleBar(pressPosition)) {
 			break;
+		}
 
 		if (isFloating() && ((mouseEvent->modifiers() & Qt::ControlModifier) ||
 				     !hasFeature(QDockWidget::DockWidgetFloatable))) {
@@ -533,8 +563,9 @@ bool OBSDock::event(QEvent *e)
 			return true;
 		}
 
-		if (!hasFeature(QDockWidget::DockWidgetMovable))
+		if (!hasFeature(QDockWidget::DockWidgetMovable)) {
 			return false;
+		}
 
 		// Stock implementation will handle a drag
 		mouseState = Pressed;
@@ -558,14 +589,16 @@ bool OBSDock::event(QEvent *e)
 		break;
 
 	case QEvent::MouseMove: {
-		if (mouseState == NotPressed)
+		if (mouseState == NotPressed) {
 			// Works around strange bug where dock pops out temporarily
 			return true;
+		}
 
 		if (mouseState == CtrlPressed) {
 			QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(e);
-			if (!shouldStartDrag(mouseEvent))
+			if (!shouldStartDrag(mouseEvent)) {
 				return false;
+			}
 
 #ifdef _WIN32
 			setDropShadowInternal(false);
@@ -580,8 +613,9 @@ bool OBSDock::event(QEvent *e)
 	}
 
 	case QEvent::MouseButtonRelease: {
-		if (mouseState == NotPressed)
+		if (mouseState == NotPressed) {
 			break;
+		}
 
 		QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(e);
 		Qt::MouseButton button = mouseEvent->button();
@@ -589,8 +623,9 @@ bool OBSDock::event(QEvent *e)
 		if (mouseState == Pressed && OBSApp::IsWayland() && isFloating() && button <= Qt::LeftButton) {
 			// Wayland sends this after a floating drag
 
-			if (mouseGrabber())
+			if (mouseGrabber()) {
 				releaseMouse();
+			}
 
 			temporarilyDisableAnimations();
 			mouseState = NotPressed;
@@ -598,8 +633,9 @@ bool OBSDock::event(QEvent *e)
 			break;
 		}
 
-		if (button != Qt::LeftButton)
+		if (button != Qt::LeftButton) {
 			break;
+		}
 
 		if (mouseState == Dragging) {
 			setTranslucent(false);
@@ -650,8 +686,9 @@ void OBSDock::paintEvent(QPaintEvent *)
 #ifdef _WIN32
 bool OBSDock::nativeEvent(const QByteArray &eventType, void *message, qintptr *result)
 {
-	if (!isFloating())
+	if (!isFloating()) {
 		return false;
+	}
 
 	MSG *msg = reinterpret_cast<MSG *>(message);
 
@@ -669,12 +706,13 @@ bool OBSDock::nativeEvent(const QByteArray &eventType, void *message, qintptr *r
 		// Make the background transparent
 		Win32::setBlurBehind(wnd, true);
 
-		if (Win32::is11OrNewer())
+		if (Win32::is11OrNewer()) {
 			// Disable rounded corners
 			Win32::setCornerPreference(wnd, DWMWCP_DONOTROUND);
-		else
+		} else {
 			// Enables drop shadows when WS_CAPTION is set
 			Win32::enableSheetOfGlass(wnd);
+		}
 
 		setDropShadowInternal(dropShadow);
 		break;
@@ -696,10 +734,12 @@ bool OBSDock::nativeEvent(const QByteArray &eventType, void *message, qintptr *r
 		int xMin = screenBounds.left;
 		int yMin = screenBounds.top;
 
-		if (edge == WMSZ_TOPLEFT || edge == WMSZ_LEFT || edge == WMSZ_BOTTOMLEFT)
-			if (rect.left < xMin)
+		if (edge == WMSZ_TOPLEFT || edge == WMSZ_LEFT || edge == WMSZ_BOTTOMLEFT) {
+			if (rect.left < xMin) {
 				// Don't let the left border be dragged out of bounds
 				rect.left = xMin;
+			}
+		}
 
 		if (edge == WMSZ_TOPLEFT || edge == WMSZ_TOP || edge == WMSZ_TOPRIGHT) {
 			if (rect.top < yMin) {
@@ -710,8 +750,9 @@ bool OBSDock::nativeEvent(const QByteArray &eventType, void *message, qintptr *r
 				TitleBarWidget *titleBar = findChild<TitleBarWidget *>();
 				int yMax = screenBounds.bottom -
 					   (int)((titleBar->y() + titleBar->height()) * devicePixelRatioF());
-				if (rect.top > yMax)
+				if (rect.top > yMax) {
 					rect.top = yMax;
+				}
 			}
 		}
 
@@ -738,17 +779,19 @@ Qt::Edges OBSDock::getResizeEdges(const QPoint &position)
 {
 	Qt::Edges edges;
 
-	if (!isFloating())
+	if (!isFloating()) {
 		return edges;
+	}
 
 	const int x = position.x();
 	const int y = position.y();
 	const int w = width();
 	const int h = height();
 
-	if (x < 0 || x >= w || y < 0 || y >= h)
+	if (x < 0 || x >= w || y < 0 || y >= h) {
 		// Position is not within this window
 		return edges;
+	}
 
 	// Give more room on the top/bottom edges, as well as inside the title bar
 	static int borderSize = 5;
@@ -764,14 +807,16 @@ Qt::Edges OBSDock::getResizeEdges(const QPoint &position)
 		hBorderSize = borderSize;
 	} else {
 		const QWidget *titleBar = titleBarWidget();
-		if (y < titleBar->y() + titleBar->height())
+		if (y < titleBar->y() + titleBar->height()) {
 			hBorderSize = borderSize;
+		}
 	}
 
-	if (x < hBorderSize)
+	if (x < hBorderSize) {
 		edges |= Qt::LeftEdge;
-	else if (x >= w - hBorderSize)
+	} else if (x >= w - hBorderSize) {
 		edges |= Qt::RightEdge;
+	}
 
 	return edges;
 }
@@ -779,21 +824,23 @@ Qt::Edges OBSDock::getResizeEdges(const QPoint &position)
 
 Qt::CursorShape OBSDock::getCursor()
 {
-	if (floatButton->underMouse() || closeButton->underMouse())
+	if (floatButton->underMouse() || closeButton->underMouse()) {
 		return Qt::BlankCursor;
+	}
 
 #ifdef __QT_SUPPORTS_SYSTEM_RESIZE
 	if (isFloating()) {
-		if (edges & Qt::LeftEdge)
+		if (edges & Qt::LeftEdge) {
 			return edges & Qt::TopEdge      ? Qt::SizeFDiagCursor
 			       : edges & Qt::BottomEdge ? Qt::SizeBDiagCursor
 							: Qt::SizeHorCursor;
-		else if (edges & Qt::RightEdge)
+		} else if (edges & Qt::RightEdge) {
 			return edges & Qt::TopEdge      ? Qt::SizeBDiagCursor
 			       : edges & Qt::BottomEdge ? Qt::SizeFDiagCursor
 							: Qt::SizeHorCursor;
-		else if (edges & (Qt::TopEdge | Qt::BottomEdge))
+		} else if (edges & (Qt::TopEdge | Qt::BottomEdge)) {
 			return Qt::SizeVerCursor;
+		}
 	}
 #endif
 
@@ -818,10 +865,11 @@ void OBSDock::updateCursor(Qt::CursorShape cursor)
 {
 	OBSApp *app = App();
 	if (cursor != Qt::BlankCursor) {
-		if (this->cursor != Qt::BlankCursor)
+		if (this->cursor != Qt::BlankCursor) {
 			app->changeOverrideCursor(cursor);
-		else
+		} else {
 			app->setOverrideCursor(cursor);
+		}
 	} else if (this->cursor != Qt::BlankCursor) {
 		app->restoreOverrideCursor();
 	}
@@ -847,10 +895,11 @@ void OBSDock::setDropShadowInternal(bool value)
 	} else {
 		LONG style = Win32::getStyle(wnd);
 		LONG flags = WS_CAPTION | WS_CLIPCHILDREN;
-		if (value)
+		if (value) {
 			style |= flags;
-		else
+		} else {
 			style &= ~flags;
+		}
 		Win32::setStyle(wnd, style);
 	}
 }
@@ -877,8 +926,9 @@ void OBSDock::fixBounds()
 		x = xMin;
 	} else {
 		int xMax = screenBounds.right() - this->width() + 1;
-		if (x > xMax)
+		if (x > xMax) {
 			x = xMax;
+		}
 	}
 
 	if (y < yMin) {
@@ -886,8 +936,9 @@ void OBSDock::fixBounds()
 	} else {
 		TitleBarWidget *titleBar = findChild<TitleBarWidget *>();
 		int yMax = screenBounds.bottom() - (titleBar->y() + titleBar->height()) + 1;
-		if (y > yMax)
+		if (y > yMax) {
 			y = yMax;
+		}
 	}
 
 	move(x, y);
@@ -918,9 +969,10 @@ void OBSDock::temporarilyDisableAnimations()
 
 void OBSDock::onVisibilityChanged(bool visible)
 {
-	if (visible && !isFloating())
+	if (visible && !isFloating()) {
 		// This fixes browser docks disappearing when tabbed
 		raise();
+	}
 
 	/* This fixes the button layout being wrong for already-floating docks
 	 * (on Windows at the very least)

@@ -489,8 +489,9 @@ void OBSApp::FindThemes()
 	loadThemes(themeDir);
 	themeDir = "";
 	GetDataFilePath("themes/", themeDir);
-	if (themeDir != "")
+	if (themeDir != "") {
 		loadThemes(themeDir);
+	}
 
 	/* Build dependency tree for all themes, removing ones that have items missing. */
 	QSet<QString> invalid;
@@ -901,16 +902,18 @@ filesystem::path OBSApp::GetThemeCSSPath(string id)
 		int res = GetAppConfigPath(cpath, sizeof(cpath), ("obs-studio/" + relpath).c_str());
 		if (res > 0) {
 			fs::path path = cpath;
-			if (fs::exists(path) && !fs::is_directory(path))
+			if (fs::exists(path) && !fs::is_directory(path)) {
 				// Found in user config
 				return path;
+			}
 		}
 
 		string spath;
 		if (GetDataFilePath(relpath.c_str(), spath)) {
 			fs::path path = spath;
-			if (fs::exists(path) && !fs::is_directory(path))
+			if (fs::exists(path) && !fs::is_directory(path)) {
 				return path;
+			}
 		}
 	}
 	return "";
@@ -918,16 +921,19 @@ filesystem::path OBSApp::GetThemeCSSPath(string id)
 
 static bool ProcessThemeCSS(fs::path path, fs::path outPath, const QHash<QString, OBSThemeVariable> &vars)
 {
-	if (path.empty())
+	if (path.empty()) {
 		return false;
+	}
 
 	ifstream file(path);
-	if (!file.is_open())
+	if (!file.is_open()) {
 		return false;
+	}
 
 	string s = string(istreambuf_iterator<char>(file), istreambuf_iterator<char>());
-	if (s == "")
+	if (s == "") {
 		return false;
+	}
 
 	// Find any variables that are referenced
 	regex varPattern(R"(\bvar\(--obs-([^)]+)\))");
@@ -940,12 +946,14 @@ static bool ProcessThemeCSS(fs::path path, fs::path outPath, const QHash<QString
 			smatch match = *i;
 
 			const QString name = QString::fromStdString(match[1].str());
-			if (!vars.contains(name))
+			if (!vars.contains(name)) {
 				continue;
+			}
 
 			OBSThemeVariable var = vars.value(name);
-			if (!ResolveVariable(vars, var))
+			if (!ResolveVariable(vars, var)) {
 				continue;
+			}
 
 			references[name] = var;
 		}
@@ -955,9 +963,10 @@ static bool ProcessThemeCSS(fs::path path, fs::path outPath, const QHash<QString
 
 			// Prepend the referenced values to the stylesheet
 			ss << ":root{";
-			for (auto const &[key, value] : references)
+			for (auto const &[key, value] : references) {
 				ss << "--obs-" << key.toStdString() << ": " << value.value.toString().toStdString()
 				   << ";";
+			}
 			ss << "}";
 
 			// Copy over the existing CSS
@@ -966,8 +975,9 @@ static bool ProcessThemeCSS(fs::path path, fs::path outPath, const QHash<QString
 
 			// Save everything to the output file
 			std::ofstream out(outPath);
-			if (!out.is_open())
+			if (!out.is_open()) {
 				return false;
+			}
 
 			out << s;
 			out.close();
@@ -986,16 +996,18 @@ void OBSApp::PrepareThemeCSS(string id, const QHash<QString, OBSThemeVariable> &
 {
 	char cpath[512];
 	int res = GetAppConfigPath(cpath, sizeof(cpath), ("obs-studio/." + id + ".css").c_str());
-	if (res <= 0)
+	if (res <= 0) {
 		// Shouldn't happen
 		return;
+	}
 
 	fs::path path = GetThemeCSSPath(id);
 	fs::path outPath = cpath;
 
-	if (!ProcessThemeCSS(path, outPath, vars))
+	if (!ProcessThemeCSS(path, outPath, vars)) {
 		// Remove the target (all docks should just use their default styles)
 		fs::remove(outPath);
+	}
 }
 
 OBSTheme *OBSApp::GetTheme(const QString &name)
@@ -1122,8 +1134,9 @@ bool OBSApp::SetTheme(const QString &name)
 		QList<QLabel *> labels = widget->findChildren<QLabel *>();
 		for (QLabel *label : labels) {
 			QString text = label->text();
-			if (!label->openExternalLinks() && !Qt::mightBeRichText(text))
+			if (!label->openExternalLinks() && !Qt::mightBeRichText(text)) {
 				continue;
+			}
 			label->setText("");
 			label->setText(text);
 		}
@@ -1133,14 +1146,16 @@ bool OBSApp::SetTheme(const QString &name)
 		QList<OBSHotkeyEdit *> hotkeyEdits = widget->findChildren<OBSHotkeyEdit *>();
 		if (!hotkeyEdits.isEmpty()) {
 			QStyle *style = GetInvisibleCursorStyle();
-			for (OBSHotkeyEdit *edit : hotkeyEdits)
+			for (OBSHotkeyEdit *edit : hotkeyEdits) {
 				edit->setStyle(style);
+			}
 		}
 
 #ifdef _WIN32
 		// Update the title bar and border on Windows
-		if (widget->isWindow())
+		if (widget->isWindow()) {
 			UpdateTitleBarColor(widget);
+		}
 #endif
 	}
 
@@ -1176,9 +1191,11 @@ bool OBSApp::SetTheme(const QString &name)
 		// Update the CSS in any Twitch docks
 
 		QList<shared_ptr<QDockWidget>> twitchDocks;
-		for (auto dock : basic->extraDocks)
-			if (dock->objectName().startsWith("twitch"))
+		for (auto dock : basic->extraDocks) {
+			if (dock->objectName().startsWith("twitch")) {
 				twitchDocks.append(dock);
+			}
+		}
 
 		if (!twitchDocks.isEmpty()) {
 			bool isDark = theme->isDark;

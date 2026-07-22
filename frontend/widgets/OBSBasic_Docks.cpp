@@ -33,9 +33,10 @@ void setupDockAction(QDockWidget *dock)
 	auto newToggleView = [dock](bool check) {
 		QSignalBlocker block(dock);
 		dock->setVisible(check);
-		if (check)
+		if (check) {
 			// Raise the dock when it's shown via the menu action
 			dock->raise();
+		}
 	};
 
 	// Replace the slot connected by default
@@ -148,8 +149,9 @@ static QMenu *getMenu(QMenu *parent, const QString &objectName)
 {
 	for (QAction *action : parent->actions()) {
 		QMenu *menu = action->menu();
-		if (menu && menu->objectName() == objectName)
+		if (menu && menu->objectName() == objectName) {
 			return menu;
+		}
 	}
 
 	return nullptr;
@@ -162,16 +164,18 @@ QMenu *OBSBasic::GetServiceDockMenu(const QString &objectName, const QString &ti
 	QMenu *parent = ui->menuDocks;
 	QMenu *menu = getMenu(parent, objectName);
 
-	if (menu)
+	if (menu) {
 		return menu;
+	}
 
 	menu = new QMenu(title);
 	menu->setObjectName(objectName);
 
-	if (!extraBrowserMenuDocksSeparator.isNull())
+	if (!extraBrowserMenuDocksSeparator.isNull()) {
 		parent->insertMenu(extraBrowserMenuDocksSeparator, menu);
-	else
+	} else {
 		parent->addMenu(menu);
+	}
 
 	// Hide the menu dynamically when it's empty
 	QObject::connect(parent, &QMenu::aboutToShow, menu,
@@ -184,15 +188,17 @@ void OBSBasic::SortServiceDockMenu(const QString &objectName)
 {
 	QMenu *menu = getMenu(ui->menuDocks, objectName);
 
-	if (!menu)
+	if (!menu) {
 		return;
+	}
 
 	QList<QAction *> actions = menu->actions();
 	std::sort(actions.begin(), actions.end(),
 		  [](const QAction *a, const QAction *b) { return a->text().compare(b->text()) < 0; });
 	menu->clear();
-	for (QAction *action : actions)
+	for (QAction *action : actions) {
 		menu->addAction(action);
+	}
 }
 #endif
 
@@ -200,8 +206,9 @@ void OBSBasic::addDockWidget(Qt::DockWidgetArea area, QDockWidget *dock)
 {
 	// Raise the dock when it's shown via the menu action
 	connect(dock->toggleViewAction(), &QAction::triggered, this, [dock]() {
-		if (dock->isVisible())
+		if (dock->isVisible()) {
 			dock->raise();
+		}
 	});
 
 	QMainWindow::addDockWidget(area, dock);

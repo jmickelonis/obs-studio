@@ -116,8 +116,9 @@ void CheckIfAlreadyRunning(bool &already_running)
 
 void SetProcessPriority(const char *priority)
 {
-	if (!priority)
+	if (!priority) {
 		return;
+	}
 
 	int p = !strcmp(priority, "High")          ? -20
 		: !strcmp(priority, "AboveNormal") ? -5

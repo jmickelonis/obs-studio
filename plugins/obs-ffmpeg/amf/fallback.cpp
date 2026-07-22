@@ -79,15 +79,17 @@ void FallbackEncoder::onReinitialize()
 {
 	scoped_lock lock(bufferMutex);
 
-	for (auto &pair : activeBuffers)
+	for (auto &pair : activeBuffers) {
 		buffers.push_back(pair.second);
+	}
 	activeBuffers.clear();
 }
 
 void AMF_STD_CALL FallbackEncoder::OnSurfaceDataRelease(AMFSurface *surface)
 {
-	if (os_atomic_load_bool(&destroying))
+	if (os_atomic_load_bool(&destroying)) {
 		return;
+	}
 
 	scoped_lock lock(bufferMutex);
 

@@ -215,8 +215,9 @@ static void InitPanelCookieManager()
 	std::string old_path = root + "/obs_profile_cookies/" + cookie_id;
 	if (fs::is_directory(old_path)) {
 		std::string path = root + "/" + sub_path;
-		if (!fs::is_directory(path))
+		if (!fs::is_directory(path)) {
 			fs::rename(old_path, path);
+		}
 	}
 
 	panel_cookies = cef->create_cookie_manager(sub_path);
@@ -261,8 +262,9 @@ void DuplicateCurrentCookieProfile(ConfigFile &config)
 		std::string src = root + "/obs_profile_cookies_" + cookie_id;
 		if (fs::is_directory(src)) {
 			std::string dst = root + "/obs_profile_cookies_" + new_id;
-			if (!fs::is_directory(dst))
+			if (!fs::is_directory(dst)) {
 				fs::copy(src, dst, fs::copy_options::recursive);
+			}
 		}
 
 		config_set_string(config, "Panels", "CookieId", cookie_id.c_str());

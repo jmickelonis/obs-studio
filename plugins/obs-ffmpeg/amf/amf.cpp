@@ -16,8 +16,9 @@ const char *AMFException::what()
 bool getCaps(uint32_t deviceID, CodecType codec, AMFCaps **caps)
 {
 	AMFContextPtr context;
-	if (AMF_FAILED(amfFactory->CreateContext(&context)))
+	if (AMF_FAILED(amfFactory->CreateContext(&context))) {
 		return false;
+	}
 #ifdef _WIN32
 	ComPtr<ID3D11Device> device;
 	try {
@@ -25,8 +26,9 @@ bool getCaps(uint32_t deviceID, CodecType codec, AMFCaps **caps)
 	} catch (...) {
 		return false;
 	}
-	if (AMF_FAILED(context->InitDX11(device, AMF_DX11_1)))
+	if (AMF_FAILED(context->InitDX11(device, AMF_DX11_1))) {
 		return false;
+	}
 #elif defined(__linux__)
 	AMFContext1Ptr context1 = AMFContext1Ptr(context);
 	shared_ptr<VulkanDevice> device;
@@ -35,13 +37,15 @@ bool getCaps(uint32_t deviceID, CodecType codec, AMFCaps **caps)
 	} catch (...) {
 		return false;
 	}
-	if (AMF_FAILED(context1->InitVulkan(device.get())))
+	if (AMF_FAILED(context1->InitVulkan(device.get()))) {
 		return false;
+	}
 #endif
 	const wchar_t *id = getEncoderID(codec);
 	AMFComponentPtr component;
-	if (AMF_FAILED(amfFactory->CreateComponent(context, id, &component)))
+	if (AMF_FAILED(amfFactory->CreateComponent(context, id, &component))) {
 		return false;
+	}
 	bool ok = AMF_SUCCEEDED(component->GetCaps(caps));
 	context->Terminate(); // Have to call this before VulkanDevice is destroyed
 	return ok;

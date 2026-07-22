@@ -397,8 +397,9 @@ const CodecProperties &getCodecProperties(CodecType codec)
 	scoped_lock lock(propertiesMutex);
 
 	auto it = codecProperties.find(codec);
-	if (it != codecProperties.end())
+	if (it != codecProperties.end()) {
 		return *it->second;
+	}
 
 	CodecProperties *(*create)();
 	switch (codec) {
@@ -424,8 +425,9 @@ static PropertyTypes *preAnalysisProperties;
 const PropertyTypes &getPreAnalysisProperties()
 {
 	scoped_lock lock(propertiesMutex);
-	if (preAnalysisProperties)
+	if (preAnalysisProperties) {
 		return *preAnalysisProperties;
+	}
 
 	preAnalysisProperties = new PropertyTypes{
 #define _ITEM(NAME, TYPE) { AMF_PA_ ## NAME, PropertyType::TYPE }
@@ -966,10 +968,12 @@ void printProperties(stringstream &ss, AMFPropertyStorage *storage, const Proper
 			continue;
 		}
 
-		if (ss.tellp())
+		if (ss.tellp()) {
 			ss << "\n";
-		for (unsigned int i = 0; i < indent; i++)
+		}
+		for (unsigned int i = 0; i < indent; i++) {
 			ss << "\t";
+		}
 		ss << s;
 	}
 }
@@ -977,10 +981,12 @@ void printProperties(stringstream &ss, AMFPropertyStorage *storage, const Proper
 void printProperties(stringstream &ss, AMFPropertyStorage *storage, const char *category,
 		     const PropertyTypes &properties, unsigned int indent)
 {
-	if (ss.tellp())
+	if (ss.tellp()) {
 		ss << "\n";
-	for (unsigned int i = 0; i < indent; i++)
+	}
+	for (unsigned int i = 0; i < indent; i++) {
 		ss << "\t";
+	}
 	ss << category << ":";
 	printProperties(ss, storage, properties, indent + 1);
 }
@@ -988,12 +994,14 @@ void printProperties(stringstream &ss, AMFPropertyStorage *storage, const char *
 void printProperties(stringstream &ss, AMFPropertyStorage *storage, const CodecProperties &properties,
 		     unsigned int indent)
 {
-	for (const char *category : properties.categories)
+	for (const char *category : properties.categories) {
 		printProperties(ss, storage, category, properties.properties.at(category), indent);
+	}
 	CodecType codec = properties.codec;
 	bool paEnabled = getBool(storage, AMF_PROPERTY(PRE_ANALYSIS_ENABLE));
-	if (paEnabled)
+	if (paEnabled) {
 		printProperties(ss, storage, "Pre-Analysis", getPreAnalysisProperties(), indent);
+	}
 }
 
 static void getPropertyValues(AMFPropertyStorage *storage, const PropertyTypes &properties, PropertyValues &out)
@@ -1009,8 +1017,9 @@ static void getPropertyValues(AMFPropertyStorage *storage, const PropertyTypes &
 PropertyValues getPropertyValues(AMFPropertyStorage *storage, const CodecProperties &properties)
 {
 	PropertyValues values;
-	for (auto const &[category, types] : properties.properties)
+	for (auto const &[category, types] : properties.properties) {
 		getPropertyValues(storage, types, values);
+	}
 	const PropertyTypes &paProperties = getPreAnalysisProperties();
 	getPropertyValues(storage, paProperties, values);
 	return values;
@@ -1020,14 +1029,17 @@ void printChangedPropertyValues(stringstream &ss, PropertyValues &from, Property
 {
 	for (auto const &[name, value] : to) {
 		try {
-			if (value == from[name])
+			if (value == from[name]) {
 				continue;
+			}
 		} catch (std::out_of_range) {
 		}
-		if (ss.tellp())
+		if (ss.tellp()) {
 			ss << "\n";
-		for (unsigned int i = 0; i < indent; i++)
+		}
+		for (unsigned int i = 0; i < indent; i++) {
 			ss << "\t";
+		}
 		ss << nameToString(name);
 		ss << ": ";
 		ss << value;
