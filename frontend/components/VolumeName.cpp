@@ -309,7 +309,7 @@ void VolumeName::updateLabelText(const QString &name)
 
 	int textWidth = metrics.horizontalAdvance(plainText);
 
-	if (availableWidth > textWidth) {
+	if (availableWidth >= textWidth) {
 		label->setText(name);
 		setToolTip("");
 		return;
