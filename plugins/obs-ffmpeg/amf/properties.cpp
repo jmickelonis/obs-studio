@@ -1,7 +1,7 @@
 
 #include "properties.hpp"
 
-#include <codecvt>
+#include <cstdlib>
 #include <list>
 #include <locale>
 #include <mutex>
@@ -11,8 +11,6 @@ using std::mutex;
 using std::scoped_lock;
 using std::unordered_map;
 using std::wstring;
-using std::wstring_convert;
-using std::codecvt_utf8;
 
 bool PropertyNameComparator::operator()(const wchar_t *a, const wchar_t *b) const
 {
@@ -451,8 +449,12 @@ const PropertyTypes &getPreAnalysisProperties()
 
 static string nameToString(const wchar_t *name)
 {
-	wstring s = name;
-	return string(s.begin(), s.end());
+	size_t size = 0;
+	wcstombs_s(&size, nullptr, 0, name, 0);
+	vector<char> buffer(size);
+	char *out = buffer.data();
+	wcstombs_s(nullptr, out, size, name, _TRUNCATE);
+	return string(out);
 }
 
 template<typename T> static T getProperty(const AMFPropertyStorage *storage, const wchar_t *name)
