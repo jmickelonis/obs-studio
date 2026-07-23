@@ -1486,6 +1486,40 @@ AudioMixer #vVolumeWidgets .mixer-category {
   margin: 2px 0;
 }
 
+OBSBasicSourceSelect #dialogInner {
+  margin: 10px;
+  margin-top: 0;
+  margin-bottom: 6px;
+}
+OBSBasicSourceSelect #selectTypeFrame {
+  margin-right: 10px;
+}
+OBSBasicSourceSelect #sourceSelectDescription {
+  margin-bottom: 5px;
+}
+OBSBasicSourceSelect #existingScrollArea {
+  margin-top: 5px;
+}
+OBSBasicSourceSelect #footer {
+  margin-bottom: 4px;
+}
+OBSBasicSourceSelect #sourceTypeList {
+  qproperty-iconSize: 20px 20px;
+}
+OBSBasicSourceSelect #sourceTypeList::item {
+  font-weight: bold;
+  height: 1.66em;
+}
+
+SourceSelectButton {
+  padding: 3px;
+}
+SourceSelectButton:on {
+  background: #286766;
+  border: 1px solid rgb(20, 51.5, 51);
+  border-radius: 3px;
+}
+
 #PluginManagerWindow #dialogInner {
   margin: 10px;
 }
