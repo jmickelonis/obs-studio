@@ -1486,6 +1486,10 @@ AudioMixer #vVolumeWidgets .mixer-category {
   margin: 2px 0;
 }
 
+*[frameShape="4"], *[frameShape="5"] {
+  border: none;
+}
+
 OBSBasicSourceSelect #dialogInner {
   margin: 10px;
   margin-top: 0;
