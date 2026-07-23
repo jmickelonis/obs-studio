@@ -258,6 +258,7 @@ OBSBasicSourceSelect::OBSBasicSourceSelect(OBSBasic *parent, undo_stack &undo_s)
 	ui->createNewSource->setVisible(false);
 	ui->noExistingLabel->setVisible(false);
 	ui->deprecatedFrame->setVisible(false);
+	ui->createNewSource->setText(QTStr("Basic.SourceSelect.CreateButton"));
 
 	rebuildSourceTypeList();
 	refreshSources();
@@ -943,8 +944,8 @@ void OBSBasicSourceSelect::sourceTypeSelected(QListWidgetItem *current, QListWid
 
 	QString placeHolderText{getDisplayNameForSourceType(selectedTypeId)};
 
-	ui->createNewSource->setText(
-		QTStr("Basic.SourceSelect.NewSource").arg(getDisplayNameForSourceType(selectedTypeId)));
+	// ui->createNewSource->setText(
+	// 	QTStr("Basic.SourceSelect.NewSource").arg(getDisplayNameForSourceType(selectedTypeId)));
 	ui->sourceSelectTitle->setText(QString("%1").arg(getDisplayNameForSourceType(selectedTypeId)));
 
 	updateExistingSources();
