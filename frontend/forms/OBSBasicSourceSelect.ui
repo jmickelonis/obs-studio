@@ -152,7 +152,7 @@
             <number>0</number>
            </property>
            <property name="verticalScrollBarPolicy">
-            <enum>Qt::ScrollBarAlwaysOn</enum>
+            <enum>Qt::ScrollBarAsNeeded</enum>
            </property>
            <property name="horizontalScrollBarPolicy">
             <enum>Qt::ScrollBarAlwaysOff</enum>
@@ -420,7 +420,7 @@
                   <number>0</number>
                  </property>
                  <property name="verticalScrollBarPolicy">
-                  <enum>Qt::ScrollBarAlwaysOn</enum>
+                  <enum>Qt::ScrollBarAsNeeded</enum>
                  </property>
                  <property name="horizontalScrollBarPolicy">
                   <enum>Qt::ScrollBarAlwaysOff</enum>
@@ -511,25 +511,6 @@
                    <number>0</number>
                   </property>
                   <item>
-                   <widget class="QPushButton" name="addExistingButton">
-                    <property name="enabled">
-                     <bool>false</bool>
-                    </property>
-                    <property name="sizePolicy">
-                     <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-                      <horstretch>0</horstretch>
-                      <verstretch>0</verstretch>
-                     </sizepolicy>
-                    </property>
-                    <property name="text">
-                     <string>Basic.SourceSelect.NoSelection</string>
-                    </property>
-                    <property name="class" stdset="0">
-                     <string>button-primary</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
                    <spacer name="horizontalSpacer_4">
                     <property name="orientation">
                      <enum>Qt::Horizontal</enum>
@@ -579,9 +560,6 @@
             <string>dialog-container</string>
            </property>
            <layout class="QHBoxLayout" name="horizontalLayout_2">
-            <property name="spacing">
-             <number>0</number>
-            </property>
             <property name="leftMargin">
              <number>0</number>
             </property>
@@ -616,6 +594,25 @@
                </size>
               </property>
              </spacer>
+            </item>
+            <item>
+             <widget class="QPushButton" name="addExistingButton">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>Basic.SourceSelect.NoSelection</string>
+              </property>
+              <property name="class" stdset="0">
+               <string>button-primary</string>
+              </property>
+             </widget>
             </item>
             <item>
              <widget class="QDialogButtonBox" name="buttonBox">

@@ -21,12 +21,14 @@
 #include <utility/ThumbnailManager.hpp>
 #include <utility/ThumbnailView.hpp>
 #include <widgets/OBSBasic.hpp>
+#include <components/OBSElidedLabel.hpp>
 
 #include <QDrag>
 #include <QFrame>
 #include <QMimeData>
 #include <QPainter>
 #include <QStyleOptionButton>
+#include <QToolTip>
 
 SourceSelectButton::SourceSelectButton(OBSWeakSource weak, QWidget *parent) : QAbstractButton(parent), weakSource(weak)
 {
@@ -48,10 +50,11 @@ SourceSelectButton::SourceSelectButton(OBSWeakSource weak, QWidget *parent) : QA
 	layout->setSpacing(0);
 	setLayout(layout);
 
-	label = new QLabel(sourceName);
+	label = new OBSElidedLabel(sourceName);
 	label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
 	label->setAttribute(Qt::WA_TransparentForMouseEvents);
 	label->setObjectName("name");
+	label->setAlignment(Qt::AlignCenter);
 
 	image = new QLabel(this);
 	image->setObjectName("thumbnail");
@@ -219,4 +222,20 @@ void SourceSelectButton::updatePixmap(QPixmap pixmap)
 		image->setPixmap(
 			pixmap.scaled(image->width(), image->height(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
 	}
+}
+
+bool SourceSelectButton::event(QEvent *event)
+{
+	if (event->type() == QEvent::ToolTip) {
+		// Show the label's tooltip text, if it's elided
+		QString text = label->toolTip();
+		if (text.isEmpty()) {
+			return false;
+		}
+		QHelpEvent *helpEvent = static_cast<QHelpEvent *>(event);
+		QToolTip::showText(helpEvent->globalPos(), text);
+		return true;
+	}
+
+	return QAbstractButton::event(event);
 }

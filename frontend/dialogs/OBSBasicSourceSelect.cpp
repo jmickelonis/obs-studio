@@ -473,7 +473,7 @@ void OBSBasicSourceSelect::updateExistingSources(int limit)
 		std::for_each(matchingSources.begin(), matchingSources.begin() + iterationLimit, createSourceButton);
 	}
 
-	setTabOrder(prevTabWidget, ui->addExistingContainer);
+	// setTabOrder(prevTabWidget, ui->addExistingContainer);
 
 	connect(sourceButtons, &QButtonGroup::buttonToggled, this, &OBSBasicSourceSelect::sourceButtonToggled);
 
@@ -537,13 +537,6 @@ void OBSBasicSourceSelect::rebuildSourceTypeList()
 
 	ui->sourceTypeList->sortItems();
 
-	auto *deprecatedTitle = new QListWidgetItem(ui->sourceTypeList);
-	deprecatedTitle->setText(QTStr("Deprecated"));
-	deprecatedTitle->setFlags(deprecatedTitle->flags() & ~Qt::ItemIsEnabled);
-	deprecatedTitle->setFlags(deprecatedTitle->flags() & ~Qt::ItemIsSelectable);
-
-	ui->sourceTypeList->addItem(deprecatedTitle);
-
 	// Shift Deprecated sources to the bottom
 	QList<QListWidgetItem *> deprecatedItems;
 	for (int i = ui->sourceTypeList->count() - 1; i >= 0; --i) {
@@ -562,14 +555,25 @@ void OBSBasicSourceSelect::rebuildSourceTypeList()
 		}
 	}
 
-	std::reverse(deprecatedItems.begin(), deprecatedItems.end());
-	for (const auto &item : deprecatedItems) {
-		ui->sourceTypeList->addItem(item);
+	if (!deprecatedItems.isEmpty()) {
+		auto *deprecatedTitle = new QListWidgetItem(ui->sourceTypeList);
+		deprecatedTitle->setText(QTStr("Deprecated"));
+		deprecatedTitle->setFlags(deprecatedTitle->flags() & ~Qt::ItemIsEnabled);
+		deprecatedTitle->setFlags(deprecatedTitle->flags() & ~Qt::ItemIsSelectable);
+
+		ui->sourceTypeList->addItem(deprecatedTitle);
+
+		std::reverse(deprecatedItems.begin(), deprecatedItems.end());
+		for (const auto &item : deprecatedItems) {
+			ui->sourceTypeList->addItem(item);
+		}
 	}
 
 	QListWidgetItem *allSources = new QListWidgetItem();
 	allSources->setData(Qt::DisplayRole, Str("Basic.SourceSelect.Recent"));
 	allSources->setData(kUnversionedIdRole, QVariant(kRecentTypeId.toString()));
+	icon = main->GetSourceIcon("");
+	allSources->setIcon(icon);
 	ui->sourceTypeList->insertItem(0, allSources);
 
 	ui->sourceTypeList->setCurrentItem(allSources);
