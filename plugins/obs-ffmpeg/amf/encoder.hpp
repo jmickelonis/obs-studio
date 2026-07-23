@@ -72,10 +72,14 @@ public:
 		stringstream ss;
 		ss << "[" << name << ": '" << obs_encoder_get_name(encoder) << "'] " << format;
 		string s = ss.str();
+#ifdef __linux__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-security"
+#endif
 		blog(level, s.c_str(), args...);
+#ifdef __linux__
 #pragma GCC diagnostic pop
+#endif
 	}
 
 	template<typename... Args> void error(const char *format, Args... args) { log(LOG_ERROR, format, args...); }
