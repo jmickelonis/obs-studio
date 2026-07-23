@@ -1,11 +1,14 @@
 
 #include "properties.hpp"
 
-#include <cstdlib>
 #include <list>
 #include <locale>
 #include <mutex>
 #include <unordered_map>
+
+#ifdef _WIN32
+#include <cstdlib>
+#endif
 
 using std::mutex;
 using std::scoped_lock;
@@ -451,12 +454,17 @@ const PropertyTypes &getPreAnalysisProperties()
 
 static string nameToString(const wchar_t *name)
 {
+#ifdef _WIN32
 	size_t size = 0;
 	wcstombs_s(&size, nullptr, 0, name, 0);
 	vector<char> buffer(size);
 	char *out = buffer.data();
 	wcstombs_s(nullptr, out, size, name, _TRUNCATE);
 	return string(out);
+#else
+	wstring s = name;
+	return string(s.begin(), s.end());
+#endif
 }
 
 template<typename T> static T getProperty(const AMFPropertyStorage *storage, const wchar_t *name)
