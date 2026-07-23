@@ -1500,6 +1500,7 @@ OBSBasicSourceSelect #selectTypeFrame {
 }
 OBSBasicSourceSelect #sourceSelectDescription {
   margin-bottom: 5px;
+  margin-left: -3px;
 }
 OBSBasicSourceSelect #existingScrollArea {
   margin-top: 5px;
