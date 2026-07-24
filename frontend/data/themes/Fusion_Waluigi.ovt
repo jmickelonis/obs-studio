@@ -315,6 +315,10 @@ QWidget::disabled {
   font-weight: bold;
 }
 
+.text-warning {
+  font-style: italic;
+}
+
 QAbstractItemView {
   background: transparent;
   outline: none;
@@ -1501,6 +1505,10 @@ OBSBasicSourceSelect #selectTypeFrame {
 OBSBasicSourceSelect #sourceSelectDescription {
   margin-bottom: 5px;
   margin-left: -3px;
+}
+OBSBasicSourceSelect #deprecatedCreateLabel {
+  margin-bottom: 5px;
+  font-style: italic;
 }
 OBSBasicSourceSelect #existingScrollArea {
   margin-top: 5px;
