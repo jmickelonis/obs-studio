@@ -518,15 +518,12 @@ void OBSBasicSourceSelect::rebuildSourceTypeList()
 		newItem->setData(Qt::DisplayRole, name);
 		newItem->setData(kUnversionedIdRole, unversioned_type);
 
-		if ((caps & OBS_SOURCE_DEPRECATED) != 0) {
-			newItem->setData(kDeprecatedRole, true);
-		} else {
-			newItem->setData(kDeprecatedRole, false);
+		bool deprecated = (caps & OBS_SOURCE_DEPRECATED) != 0;
+		newItem->setData(kDeprecatedRole, deprecated);
 
-			QIcon icon;
-			icon = main->GetSourceIcon(type);
-			newItem->setIcon(icon);
-		}
+		QIcon icon;
+		icon = main->GetSourceIcon(type);
+		newItem->setIcon(icon);
 	}
 
 	QListWidgetItem *newItem = new QListWidgetItem(ui->sourceTypeList);
