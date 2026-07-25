@@ -969,7 +969,8 @@ OBSApp::OBSApp(int &argc, char **argv, profiler_name_store_t *store)
 	setWindowIcon(QIcon::fromTheme("obs", QIcon(":/res/images/obs.png")));
 #endif
 
-	setDesktopFileName("com.obsproject.Studio");
+	// Have to set this later, after showing the splash
+	// setDesktopFileName("com.obsproject.Studio");
 
 	pluginManager_ = std::make_unique<OBS::PluginManager>();
 }
@@ -1183,6 +1184,7 @@ void OBSApp::AppInit()
 	if (!crashHandler_->hasUncleanShutdown() || safe_mode) {
 		ShowSplash();
 	}
+	setDesktopFileName("com.obsproject.Studio");
 	if (!InitLocale()) {
 		throw "Failed to load locale";
 	}
