@@ -1097,7 +1097,7 @@ static bool shouldShowSplash()
 class SplashScreen : public QSplashScreen {
 
 public:
-	SplashScreen(QScreen *screen, const QPixmap &pixmap, Qt::WindowFlags flags)
+	SplashScreen(QScreen *screen, const QPixmap &pixmap, Qt::WindowFlags flags = Qt::WindowFlags())
 		: QSplashScreen(screen, pixmap, flags)
 	{
 	}
@@ -1114,6 +1114,27 @@ public:
 			return QSplashScreen::event(event);
 		}
 	}
+
+#ifdef _WIN32
+	virtual bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override
+	{
+		MSG *msg = reinterpret_cast<MSG *>(message);
+
+		switch (msg->message) {
+		case WM_NCCALCSIZE:
+			if (msg->wParam) {
+				// Hide the caption/frame
+				*result = 0;
+				return true;
+			}
+			break;
+		default:
+			break;
+		}
+
+		return false;
+	}
+#endif
 };
 
 void OBSApp::ShowSplash()
@@ -1150,7 +1171,18 @@ void OBSApp::ShowSplash()
 	GetDataFilePath("images/splash.png", path);
 	QPixmap pixmap(path.c_str());
 
-	splash = new SplashScreen(screen, pixmap, Qt::X11BypassWindowManagerHint | Qt::WindowStaysOnTopHint);
+#ifdef _WIN32
+	splash = new SplashScreen(screen, pixmap);
+
+	// Make it a Dialog so we get show/hide animations
+	splash->setWindowFlags(Qt::Dialog | Qt::WindowStaysOnTopHint);
+
+	// Make it transparent
+	HWND wnd = (HWND)splash->winId();
+	Win32::setBlurBehind(wnd, true);
+#else
+	splash = new SplashScreen(screen, pixmap, Qt::WindowStaysOnTopHint | Qt::BypassWindowManagerHint);
+#endif
 	if (screen) {
 		// Center the splash on the main window's screen
 		splash->move(bounds.center() - splash->rect().center());
@@ -1627,7 +1659,9 @@ void InitializeNativeWindow(QWidget *widget)
 	/* Force compositing.
 	 * Avoids white flashes when windows are shown (and other artifacts).
 	 */
-	Win32::setExtendedStyle(wnd, exStyle | WS_EX_COMPOSITED);
+	if (!qobject_cast<QSplashScreen *>(widget)) {
+		Win32::setExtendedStyle(wnd, exStyle | WS_EX_COMPOSITED);
+	}
 
 	if ((exStyle & WS_EX_WINDOWEDGE) || (widget->windowFlags() & Qt::Dialog) == Qt::Dialog) {
 		// Don't draw a native border
