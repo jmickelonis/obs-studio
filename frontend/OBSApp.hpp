@@ -33,6 +33,7 @@
 #include <QPalette>
 #include <QPointer>
 #include <QUuid>
+#include <QSplashScreen>
 
 #include <array>
 #include <deque>
@@ -119,6 +120,7 @@ private:
 	QHash<QString, OBSTheme> themes;
 	QPointer<QFileSystemWatcher> themeWatcher;
 	std::unique_ptr<QStyle> invisibleCursorStyle;
+	QSplashScreen *splash = nullptr;
 
 	void FindThemes();
 
@@ -154,6 +156,9 @@ public:
 
 	OBSApp(int &argc, char **argv, profiler_name_store_t *store);
 	~OBSApp();
+
+	void ShowSplash();
+	void HideSplash();
 
 	void AppInit();
 	void checkForUncleanShutdown();

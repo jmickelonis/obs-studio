@@ -590,6 +590,8 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 		}
 
 		if (!multi) {
+			program.HideSplash();
+
 			QMessageBox mb(QMessageBox::Question, QTStr("AlreadyRunning.Title"),
 				       QTStr("AlreadyRunning.Text"));
 			mb.addButton(QTStr("AlreadyRunning.LaunchAnyway"), QMessageBox::YesRole);

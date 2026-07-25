@@ -1087,6 +1087,87 @@ static void move_basic_to_scene_collections(void)
 	}
 }
 
+static bool shouldShowSplash()
+{
+	const char *value = getenv("OBS_SHOW_SPLASH");
+	return value ? QVariant(value).toBool() : true;
+}
+
+class SplashScreen : public QSplashScreen {
+
+public:
+	SplashScreen(QScreen *screen, const QPixmap &pixmap, Qt::WindowFlags flags)
+		: QSplashScreen(screen, pixmap, flags)
+	{
+	}
+
+	virtual bool event(QEvent *event) override
+	{
+		switch (event->type()) {
+		case QEvent::Show:
+			/* Works around a delay in show(),
+			 * caused by the base implementation calling waitForWidgetMapped.
+			 */
+			return true;
+		default:
+			return QSplashScreen::event(event);
+		}
+	}
+};
+
+void OBSApp::ShowSplash()
+{
+	if (splash || !shouldShowSplash()) {
+		return;
+	}
+
+	QScreen *screen = nullptr;
+	QRect bounds;
+
+	const char *geometry = config_get_string(GetUserConfig(), "BasicWindow", "geometry");
+	if (geometry != NULL) {
+		/* Use the main window's geometry
+		 * to figure out where to position the splash */
+
+		QByteArray data = QByteArray::fromBase64(QByteArray(geometry));
+
+		// Create a temporary widget to decode the data
+		QWidget widget;
+		widget.restoreGeometry(data);
+		bounds = widget.normalGeometry();
+
+		// Try to figure out which screen to use
+		for (QScreen *availableScreen : QGuiApplication::screens()) {
+			if (availableScreen->availableGeometry().intersects(bounds)) {
+				screen = availableScreen;
+				break;
+			}
+		}
+	}
+
+	std::string path;
+	GetDataFilePath("images/splash.png", path);
+	QPixmap pixmap(path.c_str());
+
+	splash = new SplashScreen(screen, pixmap, Qt::X11BypassWindowManagerHint | Qt::WindowStaysOnTopHint);
+	if (screen) {
+		// Center the splash on the main window's screen
+		splash->move(bounds.center() - splash->rect().center());
+	}
+	splash->show();
+	processEvents();
+}
+
+void OBSApp::HideSplash()
+{
+	if (!splash) {
+		return;
+	}
+	splash->close();
+	delete splash;
+	splash = nullptr;
+}
+
 void OBSApp::AppInit()
 {
 	ProfileScope("OBSApp::AppInit");
@@ -1098,6 +1179,9 @@ void OBSApp::AppInit()
 	}
 	if (!InitGlobalConfig()) {
 		throw "Failed to initialize global config";
+	}
+	if (!crashHandler_->hasUncleanShutdown() || safe_mode) {
+		ShowSplash();
 	}
 	if (!InitLocale()) {
 		throw "Failed to load locale";
@@ -1355,6 +1439,11 @@ bool OBSApp::OBSInit()
 
 	connect(crashHandler_.get(), &OBS::CrashHandler::crashLogUploadFinished, this,
 		[this](const QString &fileUrl) { emit this->logUploadFinished(OBS::LogFileType::CrashLog, fileUrl); });
+
+	if (splash) {
+		// Hide the splash after a delay
+		QTimer::singleShot(1000, this, &OBSApp::HideSplash);
+	}
 
 	return true;
 }
