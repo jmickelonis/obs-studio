@@ -86,8 +86,8 @@ private:
 	QPixmap backgroundCache;
 	void updateBackgroundCache(bool force = false);
 
-	QSize tickTextTokenRect;
-	int tickTextPadding;
+	float tickTextAscent;
+	int tickTextTokenWidth;
 
 	QColor backgroundNominalColor;
 	QColor backgroundWarningColor;

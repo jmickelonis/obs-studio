@@ -604,7 +604,7 @@ void VolumeMeter::paintTicks(QPainter &painter, int x, int y, int width)
 	qreal scale = width / minimumLevel;
 
 	painter.setFont(font());
-	QFontMetrics metrics(font());
+	QFontMetricsF metrics(font());
 	painter.setPen(majorTickColor);
 
 	// Draw major tick lines and numeric indicators.
@@ -613,8 +613,8 @@ void VolumeMeter::paintTicks(QPainter &painter, int x, int y, int width)
 		QString str = QString::number(i);
 
 		// Center the number on the tick, but don't overflow
-		int textWidth = metrics.horizontalAdvance(str);
-		int pos;
+		float textWidth = metrics.horizontalAdvance(str);
+		float pos;
 		if (i == 0) {
 			pos = position - textWidth;
 		} else {
@@ -623,18 +623,16 @@ void VolumeMeter::paintTicks(QPainter &painter, int x, int y, int width)
 				pos = 0;
 			}
 		}
-		painter.drawText(pos, y + tickTextTokenRect.height(), str);
+		painter.drawText(pos, y + tickTextAscent, str);
 	}
 }
 
 void VolumeMeter::updateTickLabelTokenSize()
 {
-	QFontMetrics metrics(font());
-	int ascent = metrics.ascent();
-	tickTextPadding = ascent - metrics.capHeight();
+	QFontMetricsF metrics(font());
+	tickTextAscent = metrics.ascent();
 	// This is a quick and naive assumption for widest potential tick label.
-	tickTextTokenRect = metrics.size(Qt::TextSingleLine, TICK_LABEL_TOKEN);
-	tickTextTokenRect.setHeight(ascent);
+	tickTextTokenWidth = std::ceil(metrics.size(Qt::TextSingleLine, TICK_LABEL_TOKEN).width());
 }
 
 void VolumeMeter::updateBackgroundCache(bool force)
@@ -873,7 +871,7 @@ QSize VolumeMeter::minimumSizeHint() const
 QSize VolumeMeter::sizeHint() const
 {
 	int labelTotal = std::abs(minimumLevel / TICK_DB_INTERVAL) + 1;
-	int length = (labelTotal * tickTextTokenRect.width()) + INDICATOR_THICKNESS;
-	int thickness = displayNrAudioChannels * (meterThickness + 1) - 1 + tickTextTokenRect.height();
+	int length = (labelTotal * tickTextTokenWidth) + INDICATOR_THICKNESS;
+	int thickness = displayNrAudioChannels * (meterThickness + 1) - 1 + std::ceil(tickTextAscent);
 	return vertical ? QSize(thickness, length) : QSize(length, thickness);
 }
