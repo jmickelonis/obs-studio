@@ -844,6 +844,8 @@ QDockWidget::title {
   border-top-right-radius: 3px;
   padding: 5px;
   text-align: left;
+  border-bottom: 1px solid transparent;
+  margin-bottom: -1px;
 }
 QDockWidget > QWidget {
   background: rgb(40.8, 40.8, 40.8);
@@ -853,7 +855,15 @@ QDockWidget > QWidget {
 QDockWidget > QCefWidget {
   padding: 1px;
 }
+QDockWidget {
+  border: 1px solid transparent;
+  border-bottom: 1.5px solid rgb(40.8, 40.8, 40.8);
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  margin-bottom: -1px;
+}
 QDockWidget::window {
+  margin-bottom: 0;
   background: transparent;
   border: 1.5px solid rgb(115.9, 20.4, 28.9);
   border-radius: 4px;

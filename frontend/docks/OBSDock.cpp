@@ -667,11 +667,9 @@ void OBSDock::paintEvent(QPaintEvent *)
 {
 	QStylePainter painter(this);
 
-	if (isFloating()) {
-		QStyleOptionFrame opt;
-		opt.initFrom(this);
-		painter.drawPrimitive(QStyle::PE_Widget, opt);
-	}
+	QStyleOptionFrame frameOpt;
+	frameOpt.initFrom(this);
+	painter.drawPrimitive(QStyle::PE_Widget, frameOpt);
 
 	QStyleOptionDockWidget opt;
 	initStyleOption(&opt);
