@@ -187,6 +187,11 @@ static bool ParseVarName(CFParser &cfp, QString &value)
 	return !value.isEmpty();
 }
 
+static inline uint8_t ParseShorthandColorComponent(const uint8_t c)
+{
+	return (c << 4) | c;
+}
+
 static QColor ParseColor(CFParser &cfp)
 {
 	const char *array;
@@ -198,7 +203,39 @@ static QColor ParseColor(CFParser &cfp)
 			return res;
 		}
 
-		color = strtol(cfp->cur_token->str.array, nullptr, 16);
+		strref str = cfp->cur_token->str;
+		color = strtol(str.array, nullptr, 16);
+		switch (str.len) {
+		case 3: {
+			// #RGB
+			uint8_t r = ParseShorthandColorComponent((color >> 8) & 0xF);
+			uint8_t g = ParseShorthandColorComponent((color >> 4) & 0xF);
+			uint8_t b = ParseShorthandColorComponent(color & 0xF);
+			res.setRgb(r, g, b);
+			break;
+		}
+		case 4: {
+			// #RGBA
+			uint8_t r = ParseShorthandColorComponent((color >> 12) & 0xF);
+			uint8_t g = ParseShorthandColorComponent((color >> 8) & 0xF);
+			uint8_t b = ParseShorthandColorComponent((color >> 4) & 0xF);
+			uint8_t a = ParseShorthandColorComponent(color & 0xF);
+			res.setRgb(r, g, b, a);
+			break;
+		}
+		case 8: {
+			// #RRGGBBAA
+			uint32_t rgb = (color >> 8) & 0xFFFFFF;
+			uint8_t a = color & 0xFF;
+			color = (a << 24) | rgb;
+			res.setRgba(color);
+			break;
+		}
+		default:
+			// #RRGGBB
+			res.setRgb(color);
+			break;
+		}
 	} else if (cf_token_is(cfp, "rgb")) {
 		int ret = cf_next_token_should_be(cfp, "(", ";", nullptr);
 		if (ret != PARSE_SUCCESS || !cf_next_token(cfp)) {
@@ -228,13 +265,54 @@ static QColor ParseColor(CFParser &cfp)
 		if (ret != PARSE_SUCCESS) {
 			return res;
 		}
+
+		res.setRgb(color);
+	} else if (cf_token_is(cfp, "rgba")) {
+		int ret = cf_next_token_should_be(cfp, "(", ";", nullptr);
+		if (ret != PARSE_SUCCESS || !cf_next_token(cfp)) {
+			return res;
+		}
+
+		array = cfp->cur_token->str.array;
+		color |= strtol(array, nullptr, 10) << 16;
+
+		ret = cf_next_token_should_be(cfp, ",", ";", nullptr);
+		if (ret != PARSE_SUCCESS || !cf_next_token(cfp)) {
+			return res;
+		}
+
+		array = cfp->cur_token->str.array;
+		color |= strtol(array, nullptr, 10) << 8;
+
+		ret = cf_next_token_should_be(cfp, ",", ";", nullptr);
+		if (ret != PARSE_SUCCESS || !cf_next_token(cfp)) {
+			return res;
+		}
+
+		array = cfp->cur_token->str.array;
+		color |= strtol(array, nullptr, 10);
+
+		ret = cf_next_token_should_be(cfp, ",", ";", nullptr);
+		if (ret != PARSE_SUCCESS || !cf_next_token(cfp)) {
+			return res;
+		}
+
+		array = cfp->cur_token->str.array;
+		color |= strtol(array, nullptr, 10) << 24;
+
+		ret = cf_next_token_should_be(cfp, ")", ";", nullptr);
+		if (ret != PARSE_SUCCESS) {
+			return res;
+		}
+
+		res.setRgba(color);
 	} else if (cf_token_is(cfp, "bikeshed")) {
 		color |= QRandomGenerator::global()->bounded(INT8_MAX) << 16;
 		color |= QRandomGenerator::global()->bounded(INT8_MAX) << 8;
 		color |= QRandomGenerator::global()->bounded(INT8_MAX);
+		res.setRgb(color);
 	}
 
-	res = color;
 	return res;
 }
 
@@ -401,7 +479,8 @@ static vector<OBSThemeVariable> ParseThemeVariables(const char *themeData)
 				}
 				ch++;
 			}
-		} else if (cf_token_is(cfp, "rgb") || cf_token_is(cfp, "#") || cf_token_is(cfp, "bikeshed")) {
+		} else if (cf_token_is(cfp, "rgb") || cf_token_is(cfp, "rgba") || cf_token_is(cfp, "#") ||
+			   cf_token_is(cfp, "bikeshed")) {
 			QColor color = ParseColor(cfp);
 			if (!color.isValid()) {
 				continue;
@@ -760,7 +839,7 @@ static QString PrepareQSS(const QHash<QString, OBSThemeVariable> &vars, const QS
 		QVariant value = var.userValue.isValid() ? var.userValue : var.value;
 
 		if (var.type == OBSThemeVariable::Color) {
-			replace = value.value<QColor>().name(QColor::HexRgb);
+			replace = value.value<QColor>().name(QColor::HexArgb);
 		} else if (var.type == OBSThemeVariable::Calc || var.type == OBSThemeVariable::Max ||
 			   var.type == OBSThemeVariable::Min) {
 			replace = EvalMath(vars, var, var.type);
@@ -857,7 +936,7 @@ static QPalette PreparePalette(const QHash<QString, OBSThemeVariable> &vars, con
 
 		QVariant value = var.userValue.isValid() ? var.userValue : var.value;
 
-		QColor color = value.value<QColor>().name(QColor::HexRgb);
+		QColor color = value.value<QColor>().name(QColor::HexArgb);
 		pal.setColor(group, role, color);
 	}
 
