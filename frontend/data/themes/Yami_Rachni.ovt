@@ -60,9 +60,9 @@
     --tab_bg_disabled: var(--grey6);
 
     --tab_border: var(--grey3);
-    --tab_border_hover: var(--grey1);
-    --tab_border_focus: var(--grey1);
-    --tab_border_selected: var(--primary);
+
+    --dock_border: var(--bg_base);
+    --dock_tab_bg: var(--grey8);
 
     --scrollbar_handle: var(--grey2);
     --scrollbar_hover: var(--primary);
@@ -161,13 +161,9 @@ QPushButton[toolButton="true"]:disabled {
     border-color: transparent;
 }
 
-QTabBar::tab {
-    background-color: var(--grey5);
-}
-
-QTabBar::tab:top:selected {
+/* QTabBar::tab:top:selected {
     border-bottom: 2px solid var(--primary);
-}
+} */
 
 QTabBar QToolButton {
     background-color: var(--grey5);

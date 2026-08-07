@@ -201,18 +201,19 @@
     --button_border_hover: var(--grey1);
     --button_border_focus: var(--grey1);
 
-    --tab_bg: var(--button_bg_disabled);
+    --tab_bg: var(--bg_window);
     --tab_bg_hover: var(--button_bg_hover);
     --tab_bg_down: var(--primary);
     --tab_bg_disabled: var(--button_bg_disabled);
-
-    --tab_border: var(--border_color);
-    --tab_border_hover: var(--button_border_hover);
-    --tab_border_focus: var(--primary_lighter);
-    --tab_border_selected: var(--primary);
+    --tab_border: var(--bg_base);
+    --tab_selected: var(--tab_border);
 
     --tab_hpadding: calc(var(--padding_base) * 2);
     --tab_vpadding: var(--padding_small);
+
+    --dock_border: var(--border_color);
+    --dock_tab_bg: var(--bg_window);
+    --dock_tab_selected: var(--dock_border);
 
     --preview_scale_width: calc(calc(var(--input_text_padding) * 3.5) * calc(var(--font_base_value) / 10));
 
@@ -826,7 +827,7 @@ OBSDock > QWidget {
     background: var(--bg_base);
     border-bottom-left-radius: var(--border_radius);
     border-bottom-right-radius: var(--border_radius);
-    border: 1px solid var(--border_color);
+    border: 1px solid var(--dock_border);
     border-top: none;
 }
 
@@ -877,6 +878,18 @@ QDockWidget {
     titlebar-normal-icon: url(theme:Dark/popout.svg);
 
     qproperty-dropShadow: true;
+
+    /* Weird workaround for scaling-related gaps:
+     * This basically just paints under whatever gap there is,
+     * and doesn't add any extra space due to dock widget not adhering to the box model
+     */
+    border: 1px solid transparent;
+    border-bottom: 1.5px solid var(--dock_border);
+    border-bottom-left-radius: var(--border_radius_dock);
+    border-bottom-right-radius: var(--border_radius_dock);
+    margin-bottom: -1px;
+    margin-left: 1px;
+    margin-right: 1px;
 }
 
 QDockWidget::window {
@@ -891,10 +904,13 @@ QDockWidget::window:active {
 
 QDockWidget::title {
     text-align: left;
-    background-color: var(--button_bg);
+    background-color: var(--dock_border);
     padding: var(--padding_large);
     border-top-left-radius: var(--border_radius);
     border-top-right-radius: var(--border_radius);
+    /* Workaround for scaling-related gaps */
+    border-bottom: 1px solid transparent;
+    margin-bottom: -1px;
 }
 
 QDockWidget::close-button,
@@ -918,6 +934,11 @@ QDockWidget::close-button:pressed,
 QDockWidget::float-button:pressed {
     background: var(--button_bg_down);
     padding: 1px -1px -1px 1px;
+}
+
+QDockWidget > QCefWidget {
+    /* Add padding to avoid overlapping the dock border */
+    padding: var(--half_border_radius);
 }
 
 QAbstractScrollArea {
@@ -1118,21 +1139,19 @@ QToolBarExtension {
 
 /* The tab widget frame */
 QTabWidget::pane {
-    border-top: 4px solid var(--bg_base);
+    border-top: 1px solid var(--tab_border);
 }
 
 QTabBar {
     outline: none;
     background: transparent;
     color: var(--text);
-    font-size: var(--font_small);
-    font-weight: bold;
+    font-weight: normal;
 }
 
 QMainWindow > QTabBar {
     qproperty-expanding: 1;
     font-size: var(--font_xsmall);
-    font-weight: normal;
 }
 
 QTabWidget::tab-bar {
@@ -1146,21 +1165,29 @@ QTabBar QToolButton {
 
 QTabBar::tab {
     padding: var(--tab_vpadding) var(--tab_hpadding);
-    border: 1px solid var(--bg_base);
+    border: 1px solid var(--tab_border);
 }
 
 QMainWindow > QTabBar::tab {
-    border-color: var(--tab_border);
+    border-color: var(--dock_border);
 }
 
 QTabBar::tab:top {
-    border-top-left-radius: var(--border_radius);;
-    border-top-right-radius: var(--border_radius);;
+    border-top-left-radius: var(--border_radius);
+    border-top-right-radius: var(--border_radius);
 }
 
 QTabBar::tab:bottom {
-    border-bottom-left-radius: var(--border_radius);;
-    border-bottom-right-radius: var(--border_radius);;
+    border-bottom-left-radius: var(--border_radius);
+    border-bottom-right-radius: var(--border_radius);
+}
+
+/* Make sure we cover any scaling-related gap */
+QTabWidget QTabBar::tab:top:selected {
+    margin-bottom: -1px;
+}
+QTabWidget QTabBar::tab:bottom:selected {
+    margin-top: -1px;
 }
 
 QTabBar::tab {
@@ -1168,14 +1195,10 @@ QTabBar::tab {
 }
 
 QTabBar::tab:first {
-    margin-left: 0;
-}
-
-QMainWindow > QTabBar::tab:first {
     margin-left: var(--border_radius);
 }
 
-QMainWindow > QTabBar::tab:last {
+QTabBar::tab:last {
     margin-right: var(--border_radius);
 }
 
@@ -1183,12 +1206,12 @@ QTabBar::tab:pressed {
     background: var(--tab_bg_down);
 }
 
-QTabBar::tab:bottom {
-    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 var(--bg_window), stop: 1 var(--bg_base));
+QTabBar::tab {
+    background: var(--tab_bg);
 }
 
-QTabBar::tab:top {
-    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 var(--bg_base), stop: 1 var(--bg_window));
+QMainWindow > QTabBar::tab {
+    background: var(--dock_tab_bg);
 }
 
 QTabBar::tab:top:!selected {
@@ -1200,11 +1223,11 @@ QTabBar::tab:bottom:!selected {
 }
 
 QTabBar::tab:selected {
-    background: var(--bg_base);
+    background: var(--tab_selected);
 }
 
 QMainWindow > QTabBar::tab:selected {
-    background: var(--border_color);
+    background: var(--dock_tab_selected);
 }
 
 QTabBar::tab:hover, QMainWindow > QTabBar::tab:hover {

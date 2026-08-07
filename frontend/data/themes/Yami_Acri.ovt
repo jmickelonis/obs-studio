@@ -68,9 +68,9 @@ QMenu::separator {
     background-color: var(--grey5);
 }
 
-QDockWidget::title {
+/* QDockWidget::title {
     background-color: var(--grey6);
-}
+} */
 
 QDockWidget::close-button:hover,
 QDockWidget::float-button:hover {
@@ -103,9 +103,9 @@ QToolButton:pressed:hover {
     border-color: var(--toolbutton_bg_down);
 }
 
-QTabBar::tab {
+/* QTabBar::tab {
     background-color: var(--grey5);
-}
+} */
 
 QTabBar QToolButton {
     background-color: var(--grey5);
