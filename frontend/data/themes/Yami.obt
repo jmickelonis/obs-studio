@@ -166,6 +166,7 @@
     --border_radius_small: 2px;
     --border_radius_large: 6px;
     --border_radius_dock: calc(var(--border_radius) + 1px);
+    --border_radius_dock_plus_1: calc(var(--border_radius_dock) + 1px);
 
     --input_font_scale: calc(var(--font_base_value) * 2.2);
     --input_font_padding: calc(var(--padding_base_value) * 2);
@@ -214,10 +215,17 @@
     --dock_border: var(--border_color);
     --dock_tab_bg: var(--bg_window);
     --dock_tab_selected: var(--dock_border);
+    --dock_window_border: var(--primary_dark);
+    --dock_window_border_active: var(--primary);
 
     --preview_scale_width: calc(calc(var(--input_text_padding) * 3.5) * calc(var(--font_base_value) / 10));
 
     --separator_hover: var(--white1);
+
+    --slider_groove: #3C404D;
+    --slider_groove_disabled: #3C404D80;
+    --slider_fill: #476BD7;
+    --slider_fill_disabled: #476BD780;
 
     --action_row_base: calc(var(--input_height_base) * 0.75);
     --action_row_height: calc(var(--action_row_base) + calc(var(--action_row_padding) * 2px));
@@ -249,8 +257,8 @@
     --palette_highlightedText: var(--text);
 
     --palette_text: var(--text);
-    --palette_link: var(--blue2);
-    --palette_linkVisited: var(--blue2);
+    --palette_link: var(--primary_light);
+    --palette_linkVisited: var(--palette_link);
 
     --palette_button: var(--button_bg);
     --palette_buttonText: var(--text);
@@ -883,23 +891,21 @@ QDockWidget {
      * This basically just paints under whatever gap there is,
      * and doesn't add any extra space due to dock widget not adhering to the box model
      */
-    border: 1px solid transparent;
-    border-bottom: 1.5px solid var(--dock_border);
-    border-bottom-left-radius: var(--border_radius_dock);
-    border-bottom-right-radius: var(--border_radius_dock);
+    border: 1.5px solid transparent;
+    border-bottom-color: var(--dock_border);
+    border-radius: var(--border_radius_dock_plus_1);
     margin-bottom: -1px;
-    margin-left: 1px;
-    margin-right: 1px;
 }
 
 QDockWidget::window {
     background: transparent;
-    border: 1.5px solid transparent;
-    border-radius: var(--border_radius_dock);
+    border-color: var(--dock_window_border);
+    border-width: 3px;
+    margin: 0px;
 }
 
 QDockWidget::window:active {
-    border-color: var(--primary);
+    border-color: var(--dock_window_border_active);
 }
 
 QDockWidget::title {
@@ -1636,7 +1642,7 @@ QToolButton:disabled,
 /* Sliders */
 
 QSlider::groove {
-    background-color: var(--grey4);
+    background-color: var(--slider_groove);
     border: none;
     border-radius: 2px;
 }
@@ -1650,32 +1656,32 @@ QSlider::groove:vertical {
 }
 
 QSlider::sub-page:horizontal {
-    background-color: var(--blue2);
+    background-color: var(--slider_fill);
     border-radius: 2px;
 }
 
 QSlider::sub-page:horizontal:disabled {
-    background-color: var(--grey4);
+    background-color: var(--slider_fill_disabled);
     border-radius: 2px;
 }
 
 QSlider::add-page:horizontal:disabled {
-    background-color: var(--grey7);
+    background-color: var(--slider_groove_disabled);
     border-radius: 2px;
 }
 
 QSlider::add-page:vertical {
-    background-color: var(--blue2);
+    background-color: var(--slider_fill);
     border-radius: 2px;
 }
 
 QSlider::add-page:vertical:disabled {
-    background-color: var(--grey4);
+    background-color: var(--slider_fill_disabled);
     border-radius: 2px;
 }
 
 QSlider::sub-page:vertical:disabled {
-    background-color: var(--grey7);
+    background-color: var(--slider_groove_disabled);
     border-radius: 2px;
 }
 

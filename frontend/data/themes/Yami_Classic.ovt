@@ -79,10 +79,17 @@
     --scrollbar_down: var(--grey8);
     --scrollbar_border: var(--grey2);
 
+    --slider_groove: rgb(76,76,76);
+    --slider_groove_disabled: rgba(76,76,76,128);
+    --slider_fill: rgb(33,71,109);
+    --slider_fill_disabled: rgba(33,71,109,128);
+
     /* Variant Extras */
     --dock_title_padding: calc(2px + var(--padding_base));
     --icon_base_mixer: calc(2px + var(--icon_base));
     --padding_menu_y: calc(3px + calc(1 * var(--padding_base_value)));
+
+    --palette_link: #326898; /* --primary +100% lightness */
 }
 
 /* --------------------- */

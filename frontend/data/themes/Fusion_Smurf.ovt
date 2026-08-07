@@ -856,19 +856,16 @@ QDockWidget > QCefWidget {
   padding: 1.5px;
 }
 QDockWidget {
-  border: 1px solid transparent;
-  border-bottom: 1.5px solid rgb(40.8, 40.8, 40.8);
-  border-bottom-left-radius: 3px;
-  border-bottom-right-radius: 3px;
+  border: 1.5px solid transparent;
+  border-bottom-color: rgb(40.8, 40.8, 40.8);
+  border-radius: 4px;
   margin-bottom: -1px;
-  margin-left: 1px;
-  margin-right: 1px;
 }
 QDockWidget::window {
-  margin-bottom: 0;
   background: transparent;
-  border: 1.5px solid rgb(29.9, 66.9, 108.9);
-  border-radius: 4px;
+  border-color: rgb(29.9, 66.9, 108.9);
+  border-width: 3px;
+  margin: 0;
 }
 QDockWidget::window:active {
   border-color: #135DB1;

@@ -45,6 +45,13 @@
     --scrollbar_hover: var(--grey6);
     --scrollbar_down: var(--grey8);
     --scrollbar_border: var(--grey7);
+
+    --slider_groove: rgb(245,245,245);
+    --slider_groove_disabled: rgba(245,245,245,128);
+    --slider_fill: rgb(140,181,255);
+    --slider_fill_disabled: rgba(140,181,255,128);
+
+    --palette_link: var(--blue2);
 }
 
 /* --------------------- */
@@ -111,7 +118,7 @@ VolumeControl .mixer-category {
 }
 
 VolumeControl.volume-pinned .mixer-category {
-    background: var(--blue2);    
+    background: var(--blue2);
 }
 
 VolumeControl.volume-hidden .mixer-category {

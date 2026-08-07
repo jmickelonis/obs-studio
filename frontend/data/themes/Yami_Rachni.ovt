@@ -63,6 +63,8 @@
 
     --dock_border: var(--bg_base);
     --dock_tab_bg: var(--grey8);
+    --dock_window_border: var(--button_bg_red_hover);
+    --dock_window_border_active: var(--primary);
 
     --scrollbar_handle: var(--grey2);
     --scrollbar_hover: var(--primary);
@@ -73,6 +75,13 @@
     --toolbutton_bg_hover: var(--primary);
     --toolbutton_bg_down: var(--primary_dark);
     --toolbutton_bg_disabled: var(--grey4);
+
+    --slider_groove: rgb(110,113,114);
+    --slider_groove_disabled: rgba(110,113,114,128);
+    --slider_fill: rgb(0,188,212);
+    --slider_fill_disabled: rgba(0,188,212,128);
+
+    --palette_link: var(--primary_lighter);
 }
 
 QDockWidget::title {
@@ -181,9 +190,9 @@ QGroupBox::title {
     color: var(--primary_lighter);
 }
 
-QSlider::groove {
+/* QSlider::groove {
     background-color: var(--grey2);
-}
+} */
 
 VolumeMeter {
     qproperty-backgroundNominalColor: rgb(0,128,79);

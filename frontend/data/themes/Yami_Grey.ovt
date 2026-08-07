@@ -15,4 +15,7 @@
     --grey6: rgb(47,47,47);
     --grey7: rgb(33,33,33);
     --grey8: rgb(21,21,21);
+
+    --slider_groove: rgb(67,67,67);
+    --slider_groove_disabled: rgba(67,67,67,128);
 }

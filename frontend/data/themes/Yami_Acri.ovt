@@ -54,6 +54,9 @@
     --tab_border_focus: var(--input_border_focus);
     --tab_border_selected: var(--primary);
 
+    --dock_window_border: var(--primary);
+    --dock_window_border_active: var(--button_bg);
+
     --scrollbar_handle: var(--grey5);
     --scrollbar_hover: var(--primary_light);
     --scrollbar_down: var(--grey5);
@@ -62,6 +65,13 @@
     --toolbutton_bg: var(--grey5);
     --toolbutton_bg_hover: var(--primary_light);
     --toolbutton_bg_down: var(--primary_dark);
+
+    --slider_groove: rgb(40,40,42);
+    --slider_groove_disabled: rgba(40,40,42,128);
+    --slider_fill: rgb(42,58,117);
+    --slider_fill_disabled: rgba(42,58,117,128);
+
+    --palette_link: #2c49b0; /* --button_bg +100% lightness */
 }
 
 QMenu::separator {
