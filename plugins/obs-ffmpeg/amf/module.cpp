@@ -403,13 +403,6 @@ void *createTextureEncoder(obs_data_t *data, obs_encoder_t *encoder)
 		}
 
 		uint32_t deviceID = getDeviceID(codec, (uint32_t)obs_data_get_int(data, settings::DEVICE));
-
-		// Workaround alert:
-		// For some reason, on Linux, using multiple texture encoders at once doesn't work
-		// until a Vulkan AMFComponent has been created and destroyed.
-		// This does exactly that, plus caches the capability information.
-		getCapabilities(deviceID, codec);
-
 		unique_ptr<TextureEncoder> enc = make_unique<TextureEncoder>(encoder, codec, videoInfo, name, deviceID);
 		enc->initialize(data);
 		return enc.release();

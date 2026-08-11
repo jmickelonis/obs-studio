@@ -138,6 +138,17 @@ VulkanDevice::~VulkanDevice()
 
 shared_ptr<VulkanDevice> createDevice(AMFContext1Ptr context, uint32_t id, const vector<const char *> &otherExtensions)
 {
+	// Combine the extensions required by AMF with the ones passed here
+	amf_size extensionCount = 0;
+	AMF_CHECK(context->GetVulkanDeviceExtensions(&extensionCount, nullptr), "GetVulkanDeviceExtensions failed");
+	vector<const char *> extensions(extensionCount);
+	AMF_CHECK(context->GetVulkanDeviceExtensions(&extensionCount, extensions.data()),
+		  "GetVulkanDeviceExtensions failed");
+	extensions.reserve(extensionCount + otherExtensions.size());
+	for (const char *name : otherExtensions) {
+		extensions.push_back(name);
+	}
+
 	shared_ptr<VulkanDevice> devicePtr(new VulkanDevice{});
 	VulkanDevice &device = *devicePtr.get();
 	device.cbSizeof = sizeof(AMFVulkanDevice);
@@ -174,17 +185,6 @@ shared_ptr<VulkanDevice> createDevice(AMFContext1Ptr context, uint32_t id, const
 			.pQueuePriorities = &PRIORITY,
 		};
 		queueCreateInfos.push_back(info);
-	}
-
-	amf_size extensionCount = 0;
-	AMF_CHECK(context->GetVulkanDeviceExtensions(&extensionCount, nullptr), "GetVulkanDeviceExtensions failed");
-	vector<const char *> extensions(extensionCount);
-	AMF_CHECK(context->GetVulkanDeviceExtensions(&extensionCount, extensions.data()),
-		  "GetVulkanDeviceExtensions failed");
-
-	extensions.reserve(extensionCount + otherExtensions.size());
-	for (const char *name : otherExtensions) {
-		extensions.push_back(name);
 	}
 
 	VkDeviceCreateInfo deviceInfo{
