@@ -213,12 +213,16 @@ void setPropertyDefaults(obs_data_t *data, void *)
 
 bool onPropertyModified(void *typeData, obs_properties_t *props, obs_property_t *prop, obs_data_t *data)
 {
+	uint32_t device = (uint32_t)obs_data_get_int(data, settings::DEVICE);
+	if (!device) {
+		return false;
+	}
+
 	EncoderType *type = (EncoderType *)typeData;
 	CodecType codec = type->codec;
 
 	using namespace settings;
 
-	uint32_t device = (uint32_t)obs_data_get_int(data, settings::DEVICE);
 	const Capabilities &capabilities = *getCapabilities(device, codec);
 
 	const char *changedProperty = obs_property_name(prop);
