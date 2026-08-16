@@ -864,6 +864,7 @@ QDockWidget {
 QDockWidget::window {
   background: transparent;
   border-color: rgb(29.9, 66.9, 108.9);
+  border-radius: 5px;
   border-width: 3px;
   margin: 0;
 }
@@ -1557,6 +1558,7 @@ SourceSelectButton:on {
 #PluginManagerWindow #modulesList QLabel {
   font-size: var(--fontSizeLarge);
   font-weight: bold;
+  font-style: normal;
   margin-bottom: 5px;
 }
 #PluginManagerWindow #manageRestartLabel {
