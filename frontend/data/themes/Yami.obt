@@ -1218,6 +1218,7 @@ QTabBar::tab {
 
 QMainWindow > QTabBar::tab {
     background: var(--dock_tab_bg);
+    margin-top: -1px;
 }
 
 QTabBar::tab:top:!selected {
@@ -1242,12 +1243,10 @@ QTabBar::tab:hover, QMainWindow > QTabBar::tab:hover {
 
 QTabBar::tab:top {
     border-bottom: 0px solid transparent;
-    margin-bottom: 0px;
 }
 
 QTabBar::tab:bottom {
     border-top: 0px solid transparent;
-    margin-top: 0px;
 }
 
 QTabBar QToolButton {

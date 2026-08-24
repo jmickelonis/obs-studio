@@ -858,7 +858,7 @@ QDockWidget > QCefWidget {
 QDockWidget {
   border: 1.5px solid transparent;
   border-bottom-color: rgb(40.8, 40.8, 40.8);
-  border-radius: 4px;
+  border-radius: 6px;
   margin-bottom: -1px;
 }
 QDockWidget::window {
@@ -896,6 +896,7 @@ QMainWindow > QTabBar::tab:top {
   background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 rgb(20.4, 20.4, 20.4), stop: 1 rgb(30.6, 30.6, 30.6));
   padding: 3px 6px;
   border-bottom: none;
+  margin-bottom: -1px;
 }
 QMainWindow > QTabBar::tab:top:hover {
   background: rgb(30.6, 30.6, 30.6);
@@ -925,6 +926,7 @@ QMainWindow > QTabBar::tab:bottom {
   background: qlineargradient(x1: 0, y1: 1, x2: 0, y2: 0, stop: 0 rgb(20.4, 20.4, 20.4), stop: 1 rgb(30.6, 30.6, 30.6));
   padding: 3px 6px;
   border-top: none;
+  margin-top: -1px;
 }
 QMainWindow > QTabBar::tab:bottom:hover {
   background: rgb(30.6, 30.6, 30.6);
@@ -954,6 +956,7 @@ QMainWindow > QTabBar::tab:left {
   background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 rgb(20.4, 20.4, 20.4), stop: 1 rgb(30.6, 30.6, 30.6));
   padding: 6px 3px;
   border-right: none;
+  margin-right: -1px;
 }
 QMainWindow > QTabBar::tab:left:hover {
   background: rgb(30.6, 30.6, 30.6);
@@ -983,6 +986,7 @@ QMainWindow > QTabBar::tab:right {
   background: qlineargradient(x1: 1, y1: 0, x2: 0, y2: 0, stop: 0 rgb(20.4, 20.4, 20.4), stop: 1 rgb(30.6, 30.6, 30.6));
   padding: 6px 3px;
   border-left: none;
+  margin-left: -1px;
 }
 QMainWindow > QTabBar::tab:right:hover {
   background: rgb(30.6, 30.6, 30.6);
