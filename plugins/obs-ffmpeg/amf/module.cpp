@@ -514,7 +514,8 @@ void destroy(void *encData)
 
 static void registerEncoder(const char *codec, EncoderType &type)
 {
-	static uint32_t CAPS = OBS_ENCODER_CAP_DYN_BITRATE | OBS_ENCODER_CAP_ROI;
+	static uint32_t CAPS = OBS_ENCODER_CAP_DYN_BITRATE | OBS_ENCODER_CAP_MULTITRACK_DYN_BITRATE |
+			       OBS_ENCODER_CAP_ROI;
 
 	auto getID = [&](const char *t) {
 		stringstream ss;
