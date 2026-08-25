@@ -75,7 +75,7 @@ OBSQTDisplay::OBSQTDisplay(QWidget *parent, Qt::WindowFlags flags) : QWidget(par
 {
 	setAttribute(Qt::WA_StaticContents);
 	setAttribute(Qt::WA_NoSystemBackground);
-	setAttribute(Qt::WA_OpaquePaintEvent);
+	// setAttribute(Qt::WA_OpaquePaintEvent);
 
 	window = new QWindow();
 	window->setFlags(Qt::FramelessWindowHint | Qt::WindowTransparentForInput);
