@@ -662,16 +662,18 @@ void Encoder::updateAVC(Settings &settings)
 
 	if (capabilities.bFrames) {
 		int bf = settings.bFrames;
-		SET(B_REFERENCE_ENABLE, bf > 0);
+		bool enableBFrames = bf > 0;
+		SET(B_REFERENCE_ENABLE, enableBFrames);
 		SET(MAX_CONSECUTIVE_BPICTURES, bf);
 		SET(B_PIC_PATTERN, bf);
 		SET(ADAPTIVE_MINIGOP, settings.dynamicBFrames);
 
-		amf_int64 bFrames;
-		if (GET(B_PIC_PATTERN, &bFrames)) {
-			dtsOffset = bFrames + 1;
-		} else {
-			dtsOffset = 0;
+		dtsOffset = 0;
+		if (enableBFrames) {
+			amf_int64 bFrames, bMax;
+			if (GET(B_PIC_PATTERN, &bFrames) && GET(MAX_CONSECUTIVE_BPICTURES, &bMax)) {
+				dtsOffset = min(bFrames, bMax) + 1;
+			}
 		}
 	}
 
@@ -749,13 +751,6 @@ void Encoder::updateAV1(Settings &settings)
 		SET(MAX_CONSECUTIVE_BPICTURES, bf);
 		SET(B_PIC_PATTERN, bf);
 		SET(ADAPTIVE_MINIGOP, settings.dynamicBFrames);
-
-		amf_int64 bFrames;
-		if (GET(B_PIC_PATTERN, &bFrames)) {
-			dtsOffset = bFrames + 1;
-		} else {
-			dtsOffset = 0;
-		}
 	}
 
 	obs_data_t *data = settings.data;
