@@ -72,11 +72,11 @@
                   }
               },
               "cef-windows-x64": {
-                  "version": "6668",
-                  "baseUrl": "https://github.com/jmickelonis/obs-deps/releases/download/cef-6668-windows-x64",
+                  "version": "7922",
+                  "baseUrl": "https://github.com/jmickelonis/obs-deps/releases/download/cef-7922-windows-x64",
                   "label": "Chromium Embedded Framework",
                   "hashes": {
-                      "windows-x64": "73edf178b41be574fde376fd63fec0a4acef162baf5725026d9fcc9668c7e7a0"
+                      "windows-x64": "705364abc554ca816e0f8788879100d34bf9fea8b28461e372dc9baa8787bc4d"
                   },
                   "revision": {
                       "windows-x64": 1
