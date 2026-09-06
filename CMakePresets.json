@@ -27,28 +27,28 @@
         "obsproject.com/obs-studio": {
           "dependencies": {
               "prebuilt": {
-                  "version": "2026-07-23",
+                  "version": "2026-09-06",
                   "baseUrl": "https://github.com/jmickelonis/obs-deps/releases/download",
                   "label": "Pre-Built obs-deps",
                   "hashes": {
-                      "macos-universal": "0bbe1d53060ebe42062aa250c8bef7f76352e555dce4763b9e5ac6876256d424",
-                      "windows-x64": "0211cc5bc96fff31c394fb9b715c1469570354c44190976a5a9c09ee9bd72b3a",
-                      "windows-x86": "7a1ac145a0b13c8c649a3697768ed825a0cdc25d0680845f388cb40d3a5cc753",
-                      "windows-arm64": "1b608320f9ab4fa26b7575eabde7880c402f4cec96ed30461b23282ae983e2fc"
+                      "macos-universal": "36688167612b2eb579afd376eb3abab553d9e1fa767bebac1b2e48b82914cf42",
+                      "windows-x64": "cb7862be9081eaed3f8e4fda93c27735bcb7db0780bea971595c5bbd6ecf503e",
+                      "windows-x86": "4a9621d2298dfd230d9c4bde7b1e50d52861b58bd80048767faabb2e9483643c",
+                      "windows-arm64": "c2008fe25e86f2793ba0123b3704dae71879fa0da7d8db4c1bd07a20f3b62979"
                   }
               },
               "qt6": {
-                  "version": "2026-07-23",
+                  "version": "2026-09-06",
                   "baseUrl": "https://github.com/jmickelonis/obs-deps/releases/download",
                   "label": "Pre-Built Qt6",
                   "hashes": {
-                      "macos-universal": "a380a1a23eca15a574c55693ff552c7642c48ed564bbc2c0f3e63aeec48c896f",
-                      "windows-x64": "99e101a9bd8f65e6762fba22abc3549600644c6e2e7b0f08ffcdbe864a927600",
-                      "windows-arm64": "493d226fc27942adc0f5e0f83397eeb6fe017287fa84e29719dbe27250298bdb"
+                      "macos-universal": "94c9ea899e05e9254458a58e00c88960b6555455f8917d307e9f4e414ab0fae5",
+                      "windows-x64": "ae1f0658b24bb55f1f8f3bacf327ec2bf55dcd8a1adb851e078684f3e3bc6ea2",
+                      "windows-arm64": "a86d3d71eed08173aef64c972c9f141615cc4749ce693467b91b7c48e33219d5"
                   },
                   "debugSymbols": {
-                      "windows-x64": "b7961f5f3baf7f011fa7cb333b6ea3794576cf61a01cc2a573a39d76aa675a35",
-                      "windows-arm64": "352fb5053fb6b0ed3ad90e3767a7a027dcb377136a76028058abb2031c4b7a8a"
+                      "windows-x64": "3a7ba82f726776bfba51fe30483eaf560067a4dff8e873621c5087bacbd9b9f4",
+                      "windows-arm64": "a60d58fcdea44d5e3837b9126426348b639f6fabdfa80c5b6ccb1773dfcd399f"
                   }
               },
               "cef": {
@@ -72,11 +72,11 @@
                   }
               },
               "cef-windows-x64": {
-                  "version": "7922",
-                  "baseUrl": "https://github.com/jmickelonis/obs-deps/releases/download/cef-7922-windows-x64",
+                  "version": "7977",
+                  "baseUrl": "https://github.com/jmickelonis/obs-deps/releases/download/cef-7977-windows-x64",
                   "label": "Chromium Embedded Framework",
                   "hashes": {
-                      "windows-x64": "705364abc554ca816e0f8788879100d34bf9fea8b28461e372dc9baa8787bc4d"
+                      "windows-x64": "70332264044d4098742b6a5a85510086047fc85595a8c0c4ece09d66c0ab89cb"
                   },
                   "revision": {
                       "windows-x64": 1
