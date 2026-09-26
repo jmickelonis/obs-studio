@@ -173,7 +173,7 @@ function(set_target_properties_obs target)
             COMMAND "${CMAKE_COMMAND}" -E make_directory "${OBS_OUTPUT_DIR}/$<CONFIG>/${OBS_PLUGIN_DESTINATION}/"
             COMMAND
               "${CMAKE_COMMAND}" -E copy_if_different "${imported_location}" "${cef_location}/chrome-sandbox"
-              "${cef_location}/libEGL.so" "${cef_location}/libGLESv2.so" "${cef_location}/libvk_swiftshader.so"
+              "${cef_location}/libvk_swiftshader.so"
               "${cef_location}/libvulkan.so.1" "${cef_location}/v8_context_snapshot.bin"
               "${cef_location}/vk_swiftshader_icd.json" "${OBS_OUTPUT_DIR}/$<CONFIG>/${OBS_PLUGIN_DESTINATION}/"
             COMMAND
@@ -190,8 +190,6 @@ function(set_target_properties_obs target)
             FILES
               "${imported_location}"
               "${cef_location}/chrome-sandbox"
-              "${cef_location}/libEGL.so"
-              "${cef_location}/libGLESv2.so"
               "${cef_location}/libvk_swiftshader.so"
               "${cef_location}/libvulkan.so.1"
               "${cef_location}/v8_context_snapshot.bin"
@@ -210,6 +208,24 @@ function(set_target_properties_obs target)
             USE_SOURCE_PERMISSIONS
             COMPONENT Runtime
           )
+
+          if(EXISTS "${cef_location}/libEGL.so")
+            add_custom_command(
+              TARGET ${target}
+              POST_BUILD
+              COMMAND
+                "${CMAKE_COMMAND}" -E copy_if_different
+                "${cef_location}/libEGL.so"
+                "${cef_location}/libGLESv2.so"
+            )
+            install(
+              FILES
+                "${cef_location}/libEGL.so"
+                "${cef_location}/libGLESv2.so"
+              DESTINATION "${OBS_PLUGIN_DESTINATION}"
+              COMPONENT Runtime
+            )
+          endif()
         endif()
       endif()
     endif()
